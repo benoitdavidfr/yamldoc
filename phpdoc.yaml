@@ -1,0 +1,19 @@
+path: /yaml
+title: Yaml
+doc: |
+  Gestion en mode web de documents structurés en Yaml
+  Chaque document peut être édité en Yaml ; il est enregistré dans un fichier avec un nom unique.
+  La connaissance de ce nom donne accès au document en lecture et mise à jour.
+  S'il contient des listes de tuples, chacune est affichée sous la forme d'un tableau.
+  Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
+  Les différentes structures de document sont identifiées par un type. On dit que le document est typé.
+  exemples:
+    - catalogue de documents
+    - carte
+  Chaque document typé respect une structure générique:
+    title: titre du document
+    doc: une documentation
+    type: le type du document sous la forme d'un URI http://yaml.gexplor.fr/type/xxxx
+journal: |
+  8/4/2018:
+  - première version
