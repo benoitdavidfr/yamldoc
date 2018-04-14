@@ -1,25 +1,26 @@
 path: /yaml
 title: Gestion en mode web de documents structurés en Yaml
 doc: |
-  Chaque document peut être édité en Yaml ; il est enregistré dans un fichier avec un nom unique.
-  La connaissance de ce nom donne accès au document en lecture et mise à jour.
-  S'il contient des listes de tuples, chacune est affichée sous la forme d'un tableau.
+  Chaque document peut être édité en Yaml ; il est enregistré dans un fichier avec un id unique.
+  La connaissance de cet uid donne accès au document en lecture et mise à jour.
+  S'il contient des listes de tuples, chaque liste est affichée sous la forme d'un tableau.
   Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
   Les différentes structures de document sont identifiées par un type. On dit que le document est typé.
-    Les noms des documents sont enregistrés dans des catalogues qui sont eux-mêmes des documents.
+    Les noms des documents sont enregistrés dans des catalogues qui sont des documents de type catalogue.
   exemples:
     - catalogue de documents
     - carte
-  Chaque document typé respecte une structure générique:
+  Certains champs sont génériques:
     title: titre du document
     type: le type du document sous la forme d'un URI http://yaml.gexplor.fr/type/xxxx
-    L'éditeur mémorise le nom du dernier catalogue utilisé dans lequel il enregistre chaque nouveau document créé.
+    L'éditeur mémorise le chemin des catalogues utilisés ; chaque nouveau document créé est enregistré dans le
+  dernier catalogue traversé.
   Lorsqu'aucun catalogue n'a été utilisé, à la création d'un document, un catalogue est créé.
-  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) le nom de son catalogue racine  afin
+  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) l'uid de son catalogue racine permettant
   d'accéder à ses documents.
-  Chaque utilisateur est identifié par le nom de son catalogue racine.
-  Il est possible protéger un document en écriture en indiquant dans le document la liste des utilisateurs autorisés
-  à le modifier.
+  Chaque utilisateur est identifié par l'uid de son catalogue racine.
+  Un document peut être protégé en écriture en indiquant dans le document la liste des utilisateurs autorisés
+  à le modifier chacun désigné par le MD5 de l'uid de leur catalogue racine.
 journal: |
   8/4/2018:
   - première version

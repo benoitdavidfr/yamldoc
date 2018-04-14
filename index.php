@@ -269,9 +269,27 @@ if ($data) {
   }
 }
 
+function authorizedWriter(array $data) {
+  echo "authorizedWriter ";
+  if (!$data) {
+    echo "no data<br>\n";
+    return true;
+  }
+  if (!isset($data['authorizedWriters'])) {
+    echo "no authorizedWriters<br>\n";
+    return true;
+  }
+  $userId = md5($_SESSION['catalogs'][0]);
+  echo in_array($userId, $data['authorizedWriters']) ? "in" : "not in", "<br>\n";
+  return in_array($userId, $data['authorizedWriters']);
+}
+
 echo "<h2>Menu</h2><ul>\n";
 echo "<li><a href='?action=nop'>nop</a>\n";
-echo "<li><a href='?action=edit'>edit</a>\n";
+if (authorizedWriter($data))
+  echo "<li><a href='?action=edit'>edit</a>\n";
+else
+  echo "<li>édition du document interdite\n";
 echo "<li><a href='?action=dump'>dump</a>\n";
 if ($data) {
   echo "<li><a href='?action=clone'>clone</a>\n";
@@ -280,11 +298,16 @@ echo "<li><a href='?action=init'>init</a>\n";
 echo "</ul>\n";
 
 if (isset($_SESSION['catalogs'])) {
-  foreach ($_SESSION['catalogs'] as $n => $catalog) {
-    echo "<a href='?action=",($n==0?'init':'read'),"&amp;name=$catalog'>&gt;</a> ";
+  foreach ($_SESSION['catalogs'] as $i => $catalog) {
+    echo "<a href='?action=",($i==0?'init':'read'),"&amp;name=$catalog'>&gt;</a> ";
   }
 }
 if (isset($_SESSION['name']) and !in_array($_SESSION['name'], $_SESSION['catalogs'])) {
-  echo "<a href='?action=read&name=$_SESSION[name]'>doc</a><br>\n";
+  echo "<a href='?action=read&name=$_SESSION[name]'>doc</a>\n";
+}
+echo "<br>\n";
+
+if (isset($_SESSION['catalogs'])) {
+  echo "userId=",md5($_SESSION['catalogs'][0]),"<br>\n";
 }
 echo "<pre>_SESSION="; print_r($_SESSION);
