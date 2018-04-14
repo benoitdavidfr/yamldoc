@@ -7,6 +7,11 @@ doc: |
   S'il contient des listes de tuples, chacune est affichée sous la forme d'un tableau.
   Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
   Les différentes structures de document sont identifiées par un type. On dit que le document est typé.
+    Les noms des documents sont enregistrés dans des catalogues qui sont eux-mêmes des documents.
+  L'éditeur mémorise le nom du dernier catalogue utilisé dans lequel il enregistre chaque nouveau document créé.
+  Lorsqu'aucun catalogue n'a été utilisé, à la création d'un document, un catalogue est créé.
+  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) le nom de son catalogue racine  afin
+  d'accéder à ses documents.
   exemples:
     - catalogue de documents
     - carte
