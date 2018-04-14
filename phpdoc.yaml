@@ -1,24 +1,25 @@
 path: /yaml
-title: Yaml
+title: Gestion en mode web de documents structurés en Yaml
 doc: |
-  Gestion en mode web de documents structurés en Yaml
   Chaque document peut être édité en Yaml ; il est enregistré dans un fichier avec un nom unique.
   La connaissance de ce nom donne accès au document en lecture et mise à jour.
   S'il contient des listes de tuples, chacune est affichée sous la forme d'un tableau.
   Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
   Les différentes structures de document sont identifiées par un type. On dit que le document est typé.
     Les noms des documents sont enregistrés dans des catalogues qui sont eux-mêmes des documents.
-  L'éditeur mémorise le nom du dernier catalogue utilisé dans lequel il enregistre chaque nouveau document créé.
-  Lorsqu'aucun catalogue n'a été utilisé, à la création d'un document, un catalogue est créé.
-  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) le nom de son catalogue racine  afin
-  d'accéder à ses documents.
   exemples:
     - catalogue de documents
     - carte
-  Chaque document typé respect une structure générique:
+  Chaque document typé respecte une structure générique:
     title: titre du document
-    doc: une documentation
     type: le type du document sous la forme d'un URI http://yaml.gexplor.fr/type/xxxx
+    L'éditeur mémorise le nom du dernier catalogue utilisé dans lequel il enregistre chaque nouveau document créé.
+  Lorsqu'aucun catalogue n'a été utilisé, à la création d'un document, un catalogue est créé.
+  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) le nom de son catalogue racine  afin
+  d'accéder à ses documents.
+  Chaque utilisateur est identifié par le nom de son catalogue racine.
+  Il est possible protéger un document en écriture en indiquant dans le document la liste des utilisateurs autorisés
+  à le modifier.
 journal: |
   8/4/2018:
   - première version
