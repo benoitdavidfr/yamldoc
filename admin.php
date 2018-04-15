@@ -1,7 +1,7 @@
 <?php
 /*PhpDoc:
 name: admin.php
-title: admin
+title: admin.php - permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 */

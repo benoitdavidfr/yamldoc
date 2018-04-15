@@ -1,15 +1,15 @@
 <?php
 /*PhpDoc:
 name: catalog.inc.php
-title: gestion d'un catalogue de documents structurés
+title: catalog.inc.php - gestion d'un catalogue de documents structurés
 doc: |
-shema:
-  title: titre du catalogue
-  doc: documentation du catalogue
-  type: http://yaml.gexplor.fr/type/catalog
-  contents:
-    {name}:
-      title: titre du document
+  shema:
+    title: titre du catalogue
+    doc: documentation du catalogue
+    type: http://yaml.gexplor.fr/type/catalog
+    contents:
+      {name}:
+        title: titre du document
 journal: |
   14/4/2018:
     création

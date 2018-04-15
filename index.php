@@ -1,7 +1,7 @@
 <?php
 /*PhpDoc:
-name: yaml.php
-title: yaml
+name: index.php
+title: index.php - gestionnaire de documents Yaml
 doc: |
   - manipulation d'un document contenant des listes de tuples
     - représentation de chaque liste de tuples sous la forme d'un tableau
@@ -14,10 +14,11 @@ doc: |
   Le contenu Yaml est stocké dans $_SESSION['text'].
   Le nom du fichier est enregistré sans $_SESSION['name']
   Le chemin des catalogues est enregistré dans $_SESSION['catalogs'], la racine en 0
-idées:
+  idées:
 journal: |
   14/4/2018:
   - gestion des catalogues
+  - gestion des droits de modification
   11/4/2018:
   - edition en mode POST
   - mise en SESSION du contenu Yaml et suppression du fichier temporaire
@@ -31,6 +32,26 @@ journal: |
 session_start();
 require_once __DIR__.'/../spyc/spyc2.inc.php';
 require_once __DIR__.'/catalog.inc.php';
+
+function authorizedWriter(array $data) {
+  $verbose = false;
+  if ($verbose)
+    echo "authorizedWriter ";
+  if (!$data) {
+    if ($verbose)
+      echo "no data<br>\n";
+    return true;
+  }
+  if (!isset($data['authorizedWriters'])) {
+    if ($verbose)
+      echo "no authorizedWriters<br>\n";
+    return true;
+  }
+  $userId = md5($_SESSION['catalogs'][0]);
+  if ($verbose)
+    echo in_array($userId, $data['authorizedWriters']) ? "in" : "not in", "<br>\n";
+  return in_array($userId, $data['authorizedWriters']);
+}
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
@@ -53,13 +74,20 @@ if (isset($_GET['action']) and ($_GET['action']=='init')) {
 // édition du contenu Yaml
 if (isset($_GET['action']) and ($_GET['action']=='edit')) {
   $str = isset($_SESSION['text']) ? $_SESSION['text'] : '';
+  if ($str) {
+    $data = spycLoadString($str);
+    if (!authorizedWriter($data))
+      die("Erreur: édition interdite<br>\n");
+  }
+  $userId = isset($_SESSION['catalogs']) ? "userId=".md5($_SESSION['catalogs'][0])."<br>\n" : '';
   echo <<<EOT
 <table><form action="?action=store" method="post">
 <tr><td><textarea name="text" rows="40" cols="80">$str</textarea></td></tr>
 <tr><td><input type="submit" value="Envoyer"></td></tr>
 </form></table>
+$userId
 EOT;
-  die();
+   die();
 }
 
 // enregistrement d'un contenu à la suite d'une édition
@@ -269,32 +297,17 @@ if ($data) {
   }
 }
 
-function authorizedWriter(array $data) {
-  echo "authorizedWriter ";
-  if (!$data) {
-    echo "no data<br>\n";
-    return true;
-  }
-  if (!isset($data['authorizedWriters'])) {
-    echo "no authorizedWriters<br>\n";
-    return true;
-  }
-  $userId = md5($_SESSION['catalogs'][0]);
-  echo in_array($userId, $data['authorizedWriters']) ? "in" : "not in", "<br>\n";
-  return in_array($userId, $data['authorizedWriters']);
-}
-
 echo "<h2>Menu</h2><ul>\n";
 echo "<li><a href='?action=nop'>nop</a>\n";
 if (authorizedWriter($data))
   echo "<li><a href='?action=edit'>edit</a>\n";
-else
-  echo "<li>édition du document interdite\n";
-echo "<li><a href='?action=dump'>dump</a>\n";
+//else
+  //echo "<li>édition du document interdite\n";
+//echo "<li><a href='?action=dump'>dump</a>\n";
 if ($data) {
   echo "<li><a href='?action=clone'>clone</a>\n";
 }
-echo "<li><a href='?action=init'>init</a>\n";
+//echo "<li><a href='?action=init'>init</a>\n";
 echo "</ul>\n";
 
 if (isset($_SESSION['catalogs'])) {
@@ -306,8 +319,4 @@ if (isset($_SESSION['name']) and !in_array($_SESSION['name'], $_SESSION['catalog
   echo "<a href='?action=read&name=$_SESSION[name]'>doc</a>\n";
 }
 echo "<br>\n";
-
-if (isset($_SESSION['catalogs'])) {
-  echo "userId=",md5($_SESSION['catalogs'][0]),"<br>\n";
-}
-echo "<pre>_SESSION="; print_r($_SESSION);
+//echo "<pre>_SESSION="; print_r($_SESSION);

@@ -1,5 +1,5 @@
-path: /yaml
-title: Gestion en mode web de documents structurés en Yaml
+path: /yamldoc
+title: yamldoc - Gestion en mode web de documents structurés en Yaml
 doc: |
   Chaque document peut être édité en Yaml ; il est enregistré dans un fichier avec un id unique.
   La connaissance de cet uid donne accès au document en lecture et mise à jour.
@@ -21,6 +21,17 @@ doc: |
   Chaque utilisateur est identifié par l'uid de son catalogue racine.
   Un document peut être protégé en écriture en indiquant dans le document la liste des utilisateurs autorisés
   à le modifier chacun désigné par le MD5 de l'uid de leur catalogue racine.
+  
+  idées:
+    - associer à chaque type un schéma
+    - générer pour chaque type une IHM de mise à jour
 journal: |
   8/4/2018:
   - première version
+phpScripts:
+  - /yamldoc/index.php
+  - /yamldoc/admin.php
+phpIncludes:
+  - /yamldoc/catalog.inc.php
+htmlFiles:
+  - /yamldoc/file.yaml
