@@ -16,6 +16,8 @@ doc: |
   Le chemin des catalogues est enregistré dans $_SESSION['catalogs'], la racine en 0
   idées:
 journal: |
+  15/4/2018:
+  - transfert des docs dans docs
   14/4/2018:
   - gestion des catalogues
   - gestion des droits de modification
@@ -33,6 +35,7 @@ session_start();
 require_once __DIR__.'/../spyc/spyc2.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 
+// indique si l'utilisateur courant est autorisé à modifier le document passé en paramètre
 function authorizedWriter(array $data) {
   $verbose = false;
   if ($verbose)
@@ -55,7 +58,7 @@ function authorizedWriter(array $data) {
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
-// reinitialisation des variables de session
+// reinitialisation des variables de session puis lecture éventuelle d'un document dans un fichier
 if (isset($_GET['action']) and ($_GET['action']=='init')) {
   unset($_SESSION['text']);
   unset($_SESSION['name']);
@@ -63,7 +66,7 @@ if (isset($_GET['action']) and ($_GET['action']=='init')) {
   // lecture d'un document dans un fichier
   if (isset($_GET['name'])) {
     $_SESSION['name'] = $_GET['name'];
-    if (($text = @file_get_contents("$_SESSION[name].yaml")) === FALSE) {
+    if (($text = @file_get_contents("docs/$_SESSION[name].yaml")) === FALSE) {
       echo "<b>Erreur le fichier $_SESSION[name].yaml n'existe pas</b>\n";
     }
     else
@@ -80,13 +83,11 @@ if (isset($_GET['action']) and ($_GET['action']=='edit')) {
       die("Erreur: édition interdite<br>\n");
   }
   $userId = isset($_SESSION['catalogs']) ? "userId=".md5($_SESSION['catalogs'][0])."<br>\n" : '';
-  echo <<<EOT
-<table><form action="?action=store" method="post">
-<tr><td><textarea name="text" rows="40" cols="80">$str</textarea></td></tr>
-<tr><td><input type="submit" value="Envoyer"></td></tr>
-</form></table>
-$userId
-EOT;
+  echo "<table><form action='?action=store' method='post'>\n",
+       "<tr><td><textarea name='text' rows='40' cols='80'>$str</textarea></td></tr>\n",
+       "<tr><td><input type='submit' value='Envoyer'></td></tr>\n",
+       "</form></table>\n",
+       "$userId\n";
    die();
 }
 
@@ -101,14 +102,14 @@ if (isset($_GET['action']) and ($_GET['action']=='store')) {
     }
     store_in_catalog($_SESSION['name'], $_SESSION['catalogs'][count($_SESSION['catalogs'])-1]);
   }
-  file_put_contents("$_SESSION[name].yaml", $_SESSION['text']);
+  file_put_contents("docs/$_SESSION[name].yaml", $_SESSION['text']);
   echo "Enregistrement du document $_SESSION[name]<br>\n";
 }
 
-// lecture d'un document dans un fichier
+// lecture d'un document dans un fichier sans réinitialiser $_SESSION['catalogs']
 if (isset($_GET['action']) and ($_GET['action']=='read')) {
   $_SESSION['name'] = $_GET['name'];
-  if (($text = @file_get_contents("$_SESSION[name].yaml")) === FALSE) {
+  if (($text = @file_get_contents("docs/$_SESSION[name].yaml")) === FALSE) {
     echo "<b>Erreur le fichier $_SESSION[name].yaml n'existe pas</b>\n";
     unset($_SESSION['text']);
   }
@@ -118,6 +119,7 @@ if (isset($_GET['action']) and ($_GET['action']=='read')) {
 
 $data = null;
 
+// analyse du texte pour en faire un Yaml dans $data
 if (isset($_SESSION['text'])) {
   $data = spycLoadString($_SESSION['text']);
   if (!$data) {
@@ -126,6 +128,7 @@ if (isset($_SESSION['text'])) {
   }
 }
 
+// action dump de $data
 if (isset($_GET['action']) and ($_GET['action']=='dump')) {
   echo "<pre>data = "; print_r($data); echo "</pre>\n";
   die();
@@ -268,6 +271,7 @@ function extractTables(array $data, string $prefix='') {
 }
 
 if ($data) {
+  // affichage selon le type
   switch (isset($data['type']) ? $data['type'] : null) {
     case null:
       extractTables($data);
@@ -286,13 +290,14 @@ if ($data) {
       break;
   }
   
+  // action de clonage
   if (isset($_GET['action']) and ($_GET['action']=='clone')) {
     $_SESSION['name'] = uniqid();
     if (!isset($_SESSION['catalogs'])) {
       $_SESSION['catalogs'] = [ create_catalog() ];
     }
     store_in_catalog($_SESSION['name'], $_SESSION['catalogs'][count($_SESSION['catalogs'])-1]);
-    file_put_contents("$_SESSION[name].yaml", $_SESSION['text']);
+    file_put_contents("docs/$_SESSION[name].yaml", $_SESSION['text']);
     echo "contenu enregistré dans $_SESSION[name].yaml<br>\n";
   }
 }
@@ -310,6 +315,7 @@ if ($data) {
 //echo "<li><a href='?action=init'>init</a>\n";
 echo "</ul>\n";
 
+// bas de page
 if (isset($_SESSION['catalogs'])) {
   foreach ($_SESSION['catalogs'] as $i => $catalog) {
     echo "<a href='?action=",($i==0?'init':'read'),"&amp;name=$catalog'>&gt;</a> ";

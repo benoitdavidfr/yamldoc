@@ -25,6 +25,9 @@ doc: |
   idées:
     - associer à chaque type un schéma
     - générer pour chaque type une IHM de mise à jour
+    - utiliser git pour gérer l'historique des fichiers Yaml
+    - utiliser Markdown dans les textes
+    
 journal: |
   8/4/2018:
   - première version
