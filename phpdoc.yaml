@@ -22,6 +22,7 @@ doc: |
   Un document peut être protégé en écriture en indiquant dans le document la liste des utilisateurs autorisés
   à le modifier chacun désigné par le MD5 de l'uid de leur catalogue racine.
   
+  Ce projet 
   idées:
     - associer à chaque type un schéma
     - générer pour chaque type une IHM de mise à jour

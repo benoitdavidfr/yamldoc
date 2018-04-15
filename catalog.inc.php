@@ -21,17 +21,17 @@ function create_catalog() {
     'contents'=> [],
   ];
   $catalog = uniqid();
-  file_put_contents("$catalog.yaml", spycDump($default_catalog));
+  file_put_contents("docs/$catalog.yaml", spycDump($default_catalog));
   echo "Création du catalogue $catalog<br>\n";
   return $catalog;
 }
 
 function store_in_catalog(string $name, string $catalog) {
-  $contents = file_get_contents("$catalog.yaml");
+  $contents = file_get_contents("docs/$catalog.yaml");
   $contents = spycLoadString($contents);
   //print_r($contents);
   $contents['contents'][$name] = ['title'=> "document $name" ];
-  file_put_contents("$catalog.yaml", spycDump($contents));
+  file_put_contents("docs/$catalog.yaml", spycDump($contents));
 }
 
 function show_catalog(array $data) {
