@@ -11,6 +11,8 @@ doc: |
       {name}:
         title: titre du document
 journal: |
+  18/4/2018:
+    utilisation de ydread() et ydwrite()
   14/4/2018:
     création
 */
@@ -20,27 +22,26 @@ function create_catalog() {
     'type'=> 'catalog',
     'contents'=> [],
   ];
-  $catalog = uniqid();
-  file_put_contents("docs/$catalog.yaml", spycDump($default_catalog));
-  echo "Création du catalogue $catalog<br>\n";
-  return $catalog;
+  $uid = uniqid();
+  ydwrite($uid, spycDump($default_catalog));
+  echo "Création du catalogue $uid<br>\n";
+  return $uid;
 }
 
-function store_in_catalog(string $name, string $catalog) {
-  $contents = file_get_contents("docs/$catalog.yaml");
-  $contents = spycLoadString($contents);
+function store_in_catalog(string $uid, string $catalog) {
+  $contents = spycLoadString(ydread($catalog));
   //print_r($contents);
-  $contents['contents'][$name] = ['title'=> "document $name" ];
-  file_put_contents("docs/$catalog.yaml", spycDump($contents));
+  $contents['contents'][$uid] = ['title'=> "document $uid" ];
+  ydwrite($catalog, spycDump($contents));
 }
 
-function show_catalog(array $data) {
-  if (isset($data['title']))
-    echo "<h2>$data[title]</h2>\n";
+function show_catalog(array $contents) {
+  if (isset($contents['title']))
+    echo "<h2>$contents[title]</h2>\n";
   echo "<ul>\n";
-  foreach ($data['contents'] as $name => $content) {
-    $title = isset($content['title']) ? $content['title'] : $name;
-    echo "<li><a href='?action=read&amp;name=$name'>$title</a>\n";
+  foreach ($contents['contents'] as $uid => $content) {
+    $title = isset($content['title']) ? $content['title'] : $uid;
+    echo "<li><a href='?action=read&amp;name=$uid'>$title</a>\n";
   }
   echo "</ul>\n";
 }

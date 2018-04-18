@@ -16,6 +16,10 @@ doc: |
   Le chemin des catalogues est enregistré dans $_SESSION['catalogs'], la racine en 0
   idées:
 journal: |
+  18/4/2018:
+    utilisation de ydread() et ydwrite()
+  17/4/2018:
+  - test d'encryptage des docs
   15/4/2018:
   - transfert des docs dans docs
   14/4/2018:
@@ -33,6 +37,7 @@ journal: |
 */
 session_start();
 require_once __DIR__.'/../spyc/spyc2.inc.php';
+require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 
 // indique si l'utilisateur courant est autorisé à modifier le document passé en paramètre
@@ -55,7 +60,7 @@ function authorizedWriter(array $data) {
     echo in_array($userId, $data['authorizedWriters']) ? "in" : "not in", "<br>\n";
   return in_array($userId, $data['authorizedWriters']);
 }
-
+ 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
 // reinitialisation des variables de session puis lecture éventuelle d'un document dans un fichier
@@ -66,7 +71,7 @@ if (isset($_GET['action']) and ($_GET['action']=='init')) {
   // lecture d'un document dans un fichier
   if (isset($_GET['name'])) {
     $_SESSION['name'] = $_GET['name'];
-    if (($text = @file_get_contents("docs/$_SESSION[name].yaml")) === FALSE) {
+    if (($text = ydread($_SESSION['name'])) === FALSE) {
       echo "<b>Erreur le fichier $_SESSION[name].yaml n'existe pas</b>\n";
     }
     else
@@ -102,14 +107,14 @@ if (isset($_GET['action']) and ($_GET['action']=='store')) {
     }
     store_in_catalog($_SESSION['name'], $_SESSION['catalogs'][count($_SESSION['catalogs'])-1]);
   }
-  file_put_contents("docs/$_SESSION[name].yaml", $_SESSION['text']);
+  ydwrite($_SESSION['name'], encrypt($_SESSION['text']));
   echo "Enregistrement du document $_SESSION[name]<br>\n";
 }
 
 // lecture d'un document dans un fichier sans réinitialiser $_SESSION['catalogs']
 if (isset($_GET['action']) and ($_GET['action']=='read')) {
   $_SESSION['name'] = $_GET['name'];
-  if (($text = @file_get_contents("docs/$_SESSION[name].yaml")) === FALSE) {
+  if (($text = ydread($_SESSION['name'])) === FALSE) {
     echo "<b>Erreur le fichier $_SESSION[name].yaml n'existe pas</b>\n";
     unset($_SESSION['text']);
   }
@@ -297,7 +302,7 @@ if ($data) {
       $_SESSION['catalogs'] = [ create_catalog() ];
     }
     store_in_catalog($_SESSION['name'], $_SESSION['catalogs'][count($_SESSION['catalogs'])-1]);
-    file_put_contents("docs/$_SESSION[name].yaml", $_SESSION['text']);
+    ydwrite($_SESSION['name'], $_SESSION['text']);
     echo "contenu enregistré dans $_SESSION[name].yaml<br>\n";
   }
 }
@@ -308,7 +313,7 @@ if (authorizedWriter($data))
   echo "<li><a href='?action=edit'>edit</a>\n";
 //else
   //echo "<li>édition du document interdite\n";
-//echo "<li><a href='?action=dump'>dump</a>\n";
+echo "<li><a href='?action=dump'>dump</a>\n";
 if ($data) {
   echo "<li><a href='?action=clone'>clone</a>\n";
 }
