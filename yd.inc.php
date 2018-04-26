@@ -3,43 +3,72 @@
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
-  si passwd.inc.php existe alors il doit définir la fonction ydpassword() qui renvoie le mot de passe secret
-  sinon les docs ne sont pas cryptés
 journal: |
+  19/4/2018:
+  - suppression du cryptage
   18/4/2018:
   - première version
 */
-if (is_file('passwd.inc.php'))
-  require_once __DIR__.'/passwd.inc.php';
-  
+
+// écriture d'un document, prend l'uid et le texte
 function ydwrite(string $uid, string $doc) {
-  if (function_exists('ydpassword'))
-    return file_put_contents("docsc/$uid.doc", ydencrypt($doc));
-  else
-    return file_put_contents("docs/$uid.doc", $doc);
+  return file_put_contents("docs/$uid.yaml", $doc);
 }
 
+// lecture d'un document, prend l'uid et retourne le texte
 function ydread(string $uid) {
   //echo "ydread($uid)<br>\n";
-  if (function_exists('ydpassword')) {
-    $doc = @file_get_contents("docsc/$uid.doc");
-    if ($doc === false)
-      return false;
-    else
-      return yddecrypt($doc);
-  }
-  else {
-    $doc = @file_get_contents("docs/$uid.yaml");
-    if ($doc === false)
-      return false;
-    else
-      return $doc;
-  }
+  return @file_get_contents("docs/$uid.yaml");
 }
 
-function ydencrypt(string $doc) {
-  return openssl_encrypt($doc, 'aes-256-ctr', ydpassword(), OPENSSL_ZERO_PADDING, '1234567812345678');
+/*
+// le paramètre est-il un tuple de valeurs élémentaires ou non ?
+function is_tuple($tuple) {
+  if (!is_array($tuple))
+    return false;
+  foreach ($tuple as $k => $v)
+    if (is_array($v))
+      return false;
+  return true;
 }
-function yddecrypt(string $crypted) {
-  return openssl_decrypt($crypted, 'aes-256-ctr', ydpassword(), OPENSSL_ZERO_PADDING, '1234567812345678');
+*/
+  
+// le paramètre est-il une liste de tuples ?
+function is_listOfTuples($list) {
+  //echo "<pre>is_list "; print_r($list); echo "</pre>\n";
+  //echo "<pre>array_keys = "; print_r(array_keys($list)); echo "</pre>\n";
+  $ret = is_listOfTuples_i($list);
+  //echo "is_list => $ret<br>\n";
+  return $ret;
 }
+function is_listOfTuples_i($list) {
+  if (!is_array($list))
+    return false;
+  foreach (array_keys($list) as $k => $v)
+    if ($k !== $v)
+      return false;
+  foreach ($list as $tuple) {
+    if (!is_array($tuple)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// retourne le sous-document défini par path qui est une chaine ou un array de clés
+function ypath(array $data, $path) {
+  if (!$path)
+    return $data;
+  if (is_string($path)) {
+    $path = explode('/', $path);
+    if (!$path[0])
+      array_shift($path);
+  }
+  $key = array_shift($path);
+  return ypath($data[$key], $path);
+}
+
+
+if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
+
+

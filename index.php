@@ -16,6 +16,8 @@ doc: |
   Le chemin des catalogues est enregistré dans $_SESSION['catalogs'], la racine en 0
   idées:
 journal: |
+  22/4/2018:
+    split de l'afficha de listes de tuples dans ltuples.inc.php
   18/4/2018:
     utilisation de ydread() et ydwrite()
   17/4/2018:
@@ -39,6 +41,8 @@ session_start();
 require_once __DIR__.'/../spyc/spyc2.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/catalog.inc.php';
+require_once __DIR__.'/ltuples.inc.php';
+require_once __DIR__.'/onetable.inc.php';
 
 // indique si l'utilisateur courant est autorisé à modifier le document passé en paramètre
 function authorizedWriter(array $data) {
@@ -107,7 +111,7 @@ if (isset($_GET['action']) and ($_GET['action']=='store')) {
     }
     store_in_catalog($_SESSION['name'], $_SESSION['catalogs'][count($_SESSION['catalogs'])-1]);
   }
-  ydwrite($_SESSION['name'], encrypt($_SESSION['text']));
+  ydwrite($_SESSION['name'], $_SESSION['text']);
   echo "Enregistrement du document $_SESSION[name]<br>\n";
 }
 
@@ -135,152 +139,34 @@ if (isset($_SESSION['text'])) {
 
 // action dump de $data
 if (isset($_GET['action']) and ($_GET['action']=='dump')) {
-  echo "<pre>data = "; print_r($data); echo "</pre>\n";
+  //echo "<pre>data = "; print_r($data); echo "</pre>\n";
+  echo "<pre>data = "; var_dump($data); echo "</pre>\n";
+  echo "<a href='?action=nop'>retour</a>\n";
   die();
 }
 
-// accès au sous-tableau défini par path
-function subtab(array $data, array $path) {
-  if (!$path)
-    return $data;
-  $name = array_shift($path);
-  return subtab($data[$name], $path);
-}
-
-// affichage de la liste de valeurs uniques d'une colonne
+// affichage de la liste de valeurs uniques d'une colonne définie par $_GET['tab'] qui indique le ypath
 if (isset($_GET['action']) and ($_GET['action']=='uniq')) {
   $vals = [];
-  $path = explode('/', $_GET['tab']);
-  array_shift($path);
-  //print_r($path); die();
-  $tab = subtab($data, $path);
+  $key = $_GET['key'];
+  $tab = ypath($data, $_GET['tab']);
   foreach ($tab as $line) {
-    $val = $line[$_GET['key']];
+    $val = (isset($line[$key]) ? $line[$key] : '');
     if (!in_array($val, $vals))
       $vals[] = $val;
   }
-  echo "<h2>$_GET[tab].$_GET[key]</h2>\n";
+  echo "<h2>uniq $_GET[tab].$_GET[key]</h2>\n";
   foreach ($vals as $val)
-    echo "<a href='?action=select&amp;tab=$_GET[tab]&amp;key=$_GET[key]&amp;val=",
-          rawurlencode($val),"'>$val</a><br>\n";
+    echo "<a href='?action=select&amp;tab=$_GET[tab]&amp;key=$key&amp;val=",
+          rawurlencode($val),"'>",($val ? $val : 'vide ou non définie'),"</a><br>\n";
   die();
 }
 
 
-// le paramètre est-il un tuple ?
-function is_tuple($tuple) {
-  if (!is_array($tuple))
-    return false;
-  foreach ($tuple as $k => $v)
-    if (is_array($v))
-      return false;
-  return true;
-}
-  
-// le paramètre est-il une liste de tuples ?
-function is_listOfTuples($list) {
-  //echo "<pre>is_list "; print_r($list); echo "</pre>\n";
-  if (!is_array($list))
-    return false;
-  foreach (array_keys($list) as $k => $v)
-    if ($k <> $v)
-      return false;
-  foreach ($list as $tuple) {
-    if (!is_tuple($tuple)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// fonction de comparaison utilisée dans le tri d'un tableau
-function cmp($a, $b) {
-  $key = $_GET['key'];
-  $order = $_GET['order'];
-  if (!isset($a[$key]) and !isset($b[$key]))
-    return 0;
-  if (!isset($a[$key]))
-    return ($order == '1') ? -1 : 1;
-  if (!isset($b[$key]))
-    return ($order == '1') ? 1 : -1;
-  
-  if ($a[$key] == $b[$key]) {
-      return 0;
-  }
-  if ($order == '1')
-    return ($a[$key] < $b[$key]) ? -1 : 1;
-  else
-    return ($a[$key] < $b[$key]) ? 1 : -1;
-}
-
-// affiche la table et renvoie la liste des noms de colonnes
-// tab est un tableau de tuples qui se ressemblent
-function showTable (string $tabname, array $tab) {
-  $keys = [];
-  //echo "<pre>"; print_r($tab); echo "</pre>\n";
-  foreach ($tab as $line) {
-    foreach (array_keys($line) as $key) {
-      if (!in_array($key, $keys))
-        $keys[] = $key;
-    }
-  }
-  //echo "<pre>"; print_r($keys); echo "</pre>\n";
-  if (isset($_GET['action']) and ($_GET['action']=='select') and ($_GET['tab']==$tabname))
-    echo "<h2>$tabname / $_GET[key]=$_GET[val]</h2>\n";
-  else
-    echo "<h2>$tabname</h2>\n";
-  
-  if (isset($_GET['action']) and ($_GET['action']=='sort') and ($_GET['tab']==$tabname)) {
-    usort($tab, 'cmp');
-  }
-  
-  echo "<table border=1>\n";
-  foreach ($keys as $key)
-    echo "<th><a href='?action=uniq&amp;tab=$tabname&amp;key=$key'>$key</a></th>";
-  echo "\n";
-  foreach ($tab as $line) {
-    if (isset($_GET['action']) and ($_GET['action']=='select') and ($_GET['tab']==$tabname)
-      and ($line[$_GET['key']] <> $_GET['val']))
-        continue;
-    
-    echo "<tr>";
-    foreach ($keys as $key) {
-      echo "<td>";
-      if (isset($line[$key]))
-        echo $line[$key];
-      echo "</td>";
-    }
-    echo "</tr>\n";
-  }
-  
-  echo "<tr>";
-  foreach ($keys as $key) {
-    echo "<td>",
-         "<a href='?action=sort&amp;tab=$tabname&amp;key=$key&amp;order=1'>+</a>",
-         " <a href='?action=sort&amp;tab=$tabname&amp;key=$key&amp;order=-'>-</a>",
-         "</td>";
-  }
-  echo "</tr>\n";
-  
-  echo "</table>\n";
-}
-
-// extraction recursive des tables stockées dans un Yaml
-function extractTables(array $data, string $prefix='') {
-  foreach ($data as $name => $tab) {
-    if (is_listOfTuples($tab))
-      showTable("$prefix/$name", $tab);
-    elseif (is_array($tab))
-      extractTables($tab, "$prefix/$name");
-  } 
-}
-
 if ($data) {
   // affichage selon le type
-  switch (isset($data['type']) ? $data['type'] : null) {
-    case null:
-      extractTables($data);
-      break;
+  $display = isset($data['display']) ? $data['display'] : (isset($data['type']) ? $data['type'] : null);
+  switch ($display) {
     case 'catalog':
       show_catalog($data);
       if (!isset($_SESSION['catalogs']) or !$_SESSION['catalogs'])
@@ -290,8 +176,14 @@ if ($data) {
       else
         $_SESSION['catalogs'] = array_slice($_SESSION['catalogs'], 0, $k+1);  
       break;
+    case 'tables':
+      showListsOfTuples($data);
+      break;
+    case 'oneTable':
+      showDocAsTable($data);
+      break;
     default:
-      extractTables($data);
+      showDocAsTable($data);
       break;
   }
   
