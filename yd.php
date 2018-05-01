@@ -65,22 +65,24 @@ echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yamlDoc</title></h
 
 // reinitialisation des variables de session puis lecture éventuelle d'un document dans un fichier
 if (isset($_GET['action']) and ($_GET['action']=='init')) {
-  unset($_SESSION['text']);
-  unset($_SESSION['name']);
+  unset($_SESSION['docuid']);
   unset($_SESSION['catalogs']);
   // lecture d'un document dans un fichier
-  if (isset($_GET['name'])) {
-    $_SESSION['name'] = $_GET['name'];
-    if (($text = ydread($_SESSION['name'])) === FALSE) {
-      echo "<b>Erreur le fichier $_SESSION[name].yaml n'existe pas</b>\n";
+  if (isset($_GET['uid'])) {
+    $_SESSION['docuid'] = $_GET['uid'];
+    if (($text = ydread($_SESSION['docuid'])) === FALSE) {
+      echo "<b>Erreur le fichier $_SESSION[docuid].yaml n'existe pas</b>\n";
     }
-    else
-      $_SESSION['text'] = $text;
   }
+  else
+    $text = null;
 }
 
-echo "<pre>text = "; print_r($_SESSION['text']); echo "</pre>\n";
+echo "<pre>_SESSION = "; print_r($_SESSION); echo "</pre>\n";
 
-$doc = new YamlDoc($_SESSION['text'], ['/elts'=>'a']);
+//$doc = new YamlDoc($text, ['/elts'=>'a']);
+if ($text) {
+  $doc = new YamlDoc($text);
+  echo "<pre>doc = "; var_dump($doc); echo "</pre>\n";
+}
 
-echo "<pre>doc = "; var_dump($doc); echo "</pre>\n";

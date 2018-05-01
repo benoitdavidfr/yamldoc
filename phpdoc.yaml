@@ -1,10 +1,6 @@
 path: /yamldoc
 title: yamldoc - Gestion en mode web de documents structurés en Yaml
 doc: |
-  Le cryptage n'est pas une bonne solution car c'est incompatible avec git
-  Notamment, git ne pourra pas fusionner des documents modifiés différemment sur 2 sites.
-  Il faut plutot gérer une instance git serveur distincte de github.
-  
   Gestion d'un ensemble de documents inter-reliés.
   Chaque document est stocké dans un fichier dont le nom est un id unique (uid) généré automatiquement.
   Le contenu du document est formatté en Yaml.
@@ -35,36 +31,50 @@ doc: |
   Autre possibilité:
     utiliser le premier niveau de clés comme sous-titres
   
-  Ce projet est synchronisé vers https://github.com/benoitdavidfr/yamldoc.git
-  Le répertoire des docs est synchronisé vers https://github.com/benoitdavidfr/yamldocs.git
-  
-  Pour recopier vers github:
-    $ git add *
-    $ git commit -am "ajout"
-    $ git push -u origin master
-  Pour recopier depuis github:
-    $ git pull
-    
   Une copie est effectuée dans:
     http://bdavid.alwaysdata.net/yamldoc/
   
-  Les 2 sites (localhost et alwaysdata) peuvent être synchronisées au travers de Github.
+  Les 2 sites (localhost et alwaysdata) peuvent être synchronisées au travers de 2 dépôts Git sur Alwaysdata:
+    - répertoire du projet vers ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldoc/.git
+    - répertoire des docs vers ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldocs/.git
   
-  Test de synchronisation du répertoire du projet avec ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldoc/.git
-  Test de synchronisation du répertoire des docs dans 
-  
-  ## synchro vers Github
-  $ git remote add origin ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldoc/.git
+  ## synchro du projet vers Git sur alwaysdata
+  ### initialisation
+  $ git remote rm origin
+  $ git remote add origin ssh://bdavid@ssh-bdavid.alwaysdata.net/home/bdavid/git/yamldoc.git
+  ### synchro
   $ git push -u origin master
+  
+  ## synchro des docs vers Git sur alwaysdata
+  ### initialisation
+  $ git remote rm origin
+  $ git remote add origin ssh://bdavid@ssh-bdavid.alwaysdata.net/home/bdavid/git/yamldocs.git
+  ### synchro
+  $ git push -u origin master
+  
+  ## synchro sur Alwaysdata du code depuis le dépôt Git
+  ### initialisation
+  $ git clone ~/git/yamldoc.git yamldoc
+  $ cd yamldoc
+  $ git fetch origin
+  ### synchro
+  $ git pull
+  ## synchro sur Alwaysdata des docs depuis le dépôt Git
+  ### initialisation
+  $ git clone ~/git/yamldocs.git docs
+  $ cd docs
+  $ git fetch origin
+  ### synchro
+  $ git pull
+
   
   
   idées:
-    - définir un affichage par défaut d'un document Yaml
-    - associer à chaque type un schéma
-    - générer pour chaque type une IHM de mise à jour
     - utiliser Markdown dans les textes
     
 journal: |
+  26/4/2018:
+  - mise en place de dépots Git sur Alwaysdata et synchro par ssh
   19/4/2018:
   - le cryptage n'est pas une bonne solution car c'est incompatible avec git
     Notamment, git ne pourra pas fusionner des documents modifiés différemment sur 2 sites.
@@ -75,10 +85,13 @@ journal: |
   - première version
 phpScripts:
   - /yamldoc/index.php
+  - /yamldoc/yd.php
   - /yamldoc/admin.php
   - /yamldoc/crypt.php
 phpIncludes:
   - /yamldoc/yd.inc.php
   - /yamldoc/catalog.inc.php
+  - /yamldoc/onetable.inc.php
+  - /yamldoc/ltuples.inc.php
 htmlFiles:
   - /yamldoc/file.yaml
