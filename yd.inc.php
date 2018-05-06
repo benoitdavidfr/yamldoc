@@ -3,12 +3,12 @@
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
-  ne marche pas
-    doc=baseadmin
-    ypath=/tables/name=regionmetro/data/code=84/code,title,(json-ld/geo),(départements/(code,title))
 journal: |
   6/5/2018:
-  - ajout de sort
+  - traitement des path avec , imbriquées du type:
+      doc=baseadmin
+      ypath=/tables/name=regionmetro/data/code=84/code,title,(json-ld/geo),(depts/code,title)
+  - ajout de sort uniquement sur une clé et sans asc/desc
   3-4/5/2018:
   - traitement de ypath
   - y.c. traiter des requêtes du type: ypath=/data/title,(json-ld/geo/box)
@@ -32,6 +32,7 @@ function ydread(string $uid) {
 }
 
 // fonction de comparaison utilisée dans le tri d'un tableau
+//variable globale contenant la clé du tri
 $keys_for_sort = [];
 function cmp(array $a, array $b) {
   global $keys_for_sort;
@@ -217,14 +218,15 @@ class YamlDoc {
   }
   
   
-  // extrait le premier elt de ypath
-  static function extract_ypath(string $ypath): string {
-    if (substr($ypath,0,1)=='/')
+  // extrait le premier elt de $ypath en utilisant le séparateur $sep
+  // le séparateur n'est pas pris en compte s'il est entre ()
+  static function extract_ypath(string $sep, string $ypath): string {
+    if (substr($ypath,0,1)==$sep)
       $ypath = substr($ypath,1);
     $prof = 0;
     for ($i=0; $i<strlen($ypath); $i++) {
       $c = substr($ypath, $i, 1);
-      if (($c=='/') and ($prof==0))
+      if (($c==$sep) and ($prof==0))
         return substr($ypath, 0, $i);
       elseif ($c=='(')
         $prof++;
@@ -244,10 +246,10 @@ class YamlDoc {
     //echo "extract(ypath=$ypath)<br>\n";
     if (!$ypath)
       return $data;
-    echo "ypath=$ypath<br>\n";
-    $elt = self::extract_ypath($ypath);
+    //echo "ypath=$ypath<br>\n";
+    $elt = self::extract_ypath('/', $ypath);
     $ypath = substr($ypath, strlen($elt)+1);
-    echo "elt=$elt<br>\n";
+    //echo "elt=$elt<br>\n";
     if (strpos($elt,'=') !== false) {
       $query = explode('=', $elt);
       $data = self::select($data, $query[0], $query[1]);
@@ -278,9 +280,32 @@ class YamlDoc {
       return $result;
   }
   
+  // decompose la chaine $srce en un tableau en utilisant le séparateur $sep
+  // le séparateur n'est pas pris en compte s'il est entre ()
+  static function protexplode(string $sep, string $srce) {
+    $results = [];
+    $prof = 0;
+    $j = 0;
+    for ($i=0; $i<strlen($srce); $i++) {
+      $c = substr($srce, $i, 1);
+      if (($c==$sep) and ($prof==0)) {
+        $results[] = substr($srce, $j, $i-$j);
+        $j = $i+1;
+      }
+      elseif ($c=='(')
+        $prof++;
+      elseif ($c==')')
+        $prof--;
+    }
+    $results[] = substr($srce, $j, $i);
+    return $results;
+  }
+  
   // projection de $data sur $keys
   static function project(array $data, string $keys) {
-    $keys = explode(',', $keys);
+    //$keys = explode(',', $keys);
+    $keys = self::protexplode(',', $keys);
+    //echo "keys="; print_r($keys); echo "<br>\n";
     if (is_listOfTuples($data)) {
       $result = [];
       foreach ($data as $tuple) {
@@ -296,7 +321,7 @@ class YamlDoc {
               $skey = $skeys[count($skeys)-1];
               $t[$skey] = self::sextract($tuple, $ypath);
             }
-            else
+            elseif (isset($tuple[$key]))
               $t[$key] = $tuple[$key];
           }
           $result[] = $t;
@@ -362,4 +387,7 @@ class YamlHomeCatalog extends YamlCatalog {
 
 if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
 
-
+$str = 'code,title,(json-ld/geo),(depts/code,title)';
+echo "<pre>";
+echo "$str\n";
+print_r(YamlDoc::protexplode(',', $str));
