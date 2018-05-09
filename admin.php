@@ -10,13 +10,13 @@ require_once __DIR__.'/../spyc/spyc2.inc.php';
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
 $docs = [];
-$wd = opendir(getcwd());
+$wd = opendir('docs');
 while (false !== ($entry = readdir($wd))) {
-  if (!preg_match('!^([0-9a-f]+)\.yaml$!', $entry, $matches))
+  if (!preg_match('!^(.*)\.yaml$!', $entry, $matches))
     continue;
   //echo "$entry<br>\n";
   $name = $matches[1];
-  $doc = file_get_contents($entry);
+  $doc = file_get_contents("docs/$entry");
   if (!($yaml = spycLoadString($doc))) {
     echo "$name n'est pas un fichier Yaml<br>\n";
     $docs[$name] = ['text'=> $doc];
@@ -27,7 +27,7 @@ while (false !== ($entry = readdir($wd))) {
 closedir($wd);
 
 foreach ($docs as $pname => $doc) {
-  if (isset($doc['yaml']['type']) and ($doc['yaml']['type']=='catalog')) {
+  if (isset($doc['yaml']['yamlClass']) and in_array($doc['yaml']['yamlClass'], ['YamlCatalog','YamlHomeCatalog'])) {
     foreach ($doc['yaml']['contents'] as $cname => $d) {
       if (isset($docs[$cname])) {
         if (isset($docs[$cname]['catalogs']))
@@ -52,7 +52,7 @@ function show(array $docs, string $key, string $title=null) {
   $nbcat = isset($doc['catalogs']) ? count($doc['catalogs']) : 0;
   $istext = isset($doc['text']);
   echo "<li>",$istext?'<i>':'',
-       "<a href='index.php?action=read&amp;name=$key'>",$title ? $title : $key,"</a>",
+       "<a href='index.php?action=nav&amp;doc=$key'>",$title ? $title : $key,"</a>",
        $istext?'</i>':'',
        " ($nbcat)\n";
   if (isset($doc['yaml']['type']) and ($doc['yaml']['type']=='catalog')) {

@@ -14,9 +14,23 @@ doc: |
       - les documents intermédiaires sont normalemnt des catalogues intermédiaires
     - homeCatalog : docuid du catalogue d'accueil ou absent
   En mode anonyme, homeCatalogue n'est pas défini. docuids contient qd même l'historique des documents
-
+  
+  A REVOIR:
+  - il n'est pas possible d'afficher différents docs dans différentes fenêtres
+    revoir les variables en session.
+    Idée:
+      - gérer en session, à la place du fil d'ariane d'un affichage, le graphe du père de chaque doc,
+        ou le dernier traversé, ou le père allant à un home catalogue
+      - conserver systématiquement en paramètre et pas en session le doc courant
+      - dans la cmde nav ajouter un paramètre doc précédent afin de renseigner le graphe
+      -> cela permet d'afficher facilement pour chaque document son fil d'ariane
+  - gestion des query ?
+    - comment gérer les query en Php sans créer une faille de sécurité ?
+    - les enregistrer dans un catalogue ?
+    -> protéger les query en écriture afin que seul leur propriétaire puisse les modifier
+    -> ajouter dans le catalogue un champ donnant l'extension Php
 journal: |
-  1-4/5/2018:
+  1-8/5/2018:
   - améliorations
   30/4/2018:
   - restructuration
@@ -86,7 +100,7 @@ if (isset($_GET['action']) and ($_GET['action']=='store')) {
     $docuid = $_SESSION['docuids'][count($_SESSION['docuids'])-1];
     ydwrite($docuid, $_POST['text']);
     echo "Enregistrement du document $docuid<br>\n";
-    $doc = new_yamlDoc($docuid, $_POST['text']);
+    $doc = new_yamlDoc($_POST['text']);
     if (!$doc) {
       echo "<b>Erreur: le document $docuid ne correspond pas à un YamlDoc</b>\n";
       echo "<h2>doc $docuid</h2><pre>\n$_POST[text]\n</pre>\n";
@@ -106,9 +120,9 @@ if ((!isset($_GET['action']) or ($_GET['action']=='nav')) and isset($_GET['doc']
     echo "<b>Erreur: le document $_GET[doc] n'existe pas</b>\n";
   }
   else {
-    $doc = new_yamlDoc($_GET['doc'], $text);
-    if ($doc and ($homeCatalog = $doc->isHomeCatalog()) ){
-      $_SESSION['homeCatalog'] = $homeCatalog;
+    $doc = new_yamlDoc($text);
+    if ($doc and $doc->isHomeCatalog()) {
+      $_SESSION['homeCatalog'] = $_GET['doc'];
       $_SESSION['docuids'] = [ $_GET['doc'] ];
     }
     elseif (!isset($_SESSION['docuids']) or !$_SESSION['docuids'])
@@ -140,7 +154,7 @@ if ((!isset($_GET['action']) or ($_GET['action']=='show')) and !isset($_GET['doc
     if (($text = ydread($docuid)) === FALSE) {
       echo "<b>Erreur: le document $docuid n'existe pas</b><br>\n";
     }
-    elseif (!($doc = new_yamlDoc($docuid, $text))) {
+    elseif (!($doc = new_yamlDoc($text))) {
       echo "<b>Erreur: le document $docuid ne correspond pas à un YamlDoc</b>\n";
       echo "<h2>doc $docuid</h2><pre>\n$text\n</pre>\n";
     }
@@ -184,10 +198,10 @@ if (isset($_GET['action']) and ($_GET['action']=='dump')) {
     echo "<h2>doc $docuid</h2>\n";
     if (!$ypath)
       echo $text;
-    $doc = new_yamlDoc($docuid, $text);
+    $doc = new_yamlDoc($text);
     if ($ypath) {
       echo "ypath=$ypath\n";
-      $doc->displayText($ypath);
+      echo $doc->yaml($ypath);
     }
     echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
   }

@@ -22,13 +22,18 @@ journal: |
 
 // écriture d'un document, prend l'uid et le texte
 function ydwrite(string $uid, string $doc) {
-  return file_put_contents("docs/$uid.yaml", $doc);
+  return file_put_contents(__DIR__."/docs/$uid.yaml", $doc);
 }
 
 // lecture d'un document, prend l'uid et retourne le texte
-function ydread(string $uid) {
+// si le doc n'existe pas et que warning est vrai alors affichage d'un warning
+function ydread(string $uid, int $warning=0) {
   //echo "ydread($uid)<br>\n";
-  return @file_get_contents("docs/$uid.yaml");
+  //echo __DIR__."/docs/$uid.yaml";
+  $text = @file_get_contents(__DIR__."/docs/$uid.yaml");
+  if (($text === false) and $warning)
+    echo "<b>Erreur: Document $uid non trouvé</b><br>\n";
+  return $text;
 }
 
 // fonction de comparaison utilisée dans le tri d'un tableau
@@ -135,7 +140,7 @@ function showListOfTuplesAsTable(array $table, string $prefix) {
         echo "<td align='right'>",$tuple[$key],"</td>";
       else {
         echo "<td>";
-        showSomething($tuple[$key], "$prefix/$key");
+        showDoc($tuple[$key], "$prefix/$key");
         echo "</td>";
       }
     }
@@ -149,14 +154,14 @@ function showArrayAsTable(array $data, string $prefix) {
   echo "<table border=1>\n";
   foreach ($data as $key => $value) {
     echo "<tr><td>$key</td><td>\n";
-    showSomething($value, "$prefix/$key");
+    showDoc($value, "$prefix/$key");
     echo "</td></tr>\n";
   }
   echo "</table>\n";
 }
 
 // aiguille l'affichage en fonction du type du paramètre
-function showSomething($data, string $prefix='') {
+function showDoc($data, string $prefix='') {
   if (is_listOfAtoms($data))
     showListOfAtoms($data, $prefix);
   elseif (is_listOfTuples($data))
@@ -171,34 +176,33 @@ function showSomething($data, string $prefix='') {
     echo $data;
 }
 
-// crée un YamlDoc à partir d'un texte
+// crée un YamlDoc à partir du texte Yaml
 // détermine sa classe en fonction du champ yamlClass
 // retourne null si le texte n'est pas du Yaml
-function new_yamlDoc(string $docuid, string $text) {
+function new_yamlDoc(string $text) {
   if (!($data = spycLoadString($text)))
     return null;
   if (isset($data['yamlClass'])) {
     $yamlClass = $data['yamlClass'];
     if (class_exists($yamlClass))
-      return new $yamlClass ($docuid, $data);
+      return new $yamlClass ($data);
     else
       echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
   }
-  return new YamlDoc($docuid, $data);
+  return new YamlDoc($data);
 }
 
 // classe YamlDoc de base
 class YamlDoc {
-  protected $docuid; // uid du document
   protected $data; // contenu du doc sous forme d'un arrray Php
   
-  function __construct(string $docuid, array $data) { $this->docuid = $docuid;  $this->data = $data; }
-  function isHomeCatalog() { return null; }
+  function __construct(array $data) { $this->data = $data; }
+  function isHomeCatalog() { return false; }
   
   // affiche le doc ou le fragment si ypath est non vide
   function show(string $ypath) {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    showSomething(self::sextract($this->data, $ypath));
+    showDoc(self::sextract($this->data, $ypath));
   }
   
   function dump(string $ypath) {
@@ -207,14 +211,21 @@ class YamlDoc {
   
   // génère le texte correspondant au fragment défini par ypath
   // améliore la sortie en supprimant les débuts de ligne
-  function displayText(string $ypath) {
-    $fragment = self::sextract($this->data, $ypath);
-    $text = spycDump($fragment);
-    $pattern = '!(\n +- )\n +!';
+  function yaml(string $ypath) {
+    return self::syaml(self::sextract($this->data, $ypath));
+  }
+  
+  static function syaml($data) {
+    $text = spycDump($data);
+    $pattern = '!^( *- )\n +!';
+    if (preg_match($pattern, $text, $matches)) {
+      $text = preg_replace($pattern, $matches[1], $text, 1);
+    }
+    $pattern = '!(\n *- )\n +!';
     while (preg_match($pattern, $text, $matches)) {
       $text = preg_replace($pattern, $matches[1], $text, 1);
     }
-    echo $text;
+    return $text;
   }
   
   
@@ -236,7 +247,7 @@ class YamlDoc {
     return $ypath;
   }
   
-  // retourne le sous-document défini par path qui est une chaine
+  // retourne le fragment défini par path qui est une chaine
   function extract(string $ypath) {
     return self::sextract($this->data, $ypath);
   }
@@ -356,11 +367,36 @@ class YamlDoc {
     usort($data, 'cmp');
     return $data;
   }
+  
+  // nest de $data sur $keys
+  static function nest(array $data, array $keys, string $nestkey) {
+    //return $data;
+    $results = [];
+    foreach($data as $tuple) {
+      //echo "tuple="; print_r($tuple); echo "<br>\n";
+      $stuple = [];
+      $stuple2 = [];
+      foreach ($tuple as $key => $value)
+        if (isset($keys[$key]))
+          $stuple[$keys[$key]] = $value;
+        else
+          $stuple2[$key] = $value;
+      $ser = serialize($stuple);
+      //echo "ser=$ser<br>\n";
+      if (!isset($results[$ser])) {
+        $results[$ser] = $stuple;
+        $results[$ser][$nestkey] = [];
+      }
+      $results[$ser][$nestkey][] = $stuple2;
+      //showDoc($results);
+    }
+    return array_values($results);
+  }
 };
 
 // class des catalogues
 class YamlCatalog extends YamlDoc {
-  function show(?string $ypath) {
+  function show(string $ypath) {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     echo "<h1>",$this->data['title'],"</h1><ul>\n";
     foreach($this->data['contents'] as $duid => $item) {
@@ -381,7 +417,7 @@ class YamlCatalog extends YamlDoc {
 
 // classe des catalogues d'accueil
 class YamlHomeCatalog extends YamlCatalog {
-  function isHomeCatalog() { return $this->docuid; }
+  function isHomeCatalog() { return true; }
 };
 
 
