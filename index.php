@@ -71,17 +71,17 @@ function show_menu(array $breadcrumb) {
 // exploitation du graphe d'appel
 class CallingGraph {
   // Le graphe d'appel est géré au travers de la variable session $_SESSION['parents'] : [ {child} => {parent} ]
-  static $verbose = 1; // peut être utilisé pour afficher le statut de makeBreadcrumb
+  static $verbose = 0; // peut être utilisé pour afficher le statut de makeBreadcrumb
   
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
   static function makeBreadcrumb(): array {
-    echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
-    echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
+    //echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
+    //echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
     if (!isset($_GET['doc']))
       return [];
     $curl = "http://$_SERVER[HTTP_HOST]"
             .substr($_SERVER['REQUEST_URI'],0,strlen($_SERVER['REQUEST_URI'])-strlen($_SERVER['QUERY_STRING']));
-    echo "curl=$curl<br>\n";
+    //echo "curl=$curl<br>\n";
     if (!isset($_SERVER['HTTP_REFERER']) or (strncmp($_SERVER['HTTP_REFERER'], $curl, strlen($curl))<>0)) {
       if (self::$verbose)
         echo "referer non défini ou externe<br>\n";
