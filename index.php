@@ -201,6 +201,9 @@ if (!isset($_GET['action'])) {
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
            "L'effacer dans le catalogue $parent</a><br>\n";
   }
+  elseif (strncmp($text,'<?php', 5)==0) {
+    require "docs/$_GET[doc].yaml";
+  }
   else {
     $doc = new_yamlDoc($text);
     if ($doc) {
@@ -240,14 +243,19 @@ if ($_GET['action']=='store') {
   else {
     ydwrite($_GET['doc'], $_POST['text']);
     echo "Enregistrement du document $_GET[doc]<br>\n";
-    $doc = new_yamlDoc($_POST['text']);
-    if (!$doc) {
-      echo "<b>Erreur: le document $_GET[doc] ne correspond pas à un YamlDoc</b>\n";
-      echo "<h2>doc $_GET[doc]</h2><pre>\n$_POST[text]\n</pre>\n";
+    if (strncmp($_POST['text'],'<?php', 5)==0) {
+      require "docs/$_GET[doc].yaml";
     }
     else {
-      $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-      $doc->show($ypath);
+      $doc = new_yamlDoc($_POST['text']);
+      if (!$doc) {
+        echo "<b>Erreur: le document $_GET[doc] ne correspond pas à un YamlDoc</b>\n";
+        echo "<h2>doc $_GET[doc]</h2><pre>\n$_POST[text]\n</pre>\n";
+      }
+      else {
+        $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+        $doc->show($ypath);
+      }
     }
   }
 }
