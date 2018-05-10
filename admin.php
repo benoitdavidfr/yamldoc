@@ -52,7 +52,7 @@ function show(array $docs, string $key, string $title=null) {
   $nbcat = isset($doc['catalogs']) ? count($doc['catalogs']) : 0;
   $istext = isset($doc['text']);
   echo "<li>",$istext?'<i>':'',
-       "<a href='index.php?action=nav&amp;doc=$key'>",$title ? $title : $key,"</a>",
+       "<a href='index.php?doc=$key'>",$title ? $title : $key,"</a>",
        $istext?'</i>':'',
        " ($nbcat)\n";
   if (isset($doc['yaml']['type']) and ($doc['yaml']['type']=='catalog')) {

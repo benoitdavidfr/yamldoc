@@ -36,6 +36,11 @@ function ydread(string $uid, int $warning=0) {
   return $text;
 }
 
+// suppressio d'un document, prend son uid
+function yddelete(string $uid) {
+  return @unlink(__DIR__."/docs/$uid.yaml");
+}
+
 // fonction de comparaison utilisée dans le tri d'un tableau
 //variable globale contenant la clé du tri
 $keys_for_sort = [];
@@ -406,11 +411,18 @@ class YamlCatalog extends YamlDoc {
     echo "</ul>\n";
   }
   
-  // ajoute un doc dans un catalogue
-  static function store_in_catalog(string $docuid, string $catuid) {
+  // clone un doc dans un catalogue
+  static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
     $contents = spycLoadString(ydread($catuid));
     //print_r($contents);
-    $contents['contents'][$docuid] = ['title'=> "document $docuid" ];
+    $title = $contents['contents'][$olddocuid]['title'];
+    $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
+    ydwrite($catuid, spycDump($contents));
+  }
+  
+  static function delete_from_catalog(string $docuid, string $catuid) {
+    $contents = spycLoadString(ydread($catuid));
+    unset($contents['contents'][$docuid]);
     ydwrite($catuid, spycDump($contents));
   }
 };

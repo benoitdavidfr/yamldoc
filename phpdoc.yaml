@@ -2,79 +2,39 @@ path: /yamldoc
 title: yamldoc - Gestion en mode web de documents structurés en Yaml
 doc: |
   Gestion d'un ensemble de documents inter-reliés.
-  Chaque document est stocké dans un fichier dont le nom est un id unique (uid) généré automatiquement.
+  Chaque document est stocké dans un fichier dont le nom est éventuellement un id unique (uid) généré automatiquement.
   Le contenu du document est formatté en Yaml.
   La connaissance de l'uid d'un document permet d'y accéder en lecture et en mise à jour sauf s'il est protégé,
   ce qui est effectué en indiquant la liste des écrivains autorisés.
-  Un document peut être typé correspondant à priori à un schéma particulier.
+  Un document peut être typé défini par le champ yamlClass.
   La navigation entre documents est organisée au travers de documents particuliers de type catalogue, qui référencent
-  d'autres documents par leur uid en leur affectant notamment un titre.
-  Le gestionnaire de documents mémorise le chemin des catalogues traversés ; chaque nouveau document est référencé 
+  d'autres documents par leur id en leur affectant notamment un titre.
+  Le visualiseur de documents mémorise le chemin des catalogues traversés ; chaque nouveau document est référencé 
   dans le dernier catalogue traversé.
-  Lorsqu'aucun catalogue n'a été utilisé, à la création d'un document, un catalogue est créé.
-  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) l'uid de son catalogue racine permettant
+  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) l'uid de son catalogue d'accueil permettant
   d'accéder à ses documents. Cet uid identifie chaque utilisateur.
-  Si un document contient des listes de tuples, chaque liste est affichée sous la forme d'un tableau.
   Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
-  
-  A la place du type prévoir:
-    - un yamlSchema qui définit éventuellement la structure du document
-    - un format d'affichage qui définit la manière d'afficher le doc
-    
+      
   Chaque document est affiché de manière générique sous la forme de tableaux Html imbriqués.
   Les tuples [key: valeur] sont affichés sous la forme d'un tableau dans lequel chaque clé/valeur correspond
   à une ligne, la clé est affichée comme première colonne et la valeur comme seconde colonne.
   Les listes de tuples sont affichées sous la forme d'un tableau avec en colonne les clés des tuples et une ligne
   par tuple.
-  Les autres listes de valeurs sont affichées sous la forme d'un tableau ayant une seule colonne.
-  
-  Autre possibilité:
-    utiliser le premier niveau de clés comme sous-titres
-  
-  Une copie est effectuée dans:
-    http://bdavid.alwaysdata.net/yamldoc/
-  
-  Les 2 sites (localhost et alwaysdata) peuvent être synchronisées au travers de 2 dépôts Git sur Alwaysdata:
-    - répertoire du projet vers ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldoc/.git
-    - répertoire des docs vers ssh://bdavid@ssh-bdavid.alwaysdata.net/www/yamldocs/.git
-  
-  ## synchro du projet vers Git sur alwaysdata
-  ### initialisation
-  $ git remote rm origin
-  $ git remote add origin ssh://bdavid@ssh-bdavid.alwaysdata.net/home/bdavid/git/yamldoc.git
-  ### synchro
-  $ git push -u origin master
-  
-  ## synchro des docs vers Git sur alwaysdata
-  ### initialisation
-  $ git remote rm origin
-  $ git remote add origin ssh://bdavid@ssh-bdavid.alwaysdata.net/home/bdavid/git/yamldocs.git
-  ### synchro
-  $ git push -u origin master
-  
-  ## synchro sur Alwaysdata du code depuis le dépôt Git
-  ### initialisation
-  $ git clone ~/git/yamldoc.git yamldoc
-  $ cd yamldoc
-  $ git fetch origin
-  ### synchro
-  $ git pull
-  ## synchro sur Alwaysdata des docs depuis le dépôt Git
-  ### initialisation
-  $ git clone ~/git/yamldocs.git docs
-  $ cd docs
-  $ git fetch origin
-  ### synchro
-  $ git pull
-
-  
+  Les autres listes de valeurs atomiques sont affichées sous la forme d'une liste HTML.
   
   idées:
     - utiliser Markdown dans les textes
+    - ajouter un mécanisme de login dans les catalogues d'accueil
     
 journal: |
+  1-10/5/2018:
+  - améliorations du visualiseur
+  - ajout .htaccess dans docs pour interdire un accès http sans passer par le visualiseur
+  30/4/2018:
+  - restructuration du visualiseur
   26/4/2018:
-  - mise en place de dépots Git sur Alwaysdata et synchro par ssh
+  - mise en place de dépots Git sur Alwaysdata et synchro par ssh,
+    voir http://localhost/yamldoc/index.php?doc=5af476a59fdc6
   19/4/2018:
   - le cryptage n'est pas une bonne solution car c'est incompatible avec git
     Notamment, git ne pourra pas fusionner des documents modifiés différemment sur 2 sites.
@@ -85,13 +45,6 @@ journal: |
   - première version
 phpScripts:
   - /yamldoc/index.php
-  - /yamldoc/yd.php
   - /yamldoc/admin.php
-  - /yamldoc/crypt.php
 phpIncludes:
   - /yamldoc/yd.inc.php
-  - /yamldoc/catalog.inc.php
-  - /yamldoc/onetable.inc.php
-  - /yamldoc/ltuples.inc.php
-htmlFiles:
-  - /yamldoc/file.yaml
