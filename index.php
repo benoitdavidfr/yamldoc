@@ -71,7 +71,7 @@ function show_menu(array $breadcrumb) {
 // exploitation du graphe d'appel
 class CallingGraph {
   // Le graphe d'appel est géré au travers de la variable session $_SESSION['parents'] : [ {child} => {parent} ]
-  static $verbose = 0; // peut être utilisé pour afficher le statut de makeBreadcrumb
+  static $verbose = 1; // peut être utilisé pour afficher le statut de makeBreadcrumb
   
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
   static function makeBreadcrumb(): array {
@@ -140,15 +140,13 @@ class CallingGraph {
   static function parent(string $doc) {
     return isset($_SESSION['parents'][$doc]) ? $_SESSION['parents'][$doc] : null;
   }
-  
-  // ne fait rien
-  static function nop() {}
 }
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
 show_menu(CallingGraph::makeBreadcrumb());
 
+// les 2 premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et du document courant
 if (isset($_GET['action']) and ($_GET['action']=='dump')) {
   echo "<pre>";
@@ -174,12 +172,54 @@ if (isset($_GET['action']) and ($_GET['action']=='unset')) {
     unset($_SESSION[$key]);
 }
 
+// évite d'avoir à tester le paramètre doc dans les actions suivantes
 if (!isset($_GET['doc'])) {
   die("<a href='?doc=default'>Accès au document par défaut</a>\n");
 }
 
+
+// pré-action delDoc - suppression d'un document dans le catalogue
+if (isset($_GET['delDoc'])) {
+  YamlCatalog::delete_from_catalog($_GET['delDoc'], $_GET['doc']);
+  echo "Doc $_GET[delDoc] effacé<br>\n";
+}
+
+// pré-action clone - $_GET['clone'] contient le doc à cloner et $_GET['doc'] le catalogue
+if (isset($_GET['clone'])) {
+  $newdocuid = uniqid();
+  YamlCatalog::clone_in_catalog($newdocuid, $_GET['clone'], $_GET['doc']);
+  ydwrite($newdocuid, ydread($_GET['clone']));
+  echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
+}
+
+
+// action d'affichage d'un document
+if (!isset($_GET['action'])) {
+  if (($text = ydread($_GET['doc'])) === FALSE) {
+    echo "<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n";
+    if ($parent = CallingGraph::parent($_GET['doc']))
+      echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
+           "L'effacer dans le catalogue $parent</a><br>\n";
+  }
+  else {
+    $doc = new_yamlDoc($text);
+    if ($doc) {
+      if ($doc->isHomeCatalog())
+        $_SESSION['homeCatalog'] = $_GET['doc'];
+      $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+      $doc->show($ypath);
+    }
+    else {
+      echo "<b>Erreur: le document $_GET[doc] ne correspond pas à un YamlDoc</b><br>\n";
+      echo "<h2>doc $_GET[doc]</h2><pre>\n$text\n</pre>\n";
+    }
+  }
+  die();
+}
+
+
 // action edit - génération du formulaire d'édition du document courant
-if (isset($_GET['action']) and ($_GET['action']=='edit')) {
+if ($_GET['action']=='edit') {
   $text = ydread($_GET['doc']);
   echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
        "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
@@ -189,7 +229,7 @@ if (isset($_GET['action']) and ($_GET['action']=='edit')) {
 }
 
 // action store - enregistrement d'un contenu à la suite d'une édition
-if (isset($_GET['action']) and ($_GET['action']=='store')) {
+if ($_GET['action']=='store') {
   if (strlen($_POST['text'])==0) {
     yddelete($_GET['doc']);
     echo "<b>document vide $_GET[doc] effacé</b><br>\n";
@@ -208,44 +248,6 @@ if (isset($_GET['action']) and ($_GET['action']=='store')) {
     else {
       $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
       $doc->show($ypath);
-    }
-  }
-}
-
-// pré-action delDoc - suppression d'un document dans le catalogue
-if (isset($_GET['delDoc'])) {
-  YamlCatalog::delete_from_catalog($_GET['delDoc'], $_GET['doc']);
-  echo "Doc $_GET[delDoc] effacé<br>\n";
-}
-
-// pré-action clone - $_GET['clone'] contient le doc à cloner et $_GET['doc'] le catalogue
-if (isset($_GET['clone']) and isset($_GET['doc'])) {
-  $newdocuid = uniqid();
-  YamlCatalog::clone_in_catalog($newdocuid, $_GET['clone'], $_GET['doc']);
-  ydwrite($newdocuid, ydread($_GET['clone']));
-  echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
-}
-
-
-// action d'affichage d'un document
-if (!isset($_GET['action']) and isset($_GET['doc'])) {
-  if (($text = ydread($_GET['doc'])) === FALSE) {
-    echo "<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n";
-    if ($parent = CallingGraph::parent($_GET['doc']))
-      echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
-           "L'effacer dans le catalogue $parent</a><br>\n";
-  }
-  else {
-    $doc = new_yamlDoc($text);
-    if ($doc) {
-      if ($doc->isHomeCatalog())
-        $_SESSION['homeCatalog'] = $_GET['doc'];
-      $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-      $doc->show($ypath);
-    }
-    else {
-      echo "<b>Erreur: le document $_GET[doc] ne correspond pas à un YamlDoc</b><br>\n";
-      echo "<h2>doc $_GET[doc]</h2><pre>\n$text\n</pre>\n";
     }
   }
 }
