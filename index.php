@@ -75,13 +75,13 @@ class CallingGraph {
   
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
   static function makeBreadcrumb(): array {
-    //echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
-    //echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
+    echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
+    echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
     if (!isset($_GET['doc']))
       return [];
     $curl = "$_SERVER[REQUEST_SCHEME]://$_SERVER[HTTP_HOST]"
             .substr($_SERVER['REQUEST_URI'],0,strlen($_SERVER['REQUEST_URI'])-strlen($_SERVER['QUERY_STRING']));
-    //echo "curl=$curl<br>\n";
+    echo "curl=$curl<br>\n";
     if (!isset($_SERVER['HTTP_REFERER']) or (strncmp($_SERVER['HTTP_REFERER'], $curl, strlen($curl))<>0)) {
       if (self::$verbose)
         echo "referer non défini ou externe<br>\n";
