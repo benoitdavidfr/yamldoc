@@ -79,7 +79,7 @@ class CallingGraph {
     echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
     if (!isset($_GET['doc']))
       return [];
-    $curl = "$_SERVER[REQUEST_SCHEME]://$_SERVER[HTTP_HOST]"
+    $curl = "http://$_SERVER[HTTP_HOST]"
             .substr($_SERVER['REQUEST_URI'],0,strlen($_SERVER['REQUEST_URI'])-strlen($_SERVER['QUERY_STRING']));
     echo "curl=$curl<br>\n";
     if (!isset($_SERVER['HTTP_REFERER']) or (strncmp($_SERVER['HTTP_REFERER'], $curl, strlen($curl))<>0)) {
