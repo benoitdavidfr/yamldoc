@@ -25,6 +25,7 @@ journal: |
     - le referer est utilisé pour analyser le graphe de navigation et l'enregistrer en session
     - le fil d'Ariane est déduit de ce graphe
   - ajout possibilité de supprimer un document et de le supprimer d'un catalogue
+  - ajout accès par défault
   1-8/5/2018:
   - améliorations
   30/4/2018:
@@ -34,7 +35,7 @@ session_start();
 require_once __DIR__.'/../spyc/spyc2.inc.php';
 require_once __DIR__.'/yd.inc.php';
 
-// Affichage du menu et du fil d'ariane
+// Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(array $breadcrumb) {
   // affichage du menu
   $ypath = isset($_GET['ypath']) ? $_GET['ypath']: '';
@@ -44,7 +45,7 @@ function show_menu(array $breadcrumb) {
     echo "<td><a href='?doc=$docuid",($ypath?'&amp;ypath='.urlencode($ypath):''),"'>show</a></td>\n";
   if ($docuid)
     echo "<td><a href='?action=edit&amp;doc=$docuid'>edit</a></td>\n";
-  if ($catuid = CallingGraph::parent($docuid))
+  if ($docuid and ($catuid = CallingGraph::parent($docuid)))
     echo "<td><a href='?clone=$docuid&amp;doc=$catuid'>clone</a></td>\n";
   echo "<td><a href='?action=dump",
        ($docuid ? "&amp;doc=$docuid" : ''),
@@ -73,10 +74,14 @@ class CallingGraph {
   static $verbose = 0; // peut être utilisé pour afficher le statut de makeBreadcrumb
   
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
-  static function makeBreadcrumb() {
+  static function makeBreadcrumb(): array {
     //echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
     //echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
-    $curl = "$_SERVER[REQUEST_SCHEME]://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]";
+    if (!isset($_GET['doc']))
+      return [];
+    $curl = "$_SERVER[REQUEST_SCHEME]://$_SERVER[HTTP_HOST]"
+            .substr($_SERVER['REQUEST_URI'],0,strlen($_SERVER['REQUEST_URI'])-strlen($_SERVER['QUERY_STRING']));
+    //echo "curl=$curl<br>\n";
     if (!isset($_SERVER['HTTP_REFERER']) or (strncmp($_SERVER['HTTP_REFERER'], $curl, strlen($curl))<>0)) {
       if (self::$verbose)
         echo "referer non défini ou externe<br>\n";
@@ -142,30 +147,50 @@ class CallingGraph {
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
-if (isset($_GET['doc']))
-  show_menu(CallingGraph::makeBreadcrumb());
+show_menu(CallingGraph::makeBreadcrumb());
+
+// action dump - affichage des variables de session et du document courant
+if (isset($_GET['action']) and ($_GET['action']=='dump')) {
+  echo "<pre>";
+  echo "_SESSION = "; print_r($_SESSION);
+  if (isset($_GET['doc'])) {
+    $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+    $text = ydread($_GET['doc']);
+    echo "<h2>doc $_GET[doc]</h2>\n";
+    $doc = new_yamlDoc($text);
+    if (!$ypath)
+      echo $text;
+    else
+      echo "ypath=$ypath\n",
+           $doc->yaml($ypath);
+    echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
+  }
+  echo "</pre>\n";
+}
+
+// action unset - effacement des variables de session
+if (isset($_GET['action']) and ($_GET['action']=='unset')) {
+  foreach ($_SESSION as $key => $value)
+    unset($_SESSION[$key]);
+}
+
+if (!isset($_GET['doc'])) {
+  die("<a href='?doc=default'>Accès au document par défaut</a>\n");
+}
 
 // action edit - génération du formulaire d'édition du document courant
 if (isset($_GET['action']) and ($_GET['action']=='edit')) {
-  if (!isset($_GET['doc'])) {
-    echo "<b>Erreur: aucun document courant</b>\n";
-  }
-  else {
-    $text = ydread($_GET['doc']);
-    echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
-         "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
-         "<tr><td><input type='submit' value='Enregistrer'></td></tr>\n",
-         "</form></table>\n";
-    die();
-  }
+  $text = ydread($_GET['doc']);
+  echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
+       "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
+       "<tr><td><input type='submit' value='Enregistrer'></td></tr>\n",
+       "</form></table>\n";
+  die();
 }
 
 // action store - enregistrement d'un contenu à la suite d'une édition
 if (isset($_GET['action']) and ($_GET['action']=='store')) {
-  if (!isset($_GET['doc'])) {
-    echo "<b>Erreur: aucun document courant</b><br>\n";
-  }
-  elseif (strlen($_POST['text'])==0) {
+  if (strlen($_POST['text'])==0) {
     yddelete($_GET['doc']);
     echo "<b>document vide $_GET[doc] effacé</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
@@ -223,29 +248,4 @@ if (!isset($_GET['action']) and isset($_GET['doc'])) {
       echo "<h2>doc $_GET[doc]</h2><pre>\n$text\n</pre>\n";
     }
   }
-}
-
-// action dump - affichage des variables de session et du document courant
-if (isset($_GET['action']) and ($_GET['action']=='dump')) {
-  echo "<pre>";
-  echo "_SESSION = "; print_r($_SESSION);
-  if (isset($_GET['doc'])) {
-    $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-    $text = ydread($_GET['doc']);
-    echo "<h2>doc $_GET[doc]</h2>\n";
-    $doc = new_yamlDoc($text);
-    if (!$ypath)
-      echo $text;
-    else
-      echo "ypath=$ypath\n",
-           $doc->yaml($ypath);
-    echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
-  }
-  echo "</pre>\n";
-}
-
-// action unset - effacement des variables de session
-if (isset($_GET['action']) and ($_GET['action']=='unset')) {
-  foreach ($_SESSION as $key => $value)
-    unset($_SESSION[$key]);
 }
