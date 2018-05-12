@@ -5,7 +5,6 @@ title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
   version limitée:
     - pas d'affichage des textes en markdown
-    - gestion des utilisateurs limitée et pas de gestion du droit de modification d'un document
 
   Le script utilise les variables de session suivantes:
     - homeCatalog : uid du dernier catalogue d'accueil traversé ou absent si aucun ne l'a été
@@ -14,13 +13,14 @@ doc: |
         permet d'afficher le fil d'Ariane
     - checkedReadAccess : liste des docuid pour lesquels l'accès en lecture est autorisé
         évite de retester si yamlPassword existe et de redeamnder le mot de passe
+    - checkedWriteAccess : pour chaque document indique 1 s'il est modifiable, 0 s'il ne l'est pas
+        évite de retester si un document est modifiable
   
   A REVOIR:
   - Markdown ???
-  - gestion des query ?
-    - comment gérer les query en Php sans créer une faille de sécurité ?
-    -> protéger les query en écriture afin que seul leur propriétaire puisse les modifier
 journal: |
+  12/5/2018:
+  - ajout protection en modification
   11/5/2018:
   - ajout protection en consultation
   - un texte qui ne correspond pas à du Yaml peut être stocké comme un YamlDoc
@@ -38,7 +38,6 @@ journal: |
   - restructuration
 */
 session_start();
-//require_once __DIR__.'/../spyc/spyc2.inc.php';
 require_once __DIR__.'/yd.inc.php';
 
 // Affichage du menu et du fil d'ariane comme array de docid
@@ -55,9 +54,10 @@ function show_menu(array $breadcrumb) {
     echo "<td><a href='?doc=$docuid$ypatharg&amp;format=yaml'>yaml</a></td>\n";
     // check
     //echo "<td><a href='?action=check&amp;doc=$docuid$ypatharg'>check</a></td>\n";
-    // edit
-    echo "<td><a href='?action=edit&amp;doc=$docuid'>edit</a></td>\n";
-    // clone
+    // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
+    if (ydcheckWriteAccess($docuid)<>0)
+      echo "<td><a href='?action=edit&amp;doc=$docuid'>edit</a></td>\n";
+    // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid'>clone</a></td>\n";
   }
@@ -169,12 +169,10 @@ if (isset($_GET['action']) and ($_GET['action']=='dump')) {
     $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
     $text = ydread($_GET['doc']);
     echo "<h2>doc $_GET[doc]</h2>\n";
-    $doc = new_yamlDoc($text, $_GET['doc']);
-    if (!$ypath)
-      echo str_replace(['&','<'], ['&amp;','&lt;'], $text);
-    else
-      echo "ypath=$ypath\n",
-           str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
+    $doc = new_yamlDoc($_GET['doc']);
+    if ($ypath)
+      echo "ypath=$ypath\n";
+    echo str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
     echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
   }
   echo "</pre>\n";
@@ -209,14 +207,13 @@ if (isset($_GET['clone'])) {
 
 // action d'affichage d'un document
 if (!isset($_GET['action'])) {
-  if (($text = ydread($_GET['doc'])) === FALSE) {
+  if (!($doc = new_yamlDoc($_GET['doc']))) {
     echo "<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
            "L'effacer dans le catalogue $parent</a><br>\n";
   }
   else {
-    $doc = new_yamlDoc($text, $_GET['doc']);
     $doc->checkPassword($_GET['doc']);
     if ($doc->isHomeCatalog())
       $_SESSION['homeCatalog'] = $_GET['doc'];
@@ -234,6 +231,8 @@ if (!isset($_GET['action'])) {
 if ($_GET['action']=='edit') {
   if (!ydcheckReadAccess($_GET['doc']))
     die("accès interdit");
+  if (ydcheckWriteAccess($_GET['doc'])<>1)
+    die("mise à jour interdite");
   $text = ydread($_GET['doc']);
   echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
        "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
@@ -256,18 +255,15 @@ if ($_GET['action']=='store') {
   else {
     ydwrite($_GET['doc'], $_POST['text']);
     echo "Enregistrement du document $_GET[doc]<br>\n";
-    $doc = new_yamlDoc($_POST['text'], $_GET['doc']);
+    $doc = new_yamlDoc($_GET['doc']);
     $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   }
 }
 
 // action check - verification de la conformité d'un document à son éventuel schema
 if ($_GET['action']=='check') {
-  if (($text = ydread($_GET['doc'])) === FALSE)
+  if (!($doc = new_yamlDoc($_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
-  $doc = new_yamlDoc($text, $_GET['doc']);
-  $doc->checkPassword($_GET['doc']);
-  $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-  $doc->check($ypath);
+  $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   die();
 }

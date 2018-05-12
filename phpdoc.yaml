@@ -6,6 +6,7 @@ doc: |
   Le contenu du document est formatté en Yaml.
   La connaissance de l'uid d'un document permet d'y accéder en lecture et en mise à jour sauf s'il est protégé,
   ce qui est effectué en indiquant la liste des écrivains autorisés.
+  Il est aussi possible de protéger un document en lecture en définissant dans le document un mot de passe.
   Un document peut être typé défini par le champ yamlClass.
   La navigation entre documents est organisée au travers de documents particuliers de type catalogue, qui référencent
   d'autres documents par leur id en leur affectant notamment un titre.
@@ -24,9 +25,11 @@ doc: |
   
   idées:
     - utiliser Markdown dans les textes
-    - ajouter un mécanisme de login dans les catalogues d'accueil
     
 journal: |
+  11/5/2018:
+  - ajout protection en consultation
+  - migration de Spyc vers https://github.com/symfony/yaml
   1-10/5/2018:
   - améliorations du visualiseur
   - ajout .htaccess dans docs pour interdire un accès http sans passer par le visualiseur

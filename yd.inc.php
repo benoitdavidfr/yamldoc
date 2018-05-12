@@ -4,6 +4,9 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  12/5/2018:
+  - protection en écriture
+  - modif new_yamlDoc()
   11/5/2018:
   - migration de Spyc vers https://github.com/symfony/yaml
   10/5/2018:
@@ -83,8 +86,30 @@ function ydcheckReadAccess(string $docuid): bool {
 
 // marque le docuid comme accessible en lecture
 function ydsetReadAccess(string $docuid): void {
-  if (!isset($_SESSION['checkedReadAccess']) or !in_array($docuid, $_SESSION['checkedReadAccess']));
+  if (!ydcheckReadAccess($docuid))
     $_SESSION['checkedReadAccess'][] = $docuid;
+}
+
+function ydcheckWriteAccessForPhpCode(string $docuid) {
+  $ydcheckWriteAccessForPhpCode = 1;
+  $authorizedWriters = require "docs/$docuid.php";
+  //echo "authorizedWriters="; print_r($authorizedWriters);
+  $right = (isset($_SESSION['homeCatalog'])
+            && is_array($authorizedWriters)
+            && in_array($_SESSION['homeCatalog'], $authorizedWriters));
+  ydsetWriteAccess($docuid, $right);
+};
+
+// marque le docuid comme accessible ou non en écriture
+function ydsetWriteAccess(string $docuid, bool $right): void {
+  //echo "ydsetWriteAccess($docuid, ",($right ? 1 : 0),")<br>\n";
+  $_SESSION['checkedWriteAccess'][$docuid] = ($right ? 1 : 0);
+}
+
+// teste si le docuid a été marqué comme accessible en écriture
+// renvoie 1 pour autorisé, 0 pour interdit et -1 pour indéfini
+function ydcheckWriteAccess(string $docuid): int {
+  return isset($_SESSION['checkedWriteAccess'][$docuid]) ? $_SESSION['checkedWriteAccess'][$docuid] : -1;
 }
 
 // fonction de comparaison utilisée dans le tri d'un tableau
@@ -227,27 +252,36 @@ function showDoc($data, string $prefix='') {
     echo $data;
 }
 
-// crée un YamlDoc à partir du texte du document
+// crée un YamlDoc à partir du docuid du document
+// Si le fichier n'existe pas renvoie null
 // Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
 // Sinon Si le texte est du Yaml alors détermine sa classe en fonction du champ yamlClass
 // Sinon retourne un YamlDoc contenant le text comme scalaire
-function new_yamlDoc(string $text, string $docuid=null): YamlDoc {
+function new_yamlDoc(string $docuid): ?YamlDoc {
+  if (($text = ydread($docuid)) === FALSE)
+    return null;
   if (strncmp($text,'<?php', 5)==0) {
     if (!$docuid)
       throw new Exception("Erreur: le paramètre docuid n'est pas défini");
+    ydcheckWriteAccessForPhpCode($docuid);
     return require "docs/$docuid.php";
   }
   $data = Yaml::parse($text);
   if (!is_array($data))
-    return new YamlDoc($text);
-  if (isset($data['yamlClass'])) {
+    $doc = new YamlDoc($text);
+  elseif (isset($data['yamlClass'])) {
     $yamlClass = $data['yamlClass'];
     if (class_exists($yamlClass))
-      return new $yamlClass ($data);
-    else
+      $doc = new $yamlClass ($data);
+    else {
       echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
+      $doc = new YamlDoc($data);
+    }
   }
-  return new YamlDoc($data);
+  else
+    $doc = new YamlDoc($data);
+  ydsetWriteAccess($docuid, $doc->authorizedWriter());
+  return $doc;
 }
 
 // classe YamlDoc de base
@@ -256,6 +290,7 @@ class YamlDoc {
   
   function __construct($data) { $this->data = $data; }
   function isHomeCatalog() { return false; }
+  function title() { return isset($this->data['title']) ? $this->data['title'] : null; }
   
   // affiche le doc ou le fragment si ypath est non vide
   function show(string $ypath) {
@@ -473,18 +508,27 @@ class YamlDoc {
     die("<form method='post'><input type='password' name='password'></form>\n");
   }
   
+  // test du droit en écriture
+  function authorizedWriter(): bool {
+    return isset($_SESSION['homeCatalog'])
+           and (!isset($this->data['authorizedWriters'])
+             or in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']));
+  }
+  
   // vérification de la conformité du document à son schéma
-  function check() {
-    echo "methode YamlDoc::check() non implémentée<br>\n";
+  function checkSchemaConformity() {
+    echo "methode YamlDoc::checkSchemaConformity() non implémentée<br>\n";
   }
 };
 
 // class des catalogues
 class YamlCatalog extends YamlDoc {
+  function contents() { return $this->data['contents']; }
+  
   function show(string $ypath) {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     echo "<h1>",$this->data['title'],"</h1><ul>\n";
-    foreach($this->data['contents'] as $duid => $item) {
+    foreach($this->contents() as $duid => $item) {
       $title = isset($item['title']) ? $item['title'] : $duid;
       echo "<li><a href='?doc=$duid'>$title</a>\n";
     }
@@ -497,13 +541,13 @@ class YamlCatalog extends YamlDoc {
     //print_r($contents);
     $title = $contents['contents'][$olddocuid]['title'];
     $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
-    ydwrite($catuid, Yaml::dump($contents));
+    ydwrite($catuid, Yaml::dump($contents, 999));
   }
   
   static function delete_from_catalog(string $docuid, string $catuid) {
     $contents = Yaml::parse(ydread($catuid));
     unset($contents['contents'][$docuid]);
-    ydwrite($catuid, Yaml::dump($contents));
+    ydwrite($catuid, Yaml::dump($contents, 999));
   }
 };
 
