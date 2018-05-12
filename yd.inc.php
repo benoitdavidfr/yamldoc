@@ -62,19 +62,15 @@ function ydwrite(string $uid, string $text) {
 }
 
 // lecture d'un document, prend l'uid et retourne le texte
-// si le doc n'existe pas et que $warning est vrai alors affichage d'un warning
 // cherche dans l'ordre un yaml puis un php
-function ydread(string $uid, int $warning=0) {
+function ydread(string $uid) {
   //echo "ydread($uid)<br>\n";
-  //echo __DIR__."/docs/$uid.yaml";
   if (($text = @file_get_contents(__DIR__."/docs/$uid.yaml")) === false)
-    if (($text = @file_get_contents(__DIR__."/docs/$uid.php")) === false)
-      if ($warning)
-        echo "<b>Erreur: Document $uid non trouvé</b><br>\n";
+    $text = @file_get_contents(__DIR__."/docs/$uid.php");
   return $text;
 }
 
-// suppressio d'un document, prend son uid
+// suppression d'un document, prend son uid
 function yddelete(string $uid) {
   return (@unlink(__DIR__."/docs/$uid.yaml") or @unlink(__DIR__."/docs/$uid.php"));
 }
@@ -110,6 +106,23 @@ function ydsetWriteAccess(string $docuid, bool $right): void {
 // renvoie 1 pour autorisé, 0 pour interdit et -1 pour indéfini
 function ydcheckWriteAccess(string $docuid): int {
   return isset($_SESSION['checkedWriteAccess'][$docuid]) ? $_SESSION['checkedWriteAccess'][$docuid] : -1;
+}
+
+function ydlock(string $uid): bool {
+  //echo "ydlock($uid)<br>\n";
+  if (file_exists(__DIR__."/docs/$uid.lock"))
+    return false;
+  file_put_contents(__DIR__."/docs/$uid.lock", 'lock');
+  $_SESSION['locks'][] = $uid;
+  return true;
+}
+
+function ydunlockall() {
+  //echo "ydunlockall()<br>\n";
+  if (isset($_SESSION['locks']))
+    foreach($_SESSION['locks'] as $uid)
+      @unlink(__DIR__."/docs/$uid.lock");
+  unset($_SESSION['locks']);
 }
 
 // fonction de comparaison utilisée dans le tri d'un tableau

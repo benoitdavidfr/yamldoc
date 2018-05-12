@@ -15,12 +15,15 @@ doc: |
         évite de retester si yamlPassword existe et de redeamnder le mot de passe
     - checkedWriteAccess : pour chaque document indique 1 s'il est modifiable, 0 s'il ne l'est pas
         évite de retester si un document est modifiable
+    - locks : liste des documents verrouillés
+        permet de dévérouiller les documents verrouillés
   
   A REVOIR:
   - Markdown ???
 journal: |
   12/5/2018:
   - ajout protection en modification
+  - ajout mécanisme simple de verrouillage des documents en cours de mise à jour
   11/5/2018:
   - ajout protection en consultation
   - un texte qui ne correspond pas à du Yaml peut être stocké comme un YamlDoc
@@ -158,6 +161,9 @@ echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head
 
 show_menu(CallingGraph::makeBreadcrumb());
 
+// si un verrou a été posé il est levé
+ydunlockall();
+
 // les 2 premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
 if (isset($_GET['action']) and ($_GET['action']=='dump')) {
@@ -229,10 +235,15 @@ if (!isset($_GET['action'])) {
 
 // action edit - génération du formulaire d'édition du document courant
 if ($_GET['action']=='edit') {
+  // verification que le document est consultable
   if (!ydcheckReadAccess($_GET['doc']))
     die("accès interdit");
+  // verification que le document est modifiable
   if (ydcheckWriteAccess($_GET['doc'])<>1)
     die("mise à jour interdite");
+  // verouillage du document pour éviter des mises à jour concurrentielles
+  if (!ydlock($_GET['doc']))
+    die("mise à jour impossible document verouillé");
   $text = ydread($_GET['doc']);
   echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
        "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
