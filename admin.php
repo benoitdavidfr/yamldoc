@@ -5,7 +5,9 @@ title: admin.php - permet de visualiser l'ensemble des docs en affichant la hié
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 */
-require_once __DIR__.'/../spyc/spyc2.inc.php';
+require_once __DIR__.'/../vendor/autoload.php';
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
@@ -17,12 +19,14 @@ while (false !== ($entry = readdir($wd))) {
   //echo "$entry<br>\n";
   $name = $matches[1];
   $doc = file_get_contents("docs/$entry");
-  if (!($yaml = spycLoadString($doc))) {
-    echo "$name n'est pas un fichier Yaml<br>\n";
+
+  try {
+    $yaml = Yaml::parse($doc);
+    $docs[$name] = ['yaml'=> $yaml];
+  } catch (ParseException $exception) {
+    printf("%s n'est pas un fichier Yaml: %s<br>\n", $name, $exception->getMessage());
     $docs[$name] = ['text'=> $doc];
   }
-  else
-    $docs[$name] = ['yaml'=> $yaml];
 }
 closedir($wd);
 

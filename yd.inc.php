@@ -4,6 +4,12 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  11/5/2018:
+  - migration de Spyc vers https://github.com/symfony/yaml
+  10/5/2018:
+  - modif ydwrite(), ydread() et yddelete()
+    à l'écriture du document l'extension .php ou .yaml est choisie en fonction du contenu
+    à la lecture, on regarde sur le yaml existe sinon on prend le php
   6/5/2018:
   - traitement des path avec , imbriquées du type:
       doc=baseadmin
@@ -19,26 +25,66 @@ journal: |
   18/4/2018:
   - première version
 */
+require_once __DIR__.'/../vendor/autoload.php';
+use Symfony\Component\Yaml\Yaml;
+
+/*PhpDoc: functions
+  name:  dump
+  title: function dump($string) - function affichant la chaine en séparant chaque caractère et en affichant aussi le code hexa correspondant
+*/
+function dump($string) {
+  echo "<table border=1>";
+  $line = 0;
+  while($line*16 < strlen($string)) {
+    echo "<tr><td>$line</td>";
+    for ($i=0; $i<16; $i++)
+      echo "<td>",substr($string,$line*16+$i,1),"</td>";
+    echo "<td></td>";
+    echo "<td></td>";
+    echo "<td></td>";
+    for ($i=0; $i<16; $i++)
+      printf("<td>%0x</td>", ord(substr($string,$line*16+$i,1)));
+    echo "</tr>\n";
+    $line++;
+  }
+}
 
 // écriture d'un document, prend l'uid et le texte
-function ydwrite(string $uid, string $doc) {
-  return file_put_contents(__DIR__."/docs/$uid.yaml", $doc);
+// s'il s'agit d'un Php l'extension est php, sinon yaml
+function ydwrite(string $uid, string $text) {
+  $ext = (strncmp($text,'<?php', 5)==0) ? 'php' : 'yaml';
+  if ($ext == 'php')
+    @unlink(__DIR__."/docs/$uid.yaml");
+  return file_put_contents(__DIR__."/docs/$uid.$ext", $text);
 }
 
 // lecture d'un document, prend l'uid et retourne le texte
-// si le doc n'existe pas et que warning est vrai alors affichage d'un warning
+// si le doc n'existe pas et que $warning est vrai alors affichage d'un warning
+// cherche dans l'ordre un yaml puis un php
 function ydread(string $uid, int $warning=0) {
   //echo "ydread($uid)<br>\n";
   //echo __DIR__."/docs/$uid.yaml";
-  $text = @file_get_contents(__DIR__."/docs/$uid.yaml");
-  if (($text === false) and $warning)
-    echo "<b>Erreur: Document $uid non trouvé</b><br>\n";
+  if (($text = @file_get_contents(__DIR__."/docs/$uid.yaml")) === false)
+    if (($text = @file_get_contents(__DIR__."/docs/$uid.php")) === false)
+      if ($warning)
+        echo "<b>Erreur: Document $uid non trouvé</b><br>\n";
   return $text;
 }
 
 // suppressio d'un document, prend son uid
 function yddelete(string $uid) {
-  return @unlink(__DIR__."/docs/$uid.yaml");
+  return (@unlink(__DIR__."/docs/$uid.yaml") or @unlink(__DIR__."/docs/$uid.php"));
+}
+
+// teste si le docuid a été marqué comme accessible en lecture par ydsetReadAccess()
+function ydcheckReadAccess(string $docuid): bool {
+  return (isset($_SESSION['checkedReadAccess']) and in_array($docuid, $_SESSION['checkedReadAccess']));
+}
+
+// marque le docuid comme accessible en lecture
+function ydsetReadAccess(string $docuid): void {
+  if (!isset($_SESSION['checkedReadAccess']) or !in_array($docuid, $_SESSION['checkedReadAccess']));
+    $_SESSION['checkedReadAccess'][] = $docuid;
 }
 
 // fonction de comparaison utilisée dans le tri d'un tableau
@@ -181,12 +227,19 @@ function showDoc($data, string $prefix='') {
     echo $data;
 }
 
-// crée un YamlDoc à partir du texte Yaml
-// détermine sa classe en fonction du champ yamlClass
-// retourne null si le texte n'est pas du Yaml
-function new_yamlDoc(string $text) {
-  if (!($data = spycLoadString($text)))
-    return null;
+// crée un YamlDoc à partir du texte du document
+// Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
+// Sinon Si le texte est du Yaml alors détermine sa classe en fonction du champ yamlClass
+// Sinon retourne un YamlDoc contenant le text comme scalaire
+function new_yamlDoc(string $text, string $docuid=null): YamlDoc {
+  if (strncmp($text,'<?php', 5)==0) {
+    if (!$docuid)
+      throw new Exception("Erreur: le paramètre docuid n'est pas défini");
+    return require "docs/$docuid.php";
+  }
+  $data = Yaml::parse($text);
+  if (!is_array($data))
+    return new YamlDoc($text);
   if (isset($data['yamlClass'])) {
     $yamlClass = $data['yamlClass'];
     if (class_exists($yamlClass))
@@ -199,9 +252,9 @@ function new_yamlDoc(string $text) {
 
 // classe YamlDoc de base
 class YamlDoc {
-  protected $data; // contenu du doc sous forme d'un arrray Php
+  protected $data; // contenu du doc sous forme d'un arrray Php ou d'un scalaire
   
-  function __construct(array $data) { $this->data = $data; }
+  function __construct($data) { $this->data = $data; }
   function isHomeCatalog() { return false; }
   
   // affiche le doc ou le fragment si ypath est non vide
@@ -216,19 +269,19 @@ class YamlDoc {
   
   // génère le texte correspondant au fragment défini par ypath
   // améliore la sortie en supprimant les débuts de ligne
-  function yaml(string $ypath) {
+  function yaml(string $ypath): string {
     return self::syaml(self::sextract($this->data, $ypath));
   }
   
-  static function syaml($data) {
-    $text = spycDump($data);
-    $pattern = '!^( *- )\n +!';
+  static function syaml($data): string {
+    $text = Yaml::dump($data, 999);
+    $pattern = '!^( *-)\n +!';
     if (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1], $text, 1);
+      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
     }
-    $pattern = '!(\n *- )\n +!';
+    $pattern = '!(\n *-)\n +!';
     while (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1], $text, 1);
+      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
     }
     return $text;
   }
@@ -258,7 +311,7 @@ class YamlDoc {
   }
   
   // retourne le fragment défini par la chaine ypath
-  static function sextract(array $data, string $ypath) {
+  static function sextract($data, string $ypath) {
     //echo "extract(ypath=$ypath)<br>\n";
     if (!$ypath)
       return $data;
@@ -397,6 +450,33 @@ class YamlDoc {
     }
     return array_values($results);
   }
+  
+  // vérification du mot de passe si nécessaire
+  function checkPassword(string $docuid): bool {
+    // si le doc a déjà été marqué comme accessible alors retour OK
+    if (ydcheckReadAccess($docuid))
+      return true;
+    // si le doc ne contient pas de yamlPassword alors retour OK
+    if (!isset($this->data['yamlPassword'])) {
+      ydsetReadAccess($docuid);
+      return true;
+    }
+    // si le mot de passe a été fourni et qu'il est correct alors retour OK
+    //echo "checkPassword<br>\n";
+    //if (isset($_POST['password'])) echo "password=$_POST[password]<br>\n";
+    if (isset($_POST['password']) and password_verify($_POST['password'], $this->data['yamlPassword'])) {
+      ydsetReadAccess($docuid);
+      return true;
+    }
+    // Si non demande du mot de passe
+    echo "Mot de passe du document :<br>\n";
+    die("<form method='post'><input type='password' name='password'></form>\n");
+  }
+  
+  // vérification de la conformité du document à son schéma
+  function check() {
+    echo "methode YamlDoc::check() non implémentée<br>\n";
+  }
 };
 
 // class des catalogues
@@ -413,17 +493,17 @@ class YamlCatalog extends YamlDoc {
   
   // clone un doc dans un catalogue
   static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
-    $contents = spycLoadString(ydread($catuid));
+    $contents = Yaml::parse(ydread($catuid));
     //print_r($contents);
     $title = $contents['contents'][$olddocuid]['title'];
     $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
-    ydwrite($catuid, spycDump($contents));
+    ydwrite($catuid, Yaml::dump($contents));
   }
   
   static function delete_from_catalog(string $docuid, string $catuid) {
-    $contents = spycLoadString(ydread($catuid));
+    $contents = Yaml::parse(ydread($catuid));
     unset($contents['contents'][$docuid]);
-    ydwrite($catuid, spycDump($contents));
+    ydwrite($catuid, Yaml::dump($contents));
   }
 };
 
