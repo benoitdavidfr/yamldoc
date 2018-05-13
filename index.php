@@ -21,9 +21,10 @@ doc: |
   A REVOIR:
   - Markdown ???
 journal: |
-  12/5/2018:
+  12-13/5/2018:
   - ajout protection en modification
   - ajout mécanisme simple de verrouillage des documents en cours de mise à jour
+  - ajout gestion sous-répartoires
   11/5/2018:
   - ajout protection en consultation
   - un texte qui ne correspond pas à du Yaml peut être stocké comme un YamlDoc

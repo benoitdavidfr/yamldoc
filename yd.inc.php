@@ -33,6 +33,7 @@ journal: |
 require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';
+require_once __DIR__.'/tree.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 
