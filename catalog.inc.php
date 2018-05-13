@@ -1,47 +1,51 @@
 <?php
 /*PhpDoc:
 name: catalog.inc.php
-title: catalog.inc.php - gestion d'un catalogue de documents structurés
+title: catalog.inc.php - classes des catalogues
 doc: |
-  shema:
-    title: titre du catalogue
-    doc: documentation du catalogue
-    type: http://yaml.gexplor.fr/type/catalog
-    contents:
-      {name}:
-        title: titre du document
 journal: |
-  18/4/2018:
-    utilisation de ydread() et ydwrite()
-  14/4/2018:
-    création
+  12/5/2018:
+  - scission de yd.inc.php
 */
+use Symfony\Component\Yaml\Yaml;
 
-function create_catalog() {
-  $default_catalog = [
-    'type'=> 'catalog',
-    'contents'=> [],
-  ];
-  $uid = uniqid();
-  ydwrite($uid, spycDump($default_catalog));
-  echo "Création du catalogue $uid<br>\n";
-  return $uid;
-}
-
-function store_in_catalog(string $uid, string $catalog) {
-  $contents = spycLoadString(ydread($catalog));
-  //print_r($contents);
-  $contents['contents'][$uid] = ['title'=> "document $uid" ];
-  ydwrite($catalog, spycDump($contents));
-}
-
-function show_catalog(array $contents) {
-  if (isset($contents['title']))
-    echo "<h2>$contents[title]</h2>\n";
-  echo "<ul>\n";
-  foreach ($contents['contents'] as $uid => $content) {
-    $title = isset($content['title']) ? $content['title'] : $uid;
-    echo "<li><a href='?action=read&amp;name=$uid'>$title</a>\n";
+// class des catalogues
+class YamlCatalog extends YamlDoc {
+  function contents() { return $this->data['contents']; }
+  
+  function show(string $ypath) {
+    //echo "<pre>"; print_r($this->data); echo "</pre>\n";
+    $dirname = dirname($_GET['doc']);
+    if ($dirname=='.')
+      $dirname = '';
+    else
+      $dirname .= '/';
+    //echo "dirname=$dirname<br>\n";
+    echo "<h1>",$this->data['title'],"</h1><ul>\n";
+    foreach($this->contents() as $duid => $item) {
+      $title = isset($item['title']) ? $item['title'] : $duid;
+      echo "<li><a href='?doc=$dirname$duid'>$title</a>\n";
+    }
+    echo "</ul>\n";
   }
-  echo "</ul>\n";
-}
+  
+  // clone un doc dans un catalogue
+  static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
+    $contents = Yaml::parse(ydread($catuid));
+    //print_r($contents);
+    $title = $contents['contents'][$olddocuid]['title'];
+    $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
+    ydwrite($catuid, Yaml::dump($contents, 999));
+  }
+  
+  static function delete_from_catalog(string $docuid, string $catuid) {
+    $contents = Yaml::parse(ydread($catuid));
+    unset($contents['contents'][$docuid]);
+    ydwrite($catuid, Yaml::dump($contents, 999));
+  }
+};
+
+// classe des catalogues d'accueil
+class YamlHomeCatalog extends YamlCatalog {
+  function isHomeCatalog() { return true; }
+};

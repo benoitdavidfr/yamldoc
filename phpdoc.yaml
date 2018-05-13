@@ -27,6 +27,8 @@ doc: |
     - utiliser Markdown dans les textes
     
 journal: |
+  12-13/5/2018:
+    - divers ajouts
   11/5/2018:
   - ajout protection en consultation
   - migration de Spyc vers https://github.com/symfony/yaml

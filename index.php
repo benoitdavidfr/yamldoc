@@ -246,7 +246,7 @@ if ($_GET['action']=='edit') {
     die("mise à jour impossible document verouillé");
   $text = ydread($_GET['doc']);
   echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
-       "<tr><td><textarea name='text' rows='40' cols='80'>$text</textarea></td></tr>\n",
+       "<tr><td><textarea name='text' rows='40' cols='120'>$text</textarea></td></tr>\n",
        "<tr><td><input type='submit' value='Enregistrer'></td></tr>\n",
        "</form></table>\n";
   die();

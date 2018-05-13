@@ -7,6 +7,8 @@ journal: |
   12/5/2018:
   - protection en écriture
   - modif new_yamlDoc()
+  - ajout mécanisme simple de verrouillage des documents en cours de mise à jour
+  - scission avec catalog.inc.php
   11/5/2018:
   - migration de Spyc vers https://github.com/symfony/yaml
   10/5/2018:
@@ -29,6 +31,9 @@ journal: |
   - première version
 */
 require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/catalog.inc.php';
+require_once __DIR__.'/servreg.inc.php';
+
 use Symfony\Component\Yaml\Yaml;
 
 /*PhpDoc: functions
@@ -533,42 +538,6 @@ class YamlDoc {
     echo "methode YamlDoc::checkSchemaConformity() non implémentée<br>\n";
   }
 };
-
-// class des catalogues
-class YamlCatalog extends YamlDoc {
-  function contents() { return $this->data['contents']; }
-  
-  function show(string $ypath) {
-    //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    echo "<h1>",$this->data['title'],"</h1><ul>\n";
-    foreach($this->contents() as $duid => $item) {
-      $title = isset($item['title']) ? $item['title'] : $duid;
-      echo "<li><a href='?doc=$duid'>$title</a>\n";
-    }
-    echo "</ul>\n";
-  }
-  
-  // clone un doc dans un catalogue
-  static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
-    $contents = Yaml::parse(ydread($catuid));
-    //print_r($contents);
-    $title = $contents['contents'][$olddocuid]['title'];
-    $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
-    ydwrite($catuid, Yaml::dump($contents, 999));
-  }
-  
-  static function delete_from_catalog(string $docuid, string $catuid) {
-    $contents = Yaml::parse(ydread($catuid));
-    unset($contents['contents'][$docuid]);
-    ydwrite($catuid, Yaml::dump($contents, 999));
-  }
-};
-
-// classe des catalogues d'accueil
-class YamlHomeCatalog extends YamlCatalog {
-  function isHomeCatalog() { return true; }
-};
-
 
 if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
 
