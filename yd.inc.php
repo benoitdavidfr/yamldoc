@@ -308,8 +308,10 @@ class YamlDoc {
   protected $data; // contenu du doc sous forme d'un arrray Php ou d'un scalaire
   
   function __construct($data) { $this->data = $data; }
+  function __get(string $name) {
+    return isset($this->data[$name]) ? $this->data[$name] : null;
+  }
   function isHomeCatalog() { return false; }
-  function title() { return isset($this->data['title']) ? $this->data['title'] : null; }
   
   // affiche le doc ou le fragment si ypath est non vide
   function show(string $ypath) {
