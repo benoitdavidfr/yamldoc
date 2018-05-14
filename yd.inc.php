@@ -342,6 +342,10 @@ class YamlDoc {
     return $text;
   }
   
+  function json(string $ypath): string {
+    $data = self::sextract($this->data, $ypath);
+    return json_encode($data,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  }
   
   // extrait le premier elt de $ypath en utilisant le séparateur $sep
   // le séparateur n'est pas pris en compte s'il est entre ()

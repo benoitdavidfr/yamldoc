@@ -56,6 +56,8 @@ function show_menu(array $breadcrumb) {
     echo "<td><a href='?doc=$docuid$ypatharg'>html</a></td>\n";
     // showAsYaml
     echo "<td><a href='?doc=$docuid$ypatharg&amp;format=yaml'>yaml</a></td>\n";
+    // showAsJSON
+    echo "<td><a href='?doc=$docuid$ypatharg&amp;format=json'>json</a></td>\n";
     // check
     //echo "<td><a href='?action=check&amp;doc=$docuid$ypatharg'>check</a></td>\n";
     // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
@@ -229,6 +231,10 @@ if (!isset($_GET['action'])) {
       $doc->show($ypath);
     elseif ($_GET['format']=='yaml')
       echo "<pre>",$doc->yaml($ypath),"</pre>\n";
+    elseif ($_GET['format']=='json')
+      echo "<pre>",$doc->json($ypath),"</pre>\n";
+    else
+      echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
   }
   die();
 }
