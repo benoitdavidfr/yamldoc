@@ -21,6 +21,8 @@ doc: |
   A REVOIR:
   - Markdown ???
 journal: |
+  16-18/5/2018:
+  - ajout protection en consultation
   12-13/5/2018:
   - ajout protection en modification
   - ajout mécanisme simple de verrouillage des documents en cours de mise à jour
@@ -71,6 +73,8 @@ function show_menu(array $breadcrumb) {
   echo "<td><a href='?action=dump",($docuid ? "&amp;doc=$docuid" : ''),$ypatharg,"'>dump</a></td>\n";
   // unset
   echo "<td><a href='?action=unset",($docuid ? "&amp;doc=$docuid" : ''),"'>unset</a></td>\n";
+  // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
+  //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
   echo "</tr></table>\n";
 
   // affichage du fil d'ariane et du ypath
@@ -193,6 +197,13 @@ if (isset($_GET['action']) and ($_GET['action']=='unset')) {
     unset($_SESSION[$key]);
 }
 
+// action razrw - effacement des variables de session  & checkedWriteAccess
+if (isset($_GET['action']) and ($_GET['action']=='razrw')) {
+  foreach (['checkedReadAccess', 'checkedWriteAccess'] as $key)
+    unset($_SESSION[$key]);
+  unset($_GET['action']);
+}
+
 // évite d'avoir à tester le paramètre doc dans les actions suivantes
 if (!isset($_GET['doc'])) {
   die("<a href='?doc=default'>Accès au document par défaut</a>\n");
@@ -222,8 +233,9 @@ if (!isset($_GET['action'])) {
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
            "L'effacer dans le catalogue $parent</a><br>\n";
   }
+  elseif (!$doc->checkReadAccess($_GET['doc']))
+    die("accès interdit");
   else {
-    $doc->checkPassword($_GET['doc']);
     if ($doc->isHomeCatalog())
       $_SESSION['homeCatalog'] = $_GET['doc'];
     $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';

@@ -83,7 +83,7 @@ function yddelete(string $uid) {
 
 // teste si le docuid a été marqué comme accessible en lecture par ydsetReadAccess()
 function ydcheckReadAccess(string $docuid): bool {
-  return (isset($_SESSION['checkedReadAccess']) and in_array($docuid, $_SESSION['checkedReadAccess']));
+  return (isset($_SESSION['checkedReadAccess']) && in_array($docuid, $_SESSION['checkedReadAccess']));
 }
 
 // marque le docuid comme accessible en lecture
@@ -308,6 +308,8 @@ class YamlDoc {
   protected $data; // contenu du doc sous forme d'un arrray Php ou d'un scalaire
   
   function __construct($data) { $this->data = $data; }
+  
+  // permet d'accéder aux champs du document comme si c'était un champ de la classe
   function __get(string $name) {
     return isset($this->data[$name]) ? $this->data[$name] : null;
   }
@@ -511,16 +513,21 @@ class YamlDoc {
     return array_values($results);
   }
   
-  // vérification du mot de passe si nécessaire
-  function checkPassword(string $docuid): bool {
+  // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
+  
+  function checkReadAccess(string $docuid): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
     if (ydcheckReadAccess($docuid))
       return true;
-    // si le doc ne contient pas de yamlPassword alors retour OK
-    if (!isset($this->data['yamlPassword'])) {
+    // si l'utilisateur est autorisé alors vérification positive
+    if ($this->authorizedReader()) {
       ydsetReadAccess($docuid);
       return true;
     }
+    // ICI l'accès est a priori interdit sauf si il y a un mot de passe
+    // si le doc ne contient pas de yamlPassword alors retour KO
+    if (!isset($this->data['yamlPassword']))
+      return false;
     // si le mot de passe a été fourni et qu'il est correct alors retour OK
     //echo "checkPassword<br>\n";
     //if (isset($_POST['password'])) echo "password=$_POST[password]<br>\n";
@@ -528,16 +535,28 @@ class YamlDoc {
       ydsetReadAccess($docuid);
       return true;
     }
-    // Si non demande du mot de passe
+    // Si non alors demande du mot de passe
     echo "Mot de passe du document :<br>\n";
     die("<form method='post'><input type='password' name='password'></form>\n");
   }
   
+  // test du droit en lecture
+  function authorizedReader(): bool {
+    $ret = !isset($this->data['authorizedReaders'])
+           || ($_SESSION['homeCatalog'] && in_array($_SESSION['homeCatalog'], $this->data['authorizedReaders']));
+    //echo "authorizedReader=$ret<br>\n";
+    return $ret;
+  }
+  
   // test du droit en écriture
   function authorizedWriter(): bool {
-    return isset($_SESSION['homeCatalog'])
-           and (!isset($this->data['authorizedWriters'])
-             or in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']));
+    if (!$this->authorizedReader())
+      return false;
+    $ret = isset($_SESSION['homeCatalog'])
+           && (!isset($this->data['authorizedWriters'])
+             || in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']));
+    //echo "authorizedWriter=$ret<br>\n";
+    return $ret;
   }
   
   // vérification de la conformité du document à son schéma
