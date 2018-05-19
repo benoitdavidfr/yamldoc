@@ -11,8 +11,6 @@ use Symfony\Component\Yaml\Yaml;
 
 // class des catalogues
 class YamlCatalog extends YamlDoc {
-  function contents() { return $this->data['contents']; }
-  
   function show(string $ypath) {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     $dirname = dirname($_GET['doc']);
@@ -22,7 +20,7 @@ class YamlCatalog extends YamlDoc {
       $dirname .= '/';
     //echo "dirname=$dirname<br>\n";
     echo "<h1>",$this->data['title'],"</h1><ul>\n";
-    foreach($this->contents() as $duid => $item) {
+    foreach($this->contents as $duid => $item) {
       $title = isset($item['title']) ? $item['title'] : $duid;
       echo "<li><a href='?doc=$dirname$duid'>$title</a>\n";
     }

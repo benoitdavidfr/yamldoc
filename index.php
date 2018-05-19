@@ -21,8 +21,13 @@ doc: |
   A REVOIR:
   - Markdown ???
 journal: |
+  19/5/2018:
+  - sécurisation de store pour réduire les erreurs de manip
+  - debuggage de la protection
+  - A FAIRE: améliorer l'affichage en cas d'erreur Yaml
+  - A FAIRE: debugger mon utilisation de git
   16-18/5/2018:
-  - ajout protection en consultation
+  - ajout protection en consultation, buggée
   12-13/5/2018:
   - ajout protection en modification
   - ajout mécanisme simple de verrouillage des documents en cours de mise à jour
@@ -273,7 +278,13 @@ if ($_GET['action']=='edit') {
 
 // action store - enregistrement d'un contenu à la suite d'une édition
 if ($_GET['action']=='store') {
-  if (strlen($_POST['text'])==0) {
+  // graitement du cas d'appel de store non lié à l'edit
+  if (!isset($_POST['text'])) {
+    echo "<b>Erreur d'appel de la commande: aucun texte transmis</b><br>\n";
+    $doc = new_yamlDoc($_GET['doc']);
+    $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+  }
+  elseif (strlen($_POST['text'])==0) {
     yddelete($_GET['doc']);
     echo "<b>document vide $_GET[doc] effacé</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
