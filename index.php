@@ -12,7 +12,7 @@ doc: |
     - parents : graphe de navigation sous la forme d'un tableau docuid enfant vers docuid parent
         permet d'afficher le fil d'Ariane
     - checkedReadAccess : liste des docuid pour lesquels l'accès en lecture est autorisé
-        évite de retester si yamlPassword existe et de redeamnder le mot de passe
+        évite de retester si yamlPassword existe et de redemander le mot de passe
     - checkedWriteAccess : pour chaque document indique 1 s'il est modifiable, 0 s'il ne l'est pas
         évite de retester si un document est modifiable
     - locks : liste des documents verrouillés
@@ -24,7 +24,7 @@ journal: |
   19/5/2018:
   - sécurisation de store pour réduire les erreurs de manip
   - debuggage de la protection
-  - A FAIRE: améliorer l'affichage en cas d'erreur Yaml
+  - améliorer l'affichage en cas d'erreur Yaml
   - A FAIRE: debugger mon utilisation de git
   16-18/5/2018:
   - ajout protection en consultation, buggée
@@ -232,7 +232,15 @@ if (isset($_GET['clone'])) {
 
 // action d'affichage d'un document
 if (!isset($_GET['action'])) {
-  if (!($doc = new_yamlDoc($_GET['doc']))) {
+  try {
+    $doc = new_yamlDoc($_GET['doc']);
+  }
+  catch (Symfony\Component\Yaml\Exception\ParseException $exception) {
+    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+    echo "<pre>",ydread($_GET['doc']),"</pre>\n";
+    die();
+  }
+  if (!$doc) {
     echo "<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
@@ -296,8 +304,14 @@ if ($_GET['action']=='store') {
   else {
     ydwrite($_GET['doc'], $_POST['text']);
     echo "Enregistrement du document $_GET[doc]<br>\n";
-    $doc = new_yamlDoc($_GET['doc']);
-    $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+    try {
+      $doc = new_yamlDoc($_GET['doc']);
+      $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+    }
+    catch (Symfony\Component\Yaml\Exception\ParseException $exception) {
+      printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+      echo "<pre>",ydread($_GET['doc']),"</pre>\n";
+    }
   }
 }
 
