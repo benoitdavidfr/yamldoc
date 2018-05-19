@@ -1,6 +1,6 @@
 <?php
 {
-$phpDoc['index.php'] = <<<EOT
+$phpDocs['index.php'] = <<<EOT
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
@@ -26,7 +26,7 @@ journal: |
   - sécurisation de store pour réduire les erreurs de manip
   - debuggage de la protection
   - améliorer l'affichage en cas d'erreur Yaml
-  - A FAIRE: debugger mon utilisation de git
+  - ajout cmdes git add & commit
   16-18/5/2018:
   - ajout protection en consultation, buggée
   12-13/5/2018:
@@ -52,6 +52,9 @@ EOT;
 }
 session_start();
 require_once __DIR__.'/yd.inc.php';
+require_once __DIR__.'/git.inc.php';
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 // Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(array $breadcrumb) {
@@ -82,7 +85,8 @@ function show_menu(array $breadcrumb) {
   echo "<td><a href='?action=unset",($docuid ? "&amp;doc=$docuid" : ''),"'>unset</a></td>\n";
   // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
-  echo "<td><a href='?action=doc",($docuid ? "&amp;doc=$docuid" : ''),"'>doc</a></td>\n";
+  echo "<td><a href='?action=version",($docuid ? "&amp;doc=$docuid" : ''),"'>version</a></td>\n";
+  echo "<td><a href='?action=commit",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
   echo "</tr></table>\n";
 
   // affichage du fil d'ariane et du ypath
@@ -174,6 +178,7 @@ class CallingGraph {
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
+//echo getcwd() . "<br>\n";
 show_menu(CallingGraph::makeBreadcrumb());
 
 // si un verrou a été posé il est levé
@@ -228,7 +233,8 @@ if (isset($_GET['delDoc'])) {
 if (isset($_GET['clone'])) {
   $newdocuid = uniqid();
   YamlCatalog::clone_in_catalog($newdocuid, $_GET['clone'], $_GET['doc']);
-  ydwrite($newdocuid, ydread($_GET['clone']));
+  $ext = ydwrite($newdocuid, ydread($_GET['clone']));
+  git_add($newdocuid, $ext);
   echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
 }
 
@@ -305,13 +311,14 @@ if ($_GET['action']=='store') {
       echo "Aucun catalogue disponible<br>\n";
   }
   else {
-    ydwrite($_GET['doc'], $_POST['text']);
+    $ext = ydwrite($_GET['doc'], $_POST['text']);
     echo "Enregistrement du document $_GET[doc]<br>\n";
+    //git_commit($_GET['doc'], $ext);
     try {
       $doc = new_yamlDoc($_GET['doc']);
       $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
     }
-    catch (Symfony\Component\Yaml\Exception\ParseException $exception) {
+    catch (ParseException $exception) {
       printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
       echo "<pre>",ydread($_GET['doc']),"</pre>\n";
     }
@@ -326,8 +333,25 @@ if ($_GET['action']=='check') {
   die();
 }
 
-// action doc - affichage Phpdoc
-if ($_GET['action']=='doc') {
-  echo "<pre>"; print_r($phpDoc); echo "</pre>\n";
+// action commit
+if ($_GET['action']=='commit') {
+  git_commit_a();
+  die();
+}
+
+// action version - affichage Phpdoc
+if ($_GET['action']=='version') {
+  if (!isset($_GET['name'])) {
+    echo "<h2>Documentation des scripts Php</h2><ul>\n";
+    foreach ($phpDocs as $name => $phpDoc) {
+      $phpDoc = Yaml::parse($phpDoc);
+      echo "<li><a href='?action=version",
+           isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
+           "&amp;name=$name'>$phpDoc[title]</a>\n";
+    }
+  }
+  else {
+    echo "<pre>"; print_r($phpDocs[$_GET['name']]); echo "</pre>\n";
+  }
   die();
 }

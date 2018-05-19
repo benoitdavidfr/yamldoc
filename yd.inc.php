@@ -1,6 +1,6 @@
 <?php
 {
-$phpDoc['yd.inc.php'] = <<<EOT
+$phpDocs['yd.inc.php'] = <<<EOT
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
@@ -66,7 +66,10 @@ function ydwrite(string $uid, string $text) {
   $ext = (strncmp($text,'<?php', 5)==0) ? 'php' : 'yaml';
   if ($ext == 'php')
     @unlink(__DIR__."/docs/$uid.yaml");
-  return file_put_contents(__DIR__."/docs/$uid.$ext", $text);
+  if (file_put_contents(__DIR__."/docs/$uid.$ext", $text)===FALSE)
+    return FALSE;
+  else
+    return $ext;
 }
 
 // lecture d'un document, prend l'uid et retourne le texte
