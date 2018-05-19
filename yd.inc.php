@@ -1,5 +1,6 @@
 <?php
-/*PhpDoc:
+{
+$phpDoc['yd.inc.php'] = <<<EOT
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
@@ -29,7 +30,8 @@ journal: |
   - suppression du cryptage
   18/4/2018:
   - première version
-*/
+EOT;
+}
 require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';

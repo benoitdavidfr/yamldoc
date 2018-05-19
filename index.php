@@ -1,5 +1,5 @@
 <?php
-/*PhpDoc:
+$phpDoc['index.php'] = <<<EOT
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
@@ -47,7 +47,7 @@ journal: |
   - améliorations
   30/4/2018:
   - restructuration
-*/
+EOT;
 session_start();
 require_once __DIR__.'/yd.inc.php';
 
@@ -80,6 +80,7 @@ function show_menu(array $breadcrumb) {
   echo "<td><a href='?action=unset",($docuid ? "&amp;doc=$docuid" : ''),"'>unset</a></td>\n";
   // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
+  echo "<td><a href='?action=doc",($docuid ? "&amp;doc=$docuid" : ''),"'>doc</a></td>\n";
   echo "</tr></table>\n";
 
   // affichage du fil d'ariane et du ypath
@@ -320,5 +321,11 @@ if ($_GET['action']=='check') {
   if (!($doc = new_yamlDoc($_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+  die();
+}
+
+// action doc - affichage Phpdoc
+if ($_GET['action']=='doc') {
+  echo "<pre>"; print_r($phpDoc); echo "</pre>\n";
   die();
 }
