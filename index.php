@@ -1,4 +1,5 @@
 <?php
+{
 $phpDoc['index.php'] = <<<EOT
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
@@ -17,7 +18,7 @@ doc: |
         évite de retester si un document est modifiable
     - locks : liste des documents verrouillés
         permet de dévérouiller les documents verrouillés
-  
+
   A REVOIR:
   - Markdown ???
 journal: |
@@ -48,6 +49,7 @@ journal: |
   30/4/2018:
   - restructuration
 EOT;
+}
 session_start();
 require_once __DIR__.'/yd.inc.php';
 
