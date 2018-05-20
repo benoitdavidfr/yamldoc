@@ -358,7 +358,7 @@ if ($_GET['action']=='version') {
 }
 
 // actions git
-if (in_array($_GET['action'], ['git_commit_a','git_pull','push'])) {
+if (in_array($_GET['action'], ['git_commit_a','git_pull','git_push'])) {
   //git_commit_a(); die();
   $_GET['action'](); die();
 }

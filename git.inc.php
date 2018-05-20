@@ -45,3 +45,7 @@ function git_commit_a() {
 function git_pull() {
   git_cmde('git pull');
 }
+
+function git_push() {
+  git_cmde('git git_push');
+}
