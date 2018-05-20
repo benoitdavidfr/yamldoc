@@ -47,5 +47,5 @@ function git_pull() {
 }
 
 function git_push() {
-  git_cmde('git git_push');
+  git_cmde('git push');
 }
