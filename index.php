@@ -21,7 +21,10 @@ doc: |
 
   A REVOIR:
   - Markdown ???
+  - les fichiers servreg devraient être considérés comme des catalogues
 journal: |
+  20/5/2018:
+  - ajout cmde git pull
   19/5/2018:
   - sécurisation de store pour réduire les erreurs de manip
   - debuggage de la protection
@@ -85,8 +88,12 @@ function show_menu(array $breadcrumb) {
   echo "<td><a href='?action=unset",($docuid ? "&amp;doc=$docuid" : ''),"'>unset</a></td>\n";
   // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
-  echo "<td><a href='?action=version",($docuid ? "&amp;doc=$docuid" : ''),"'>version</a></td>\n";
-  echo "<td><a href='?action=commit",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
+  if (in_array($_SESSION['homeCatalog'], ['benoit'])) {
+    echo "<td><a href='?action=version",($docuid ? "&amp;doc=$docuid" : ''),"'>version</a></td>\n";
+    echo "<td><a href='?action=git_commit_a",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
+    echo "<td><a href='?action=git_pull",($docuid ? "&amp;doc=$docuid" : ''),"'>pull</a></td>\n";
+    echo "<td><a href='?action=git_push",($docuid ? "&amp;doc=$docuid" : ''),"'>push</a></td>\n";
+  }
   echo "</tr></table>\n";
 
   // affichage du fil d'ariane et du ypath
@@ -333,12 +340,6 @@ if ($_GET['action']=='check') {
   die();
 }
 
-// action commit
-if ($_GET['action']=='commit') {
-  git_commit_a();
-  die();
-}
-
 // action version - affichage Phpdoc
 if ($_GET['action']=='version') {
   if (!isset($_GET['name'])) {
@@ -354,4 +355,10 @@ if ($_GET['action']=='version') {
     echo "<pre>"; print_r($phpDocs[$_GET['name']]); echo "</pre>\n";
   }
   die();
+}
+
+// actions git
+if (in_array($_GET['action'], ['git_commit_a','git_pull','push'])) {
+  //git_commit_a(); die();
+  $_GET['action'](); die();
 }
