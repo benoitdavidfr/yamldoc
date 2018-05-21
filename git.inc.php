@@ -10,7 +10,7 @@ journal: |
 EOT;
 }
 
-function git_cmde(string $cmde) {
+function git_cmde(string $cmde): int {
   echo "cmde: $cmde<br>\n";
   chdir('docs');
   exec($cmde, $output, $ret);
@@ -24,6 +24,7 @@ function git_cmde(string $cmde) {
       echo "$line\n";
     echo "</pre>\n";
   }
+  return $ret;
 }
 
 function git_add(string $docuid, string $ext) {
@@ -39,7 +40,7 @@ function git_commit(string $docuid, string $ext) {
 }
 
 function git_commit_a() {
-  git_cmde('git -c user.name="www-data" -c user.email="no-replay@example.org" commit -am "commit form php" ');
+  git_cmde('git -c user.name="www-data" -c user.email="no-replay@example.org" commit -am "commit from php" ');
 }
 
 function git_pull() {
@@ -48,4 +49,13 @@ function git_pull() {
 
 function git_push() {
   git_cmde('git push');
+}
+
+function git_log(?string $docuid) {
+  if ($docuid) {
+    $ext = ydext($docuid);
+    git_cmde("git log -p $docuid.$ext");
+  }
+  else
+    git_cmde("git log");
 }

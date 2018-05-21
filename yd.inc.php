@@ -81,6 +81,17 @@ function ydread(string $uid) {
   return $text;
 }
 
+// retourne l'extension d'un document
+function ydext(string $uid): string {
+  //echo "ydext(string $uid)";
+  if (is_file(__DIR__."/docs/$uid.yaml"))
+    $ext = 'yaml';
+  else
+    $ext = 'php';
+  //echo " -> $ext<br>\n";
+  return $ext;
+}
+
 // suppression d'un document, prend son uid
 function yddelete(string $uid) {
   return (@unlink(__DIR__."/docs/$uid.yaml") or @unlink(__DIR__."/docs/$uid.php"));
