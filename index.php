@@ -22,9 +22,14 @@ doc: |
   A REVOIR:
   - Markdown ???
   - les fichiers servreg devraient être considérés comme des catalogues
+  
+  IDEES:
+  - améliorer la gestion des catalogues
+  
 journal: |
   21/5/2018:
-  - ajout cmde synchro qui enchaine pull et push + git_pull_src
+  - ajout cmde synchro qui enchaine pull et push
+  - ajout cmde git_pull_src
   20/5/2018:
   - ajout cmde git pull et push
   19/5/2018:
@@ -201,6 +206,7 @@ ydunlockall();
 if (isset($_GET['action']) && ($_GET['action']=='dump')) {
   echo "<pre>";
   echo "_SESSION = "; print_r($_SESSION);
+  echo "_SERVER = "; print_r($_SERVER);
   if (isset($_GET['doc'])) {
     if (!ydcheckReadAccess($_GET['doc']))
       die("accès interdit");

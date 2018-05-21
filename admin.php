@@ -5,12 +5,16 @@ title: admin.php - permet de visualiser l'ensemble des docs en affichant la hié
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 journal:
+  21/5/2018:
+    correction de bugs
   19/5/2018:
     ajout consultation des protections
   12/5/2018:
     refonte
 */
 require_once __DIR__.'/yd.inc.php';
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
@@ -31,9 +35,16 @@ function scan(string $docpath, string $ssdir='') {
       scan($docpath, $ssdir ? "$ssdir/$entry" : $entry);
     elseif (preg_match('!^(.*)\.(yaml|php)$!', $entry, $matches)) {
       $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
-      $docs[$docid]['doc'] = new_yamlDoc($docid);
-      if (!$docs[$docid]['doc'])
-        echo "Erreur new_yamlDoc($docid)<br>\n";
+      try {
+        $docs[$docid]['doc'] = new_yamlDoc($docid);
+        if (!$docs[$docid]['doc'])
+          echo "Erreur new_yamlDoc($docid)<br>\n";
+      }
+      catch (ParseException $exception) {
+        $docs[$docid]['doc'] = null;
+        printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
+        $doc['txt'] = ydread($docid);
+      }
       $docs[$docid]['ssdir'] = $ssdir;
       $docs[$docid]['ext'] = $matches[2];
       $docs[$docid]['size'] = filesize($docpath.'/'.($ssdir ? "$ssdir/" : '').$entry);
@@ -45,8 +56,9 @@ function scan(string $docpath, string $ssdir='') {
 }
 scan('docs');
 
+// enregistrement pour chaque document des catalogues dans lesquels il est référencé
 foreach ($docs as $docid => $doc) {
-  if (in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
+  if ($doc['doc'] && in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
     $ssdir = ($doc['ssdir'] ? $doc['ssdir'].'/' : '');
     foreach ($doc['doc']->contents as $childId => $d) {
       if (isset($docs[$ssdir.$childId])) {
@@ -68,7 +80,7 @@ function show(string $id, string $title=null) {
     return;
   }
   $doc = $docs[$id];
-  if ($doc['doc']->title)
+  if ($doc['doc'] && $doc['doc']->title)
     $title = $doc['doc']->title;
   elseif (isset($doc['doc']->phpDoc['title']))
     $title = $doc['doc']->phpDoc['title'];
@@ -78,7 +90,7 @@ function show(string $id, string $title=null) {
     echo " <b>/already shown/</b>\n";
     return;
   }
-  if (in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
+  if ($doc['doc'] && in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
     echo "<ul>";
     foreach ($doc['doc']->contents as $sid => $sitem) {
       if (isset($sitem['title']))
@@ -91,6 +103,7 @@ function show(string $id, string $title=null) {
   $docs[$id]['shown'] = 1;
 }
 
+// action par défaut: affichage de l'arborescence
 if (!isset($_GET['action'])) {
   echo "<b>Arborescences</b>:<ul>\n";
   foreach ($docs as $id => $doc) {
@@ -104,11 +117,12 @@ if (!isset($_GET['action'])) {
     <li>le nombre entre crochets est le nombre de fois où le document apparait dans un catalogue
   </ul>";
 }
+// affichage de la liste des docs protégés et de leur protection
 elseif ($_GET['action']=='prot') {
-  // affichage de la liste des docs protégés et de leur protection
   echo "<ul>";
   foreach ($docs as $id => $doc) {
-    if ($doc['doc']->yamlPassword || $doc['doc']->authorizedReaders || $doc['doc']->authorizedWriters) {
+    if ($doc['doc']
+        && ($doc['doc']->yamlPassword || $doc['doc']->authorizedReaders || $doc['doc']->authorizedWriters)) {
       echo '<li>',$doc['doc']->title ? $doc['doc']->title : '', " ($id) ";
       echo $doc['doc']->yamlPassword ? 'P':'';
       echo $doc['doc']->authorizedReaders ? 'R':'';
@@ -117,6 +131,7 @@ elseif ($_GET['action']=='prot') {
   }
   echo "</ul>";
 }
+// affichage de stats
 elseif ($_GET['action']=='stats') {
   $countPerExt = [];
   $sizePerExt = [];
