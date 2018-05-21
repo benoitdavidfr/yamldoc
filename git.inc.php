@@ -21,6 +21,7 @@ function git_cmde(string $cmde): int {
   echo "getcwd=",getcwd(),"<br>\n";
   chdir('docs');
   exec($cmde, $output, $ret);
+  chdir('..');
   if ($ret)
     echo "<b>Erreur $ret sur</b>: <u>$cmde</u><br>\n";
   else
