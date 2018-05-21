@@ -9,6 +9,7 @@ doc: |
 journal: |
   21/5/2018:
   - ajout synchro
+  - ajout git_pull_src qui met à jour le code Php à partir de Git
   20/5/2018:
     - améliorations
   19/5/2018:
