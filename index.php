@@ -24,7 +24,7 @@ doc: |
   - les fichiers servreg devraient être considérés comme des catalogues
 journal: |
   21/5/2018:
-  - ajout cmde synchro qui enchaine pull et push
+  - ajout cmde synchro qui enchaine pull et push + git_pull_src
   20/5/2018:
   - ajout cmde git pull et push
   19/5/2018:
@@ -91,6 +91,7 @@ function show_menu(array $breadcrumb) {
   // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
   if (isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], ['benoit'])) {
+    echo "<td><a href='?action=git_pull_src",($docuid ? "&amp;doc=$docuid" : ''),"'>pull src</a></td>\n";
     echo "<td><a href='?action=version",($docuid ? "&amp;doc=$docuid" : ''),"'>version</a></td>\n";
     echo "<td><a href='?action=git_commit_a",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
     echo "<td><a href='?action=git_pull",($docuid ? "&amp;doc=$docuid" : ''),"'>pull</a></td>\n";
@@ -229,9 +230,9 @@ if (isset($_GET['action']) && ($_GET['action']=='razrw')) {
 }
 
 // actions git
-if (isset($_GET['action'])
-     && in_array($_GET['action'], ['git_commit_a','git_pull','git_push','git_synchro','git_log'])) {
-  $_GET['action'](isset($_GET['doc']) ? $_GET['doc'] : null); die();
+if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='git_')) {
+  $_GET['action'](isset($_GET['doc']) ? $_GET['doc'] : null);
+  die();
 }
 
 // évite d'avoir à tester le paramètre doc dans les actions suivantes

@@ -17,14 +17,17 @@ EOT;
 }
 
 // exécute une cmde Git en testant le code retour et en affichant le résultat
-// si le code retour  n'est pas un des ok_codes alors affichage d'une erreur
-function git_cmde(string $cmde, array $ok_codes=[0]): int {
+// si le code retour  n'est pas un des okReturnCodes alors affichage d'une erreur
+function git_cmde(string $cmde, array $options=[]): int {
   //echo "cmde: $cmde<br>\n";
   //echo "getcwd=",getcwd(),"<br>\n";
-  chdir('docs');
+  $okReturnCodes = isset($options['okReturnCodes']) ? $options['okReturnCodes'] : [0];
+  if (!isset($options['src']))
+    chdir('docs');
   exec($cmde, $output, $ret);
-  chdir('..'); // permet d'enchainer plusieurs cmdes
-  if (!in_array($ret, $ok_codes))
+  if (!isset($options['src']))
+    chdir('..'); // permet d'enchainer plusieurs cmdes
+  if (!in_array($ret, $okReturnCodes))
     echo "<b>Erreur $ret sur</b>: <u>$cmde</u><br>\n";
   else
     echo "cmde <u>$cmde</u> <b>ok</b><br>\n";
@@ -37,32 +40,24 @@ function git_cmde(string $cmde, array $ok_codes=[0]): int {
   return $ret;
 }
 
-function git_add(string $docuid, string $ext): int {
-  return git_cmde("git add $docuid.$ext");
-}
+function git_add(string $docuid, string $ext): int { return git_cmde("git add $docuid.$ext"); }
 
-function git_rm(string $docuid, string $ext): int {
-  return git_cmde("git rm $docuid.$ext");
-}
+function git_rm(string $docuid, string $ext): int { return git_cmde("git rm $docuid.$ext"); }
 
 function git_commit(string $docuid, string $ext): int {
-  return git_cmde("git commit $docuid.$ext -m $docuid.$ext", [0,1]);
+  return git_cmde("git commit $docuid.$ext -m $docuid.$ext", ['okReturnCodes'=> [0,1]]);
 }
 
 function git_commit_a(): int {
   return
     git_cmde(
       'git -c user.name="www-data" -c user.email="no-replay@example.org" commit -am "commit from php" ',
-      [0,1]); // un code retour 1 signifie "nothing to commit" qui n'est pas une réelle erreur
+      ['okReturnCodes'=> [0,1]]); // un code retour 1 signifie "nothing to commit" qui n'est pas une réelle erreur
 }
 
-function git_pull(): int {
-  return git_cmde('git pull');
-}
+function git_pull(): int { return git_cmde('git pull'); }
 
-function git_push(): int {
-  return git_cmde('git push');
-}
+function git_push(): int { return git_cmde('git push'); }
 
 // enchaine commit, pull puis si ok push
 // devrait être le mécanisme de synchro standard
@@ -85,3 +80,6 @@ function git_log(?string $docuid) {
   else
     git_cmde("git log");
 }
+
+function git_pull_src(): int { return git_cmde('git pull', ['src'=>true]); }
+
