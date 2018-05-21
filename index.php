@@ -23,6 +23,8 @@ doc: |
   - Markdown ???
   - les fichiers servreg devraient être considérés comme des catalogues
 journal: |
+  21/5/2018:
+  - ajout cmde synchro qui enchaine pull et push
   20/5/2018:
   - ajout cmde git pull et push
   19/5/2018:
@@ -93,6 +95,7 @@ function show_menu(array $breadcrumb) {
     echo "<td><a href='?action=git_commit_a",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
     echo "<td><a href='?action=git_pull",($docuid ? "&amp;doc=$docuid" : ''),"'>pull</a></td>\n";
     echo "<td><a href='?action=git_push",($docuid ? "&amp;doc=$docuid" : ''),"'>push</a></td>\n";
+    echo "<td><a href='?action=git_synchro",($docuid ? "&amp;doc=$docuid" : ''),"'>synchro</a></td>\n";
     echo "<td><a href='?action=git_log",($docuid ? "&amp;doc=$docuid" : ''),"'>log</a></td>\n";
   }
   echo "</tr></table>\n";
@@ -194,7 +197,7 @@ ydunlockall();
 
 // les 2 premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
-if (isset($_GET['action']) and ($_GET['action']=='dump')) {
+if (isset($_GET['action']) && ($_GET['action']=='dump')) {
   echo "<pre>";
   echo "_SESSION = "; print_r($_SESSION);
   if (isset($_GET['doc'])) {
@@ -213,21 +216,21 @@ if (isset($_GET['action']) and ($_GET['action']=='dump')) {
 }
 
 // action unset - effacement des variables de session
-if (isset($_GET['action']) and ($_GET['action']=='unset')) {
+if (isset($_GET['action']) && ($_GET['action']=='unset')) {
   foreach ($_SESSION as $key => $value)
     unset($_SESSION[$key]);
 }
 
 // action razrw - effacement des variables de session  & checkedWriteAccess
-if (isset($_GET['action']) and ($_GET['action']=='razrw')) {
+if (isset($_GET['action']) && ($_GET['action']=='razrw')) {
   foreach (['checkedReadAccess', 'checkedWriteAccess'] as $key)
     unset($_SESSION[$key]);
   unset($_GET['action']);
 }
 
 // actions git
-if (isset($_GET['action']) and (in_array($_GET['action'], ['git_commit_a','git_pull','git_push','git_log']))) {
-  //git_commit_a(); die();
+if (isset($_GET['action'])
+     && in_array($_GET['action'], ['git_commit_a','git_pull','git_push','git_synchro','git_log'])) {
   $_GET['action'](isset($_GET['doc']) ? $_GET['doc'] : null); die();
 }
 
