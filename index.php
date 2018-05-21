@@ -25,6 +25,7 @@ doc: |
   
   IDEES:
   - améliorer la gestion des catalogues
+  - intégrer la gestion de mot de passe
   
 journal: |
   21/5/2018:
