@@ -5,7 +5,7 @@ name: git.inc.php
 title: git.inc.php - commandes Git
 doc: |
   ensemble de cmdes Git utilisées par YamlDoc
-  git_synchro enchaine pull et push
+  git_synchro enchaine commit, pull et push
 journal: |
   21/5/2018:
   - ajout synchro
@@ -59,10 +59,12 @@ function git_push(): int {
   return git_cmde('git push');
 }
 
-// enchaine pull puis si ok push
+// enchaine commit, pull puis si ok push
 // devrait être le mécanisme de synchro standard
 function git_synchro() {
-  if (($ret = git_pull()) <> 0)
+  if (($ret = git_commit_a()) <> 0)
+    return $ret;
+  elseif (($ret = git_pull()) <> 0)
     return $ret;
   else
     return git_push();
