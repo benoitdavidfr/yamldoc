@@ -51,10 +51,11 @@ function git_commit(string $docuid, string $ext): int {
 
 function git_commit_a(): int {
   $userName = isset($_SESSION['homeCatalog']) ? $_SESSION['homeCatalog'] : 'anonymous';
-  $userName .= '@'.$_SERVER['HTTP_HOST'];
+  $host = $_SERVER['HTTP_HOST'];
+  $userName .= '@'.$host;
   return
     git_cmde(
-      "git -c user.name='$userName' -c user.email='$userName' commit -am 'commit from php' ",
+      "git -c user.name='$userName' -c user.email='$userName' commit -am 'commit on $host' ",
       ['okReturnCodes'=> [0,1]]); // un code retour 1 signifie "nothing to commit" qui n'est pas une réelle erreur
 }
 
