@@ -62,7 +62,9 @@ function git_push(): int {
 // enchaine commit, pull puis si ok push
 // devrait être le mécanisme de synchro standard
 function git_synchro() {
-  if (($ret = git_commit_a()) <> 0)
+  $ret = git_commit_a();
+  // lorsqu'il n'y a aucune modif git commit vaut 1
+  if (($ret <> 0) && ($ret <> 1))
     return $ret;
   elseif (($ret = git_pull()) <> 0)
     return $ret;
