@@ -18,6 +18,7 @@ EOT;
 
 function git_cmde(string $cmde): int {
   echo "cmde: $cmde<br>\n";
+  echo "getcwd=",getcwd(),"<br>\n";
   chdir('docs');
   exec($cmde, $output, $ret);
   if ($ret)
