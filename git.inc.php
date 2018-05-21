@@ -16,13 +16,15 @@ journal: |
 EOT;
 }
 
-function git_cmde(string $cmde): int {
+// exécute une cmde Git en testant le code retour et en affichant le résultat
+// si le code retour  n'est pas un des ok_codes alors affichage d'une erreur
+function git_cmde(string $cmde, array $ok_codes=[0]): int {
   //echo "cmde: $cmde<br>\n";
   //echo "getcwd=",getcwd(),"<br>\n";
   chdir('docs');
   exec($cmde, $output, $ret);
   chdir('..'); // permet d'enchainer plusieurs cmdes
-  if ($ret)
+  if (!in_array($ret, $ok_codes))
     echo "<b>Erreur $ret sur</b>: <u>$cmde</u><br>\n";
   else
     echo "cmde <u>$cmde</u> <b>ok</b><br>\n";
@@ -44,11 +46,14 @@ function git_rm(string $docuid, string $ext): int {
 }
 
 function git_commit(string $docuid, string $ext): int {
-  return git_cmde("git commit $docuid.$ext -m $docuid.$ext");
+  return git_cmde("git commit $docuid.$ext -m $docuid.$ext", [0,1]);
 }
 
 function git_commit_a(): int {
-  return git_cmde('git -c user.name="www-data" -c user.email="no-replay@example.org" commit -am "commit from php" ');
+  return
+    git_cmde(
+      'git -c user.name="www-data" -c user.email="no-replay@example.org" commit -am "commit from php" ',
+      [0,1]); // un code retour 1 signifie "nothing to commit" qui n'est pas une réelle erreur
 }
 
 function git_pull(): int {
