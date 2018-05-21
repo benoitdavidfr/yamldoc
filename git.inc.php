@@ -17,11 +17,11 @@ EOT;
 }
 
 function git_cmde(string $cmde): int {
-  echo "cmde: $cmde<br>\n";
-  echo "getcwd=",getcwd(),"<br>\n";
+  //echo "cmde: $cmde<br>\n";
+  //echo "getcwd=",getcwd(),"<br>\n";
   chdir('docs');
   exec($cmde, $output, $ret);
-  chdir('..');
+  chdir('..'); // permet d'enchainer plusieurs cmdes
   if ($ret)
     echo "<b>Erreur $ret sur</b>: <u>$cmde</u><br>\n";
   else
