@@ -1,10 +1,18 @@
 <?php
+/*PhpDoc:
+name: yd.inc.php
+title: yd.inc.php - fonctions générales pour yamldoc
+functions:
+doc: doc intégrée en Php
+*/
 {
 $phpDocs['yd.inc.php'] = <<<EOT
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  25/5/2018:
+  - ajout de la gestion des dates lors du parse et pour l'affichage
   12/5/2018:
   - protection en écriture
   - modif new_yamlDoc()
@@ -283,6 +291,8 @@ function showDoc($data, string $prefix='') {
     echo "<pre>$data</pre>";
   elseif (is_null($data))
     echo 'null';
+  elseif (is_object($data) and (get_class($data)=='DateTime'))
+    echo $data->format('Y-m-d H:i:s');
   else
     echo $data;
 }
@@ -301,7 +311,7 @@ function new_yamlDoc(string $docuid): ?YamlDoc {
     ydcheckWriteAccessForPhpCode($docuid);
     return require "docs/$docuid.php";
   }
-  $data = Yaml::parse($text);
+  $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
   if (!is_array($data))
     $doc = new YamlDoc($text);
   elseif (isset($data['yamlClass'])) {

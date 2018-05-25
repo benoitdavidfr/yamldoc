@@ -202,6 +202,9 @@ show_menu(CallingGraph::makeBreadcrumb());
 // si un verrou a été posé il est levé
 ydunlockall();
 
+ini_set('memory_limit', '1024M');
+ini_set('max_execution_time', 600);
+
 // les 2 premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
 if (isset($_GET['action']) && ($_GET['action']=='dump')) {
