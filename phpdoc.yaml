@@ -23,10 +23,20 @@ doc: |
   par tuple.
   Les autres listes de valeurs atomiques sont affichées sous la forme d'une liste HTML.
   
+  Avec YamlData je crée des objets stockés à l'intérieur des documents ici de type YamlDataTable
+  YamlDatatable n'est pas une sous-classe de YamlDoc
+  YamlDataTable doit proposer 2 méthodes:
+    - show() qui l'affiche en html
+  
   idées:
     - utiliser Markdown dans les textes
+    - revoir la notion de YamlCatalog car des documents contiennent du contenu et référencent d'autres documents
+      il faudrait un concept plus souple
+    - revoir l'utilisation de Git dans un contexte multi-utilisateur
     
 journal: |
+  29/5-1/6/2018:
+    - ajout YamlData
   14/5/2018:
     - ajout export JSON
     - réflexion utilisation

@@ -16,6 +16,9 @@ require_once __DIR__.'/yd.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+ini_set('memory_limit', '1024M');
+ini_set('max_execution_time', 600);
+
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
 // [ docid=> [ 'doc'=> objet doc, 'ext'=> ext, 'ssdir'=> ssdir, 'catalogs'?=> [ catalogid ], 'shown'?=> 1 ] ]

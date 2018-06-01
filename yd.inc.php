@@ -44,6 +44,7 @@ require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';
 require_once __DIR__.'/tree.inc.php';
+require_once __DIR__.'/yamldata.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 
@@ -112,6 +113,7 @@ function ydcheckReadAccess(string $docuid): bool {
 
 // marque le docuid comme accessible en lecture
 function ydsetReadAccess(string $docuid): void {
+  //echo "ydsetReadAccess($docuid)<br>\n";
   if (!ydcheckReadAccess($docuid))
     $_SESSION['checkedReadAccess'][] = $docuid;
 }
@@ -281,7 +283,16 @@ function showArrayAsTable(array $data, string $prefix) {
 
 // aiguille l'affichage en fonction du type du paramètre
 function showDoc($data, string $prefix='') {
-  if (is_listOfAtoms($data))
+  if (is_object($data)) {
+    switch (get_class($data)) {
+      case 'DateTime':
+        echo $data->format('Y-m-d H:i:s');
+        break;
+      default:
+        $data->show($prefix);
+    }
+  }
+  elseif (is_listOfAtoms($data))
     showListOfAtoms($data, $prefix);
   elseif (is_listOfTuples($data))
     showListOfTuplesAsTable($data, $prefix);
@@ -400,7 +411,7 @@ class YamlDoc {
   
   // retourne le fragment défini par la chaine ypath
   static function sextract($data, string $ypath) {
-    //echo "extract(ypath=$ypath)<br>\n";
+    echo "sextract(ypath=$ypath)<br>\n";
     if (!$ypath)
       return $data;
     //echo "ypath=$ypath<br>\n";
@@ -419,12 +430,18 @@ class YamlDoc {
       return $data;
     if (is_array($data))
       return self::sextract($data, $ypath);
-    else
-      return null;
+    elseif (is_object($data))
+      return $data->extract($ypath);
+    else {
+      echo "Cas non traité<br>\n";
+      //echo "<pre>data = "; print_r($data); echo "</pre>\n";
+      return $data;
+    }
   }
   
   // selection dans la liste de tuples $data sur $key=$value
   static function select(array $data, string $key, string $value) {
+    echo "select(data, key=$key, value=$value)<br>\n";
     $result = [];
     foreach ($data as $tuple)
       if ($tuple[$key]==$value)
@@ -577,6 +594,7 @@ class YamlDoc {
   
   // test du droit en lecture indépendamment d'un éventuel mot de passe
   function authorizedReader(): bool {
+    //print_r($this);
     $ret = !isset($this->data['authorizedReaders'])
            || (isset($_SESSION['homeCatalog'])
               && in_array($_SESSION['homeCatalog'], $this->data['authorizedReaders']));
@@ -586,8 +604,10 @@ class YamlDoc {
   
   // test du droit en écriture indépendamment d'un éventuel mot de passe
   function authorizedWriter(): bool {
-    if (!$this->authorizedReader())
+    if (!$this->authorizedReader()) {
+      //echo "authorizedWriter false car !reader<br>\n";
       return false;
+    }
     $ret = isset($_SESSION['homeCatalog'])
            && (!isset($this->data['authorizedWriters'])
              || in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']));

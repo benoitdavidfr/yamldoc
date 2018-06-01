@@ -22,8 +22,10 @@ doc: |
   A REVOIR:
   - Markdown ???
   - les fichiers servreg devraient être considérés comme des catalogues
+  - un fichier protégé et non conforme Yaml n'est pas protégé
   
   IDEES:
+  - ajouter la possibilité de gérer une liste de tuples avec le mot-clé tuples
   - améliorer la gestion des catalogues
   - intégrer la gestion de mot de passe
   
@@ -66,6 +68,9 @@ require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/git.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
+
+ini_set('memory_limit', '1024M');
+ini_set('max_execution_time', 600);
 
 // Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(array $breadcrumb) {
@@ -201,9 +206,6 @@ show_menu(CallingGraph::makeBreadcrumb());
 
 // si un verrou a été posé il est levé
 ydunlockall();
-
-ini_set('memory_limit', '1024M');
-ini_set('max_execution_time', 600);
 
 // les 2 premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
