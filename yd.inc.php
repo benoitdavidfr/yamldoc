@@ -227,7 +227,7 @@ function is_listOfTuples_i($list) {
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
 function showListOfAtoms(array $list, string $prefix) {
-  echo "<ul>\n";
+  echo "<ul style='margin:0; padding:0px; list-style-position: inside;'>\n";
   foreach ($list as $i => $elt) {
     echo "<li>";
     if (is_array($elt))
