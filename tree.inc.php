@@ -11,7 +11,7 @@ journal: |
 // classe Tree
 class Tree extends YamlDoc {
   
-  static function showTree(array $children) {
+  static function showTree(array $children): void {
     echo "<ul>\n";
     foreach ($children as $child) {
       echo "<li>$child[t]\n";
@@ -21,7 +21,7 @@ class Tree extends YamlDoc {
     echo "</ul>\n";
   }
   
-  function show(string $ypath) {
+  function show(string $ypath): void {
     echo "<h1>",$this->data['title'],"</h1>\n";
     self::showTree($this->data['children']);
   }

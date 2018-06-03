@@ -65,6 +65,10 @@ EOT;
 }
 session_start();
 require_once __DIR__.'/yd.inc.php';
+require_once __DIR__.'/catalog.inc.php';
+require_once __DIR__.'/servreg.inc.php';
+require_once __DIR__.'/tree.inc.php';
+require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/git.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -217,7 +221,7 @@ if (isset($_GET['action']) && ($_GET['action']=='dump')) {
     if (!ydcheckReadAccess($_GET['doc']))
       die("accès interdit");
     $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-    $text = ydread($_GET['doc']);
+    //$text = ydread($_GET['doc']);
     echo "<h2>doc $_GET[doc]</h2>\n";
     $doc = new_yamlDoc($_GET['doc']);
     if ($ypath)

@@ -11,7 +11,7 @@ use Symfony\Component\Yaml\Yaml;
 
 // class des catalogues
 class YamlCatalog extends YamlDoc {
-  function show(string $ypath) {
+  function show(string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     $dirname = dirname($_GET['doc']);
     if ($dirname=='.')

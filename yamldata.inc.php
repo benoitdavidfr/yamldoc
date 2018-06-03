@@ -22,10 +22,11 @@ doc: |
   des clés sous la forme d'une chaine avec un nom de champ
   
   A FAIRE:
-  - stocker le fichier non pas en Yaml mais en Php sérialisé, permettant de gérer efficacement des tables plus
-    importantes.
+  - ajouter un project
 
 journal: |
+  3/6/2018:
+  - amélioration sérialisation
   1/6/2018:
   - mise en place minimum de la sélection en ajoutant une méthode extract() à YamlDataTable et en l'appellant
     depuis YamlDoc::sextract
@@ -53,13 +54,22 @@ class YamlData extends YamlDoc {
     else
       throw new Exception("Erreur: pas un YamlData");
   }
+  
+  function show(string $ypath): void {
+    //echo "appel de YamlData::show($ypath)<br>\n";
+    parent::show($ypath);
+    if (!is_file(__DIR__."/docs/$_GET[doc].pser")
+     || (filemtime(__DIR__."/docs/$_GET[doc].pser") <= filemtime(__DIR__."/docs/$_GET[doc].yaml"))) {
+      file_put_contents(__DIR__."/docs/$_GET[doc].pser", serialize($this));
+    }
+  }
 };
 
 
 // contenu d'une table
 // objet se retouvant à l'intérieur d'un doc
 // est créé par YamData lui-même détecté par le champ yamlClass du document
-class YamlDataTable {
+class YamlDataTable implements YamlDocElement {
   protected $yamlSchema; // yamlSchema sous forme d'un array Php ou null
   protected $attrs; // liste des attributs détectés dans la table
   protected $data; // contenu de data sous forme d'un arrray Php
@@ -121,7 +131,7 @@ class YamlDataTable {
     //echo "<tr><td><pre>nbre=$nbre</pre></td></tr>\n";
   }
   
-  function show(string $prefix) {
+  function show(string $prefix): void {
     //print_r($this->data);
     //showListOfTuplesAsTable2($this->data, '');
     echo "<table border=1>\n";
@@ -148,7 +158,7 @@ class YamlDataTable {
   
   // retourne le fragment défini par path qui est une chaine
   function extract(string $ypath) {
-    echo "appel de YamlDataTable::extract($ypath)<br>\n";
+    //echo "appel de YamlDataTable::extract($ypath)<br>\n";
     $elt = YamlDoc::extract_ypath('/', $ypath);
     if (strpos($elt,'=') !== false) {
       $query = explode('=', $elt);
@@ -174,7 +184,7 @@ class YamlDataTable {
   
   // selection dans la liste de tuples $data sur $key=$value
   function select(string $key, string $value) {
-    echo "YamlDataTable::select(key=$key, value=$value)<br>\n";
+    //echo "YamlDataTable::select(key=$key, value=$value)<br>\n";
     $result = [];
     foreach ($this->tuples() as $tuple)
       if ($tuple[$key]==$value)

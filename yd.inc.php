@@ -11,6 +11,8 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  3/6/2018:
+  - dans new_yamlDoc() utilisation de la version sérialisée du doc si elle existe et est plus récente que le Yaml
   25/5/2018:
   - ajout de la gestion des dates lors du parse et pour l'affichage
   12/5/2018:
@@ -41,16 +43,12 @@ journal: |
 EOT;
 }
 require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__.'/catalog.inc.php';
-require_once __DIR__.'/servreg.inc.php';
-require_once __DIR__.'/tree.inc.php';
-require_once __DIR__.'/yamldata.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 
 /*PhpDoc: functions
-  name:  dump
-  title: function dump($string) - function affichant la chaine en séparant chaque caractère et en affichant aussi le code hexa correspondant
+name:  dump
+title: function dump($string) - function affichant la chaine en séparant chaque caractère et en affichant aussi le code hexa correspondant
 */
 function dump($string) {
   echo "<table border=1>";
@@ -93,10 +91,14 @@ function ydread(string $uid) {
 // retourne l'extension d'un document
 function ydext(string $uid): string {
   //echo "ydext(string $uid)";
-  if (is_file(__DIR__."/docs/$uid.yaml"))
+  if (is_file(__DIR__."/docs/$uid.pser"))
+    $ext = 'pser';
+  elseif (is_file(__DIR__."/docs/$uid.yaml"))
     $ext = 'yaml';
-  else
+  elseif (is_file(__DIR__."/docs/$uid.php"))
     $ext = 'php';
+  else
+    $ext = '';
   //echo " -> $ext<br>\n";
   return $ext;
 }
@@ -309,11 +311,20 @@ function showDoc($data, string $prefix='') {
 }
 
 // crée un YamlDoc à partir du docuid du document
-// Si le fichier n'existe pas renvoie null
-// Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
+// S'il existe un pser et qu'il est plus récent que le yaml alors renvoie la désérialisation du pser
+// Sinon Si le fichier n'existe pas renvoie null
+// Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
 // Sinon Si le texte est du Yaml alors détermine sa classe en fonction du champ yamlClass
 // Sinon retourne un YamlDoc contenant le text comme scalaire
 function new_yamlDoc(string $docuid): ?YamlDoc {
+  //rajouter un test sur le fait que le pser soit plus récent que que le yaml
+  //echo "filemtime(yaml)=", @filemtime(__DIR__."/docs/$docuid.yaml"),"<br>\n";
+  //echo "filemtime(pser)=", @filemtime(__DIR__."/docs/$docuid.pser"),"<br>\n";
+  if (file_exists(__DIR__."/docs/$docuid.pser")
+    && (filemtime(__DIR__."/docs/$docuid.pser") > filemtime(__DIR__."/docs/$docuid.yaml"))) {
+      //echo "unserialize()<br>\n";
+      return unserialize(@file_get_contents(__DIR__."/docs/$docuid.pser"));
+  }
   if (($text = ydread($docuid)) === FALSE)
     return null;
   if (strncmp($text,'<?php', 5)==0) {
@@ -340,9 +351,18 @@ function new_yamlDoc(string $docuid): ?YamlDoc {
   return $doc;
 }
 
+// Declaration de l'interface 'YamlDocElement'
+// Tout élément d'un YamlDoc doit être soit:
+//  - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
+//  - un objet d'une classe conforme à l'interface YamlDocElement
+interface YamlDocElement {
+  public function show(string $ypath);
+  public function extract(string $ypath);
+};
+
 // classe YamlDoc de base
-class YamlDoc {
-  protected $data; // contenu du doc sous forme d'un arrray Php ou d'un scalaire
+class YamlDoc implements YamlDocElement {
+  protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire
   
   function __construct($data) { $this->data = $data; }
   
@@ -353,12 +373,12 @@ class YamlDoc {
   function isHomeCatalog() { return false; }
   
   // affiche le doc ou le fragment si ypath est non vide
-  function show(string $ypath) {
+  function show(string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     showDoc(self::sextract($this->data, $ypath));
   }
   
-  function dump(string $ypath) {
+  function dump(string $ypath): void {
     var_dump(self::sextract($this->data, $ypath));
   }
   
@@ -411,7 +431,7 @@ class YamlDoc {
   
   // retourne le fragment défini par la chaine ypath
   static function sextract($data, string $ypath) {
-    echo "sextract(ypath=$ypath)<br>\n";
+    //echo "sextract(ypath=$ypath)<br>\n";
     if (!$ypath)
       return $data;
     //echo "ypath=$ypath<br>\n";

@@ -12,7 +12,7 @@ journal: |
 class Servreg extends YamlDoc {
   function title() { return isset($this->data['phpDoc']['title']) ? $this->data['phpDoc']['title'] : null; }
   
-  function show(string $ypath) {
+  function show(string $ypath): void {
     echo "<h2>",$this->title(),"</h2>\n";
     echo "<h3>phpDoc</h3>\n";
     showDoc($this->data['phpDoc']);
