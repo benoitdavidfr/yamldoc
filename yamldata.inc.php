@@ -21,10 +21,9 @@ doc: |
   Le YamlSchema doit contenir un champ KEYS avec un sous champ ROOT et un sous-sous champ data contenant la liste
   des clés sous la forme d'une chaine avec un nom de champ
   
-  A FAIRE:
-  - ajouter un project
-
 journal: |
+  7/6/2018:
+  - ajout de YamlData::project()
   3/6/2018:
   - amélioration sérialisation
   1/6/2018:
@@ -165,8 +164,7 @@ class YamlDataTable implements YamlDocElement {
       $data = $this->select($query[0], $query[1]);
     }
     else {
-      echo "<b>Erreur: appel de YamlDataTable::extract($ypath) non compris</b><br>\n";
-      return null;
+      $data = $this->project($elt);
     }
     $ypath = substr($ypath, strlen($elt)+1);
     if (!$ypath)
@@ -195,5 +193,32 @@ class YamlDataTable implements YamlDocElement {
       return $result[0];
     else
       return $result;
+  }
+  
+  // projection de $data sur $attrs
+  function project(string $attrs) {
+    $attrs = YamlDoc::protexplode(',', $attrs);
+    //echo "attrs="; print_r($attrs); echo "<br>\n";
+    $result = [];
+    foreach ($this->tuples() as $tuple) {
+      if (count($attrs)==1) {
+        $result[] = $tuple[$attrs[0]];
+      }
+      else {
+        $t = [];
+        foreach ($attrs as $attr) {
+          if (substr($attr,0,1)=='(') {
+            $ypath = substr($attr, 1, strlen($attr)-2);
+            $sattrs = explode('/', $ypath);
+            $sattr = $sattrs[count($sattrs)-1];
+            $t[$sattr] = YamlDoc::sextract($tuple, $ypath);
+          }
+          elseif (isset($tuple[$attr]))
+            $t[$attr] = $tuple[$attr];
+        }
+        $result[] = $t;
+      }
+    }
+    return $result;
   }
 };

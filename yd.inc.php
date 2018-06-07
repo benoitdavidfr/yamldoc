@@ -6,11 +6,13 @@ functions:
 doc: doc intégrée en Php
 */
 {
-$phpDocs['yd.inc.php'] = <<<EOT
+$phpDocs['yd.inc.php'] = <<<'EOT'
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  7/6/2018:
+  - traitement du cas $data==null dans YamlDoc::sextract()
   3/6/2018:
   - dans new_yamlDoc() utilisation de la version sérialisée du doc si elle existe et est plus récente que le Yaml
   25/5/2018:
@@ -286,13 +288,10 @@ function showArrayAsTable(array $data, string $prefix) {
 // aiguille l'affichage en fonction du type du paramètre
 function showDoc($data, string $prefix='') {
   if (is_object($data)) {
-    switch (get_class($data)) {
-      case 'DateTime':
-        echo $data->format('Y-m-d H:i:s');
-        break;
-      default:
-        $data->show($prefix);
-    }
+    if (get_class($data)=='DateTime')
+      echo $data->format('Y-m-d H:i:s');
+    else
+      $data->show($prefix);
   }
   elseif (is_listOfAtoms($data))
     showListOfAtoms($data, $prefix);
@@ -300,12 +299,10 @@ function showDoc($data, string $prefix='') {
     showListOfTuplesAsTable($data, $prefix);
   elseif (is_array($data))
     showArrayAsTable($data, $prefix);
-  elseif (is_string($data) and (strpos($data, "\n")!==FALSE))
-    echo "<pre>$data</pre>";
   elseif (is_null($data))
     echo 'null';
-  elseif (is_object($data) and (get_class($data)=='DateTime'))
-    echo $data->format('Y-m-d H:i:s');
+  elseif (is_string($data) and (strpos($data, "\n")!==FALSE))
+    echo "<pre>$data</pre>";
   else
     echo $data;
 }
@@ -452,8 +449,10 @@ class YamlDoc implements YamlDocElement {
       return self::sextract($data, $ypath);
     elseif (is_object($data))
       return $data->extract($ypath);
+    elseif (is_null($data))
+      return null;
     else {
-      echo "Cas non traité<br>\n";
+      echo "Cas non traité ",__FILE__," ligne ",__LINE__,"<br>\n";
       //echo "<pre>data = "; print_r($data); echo "</pre>\n";
       return $data;
     }
@@ -524,7 +523,7 @@ class YamlDoc implements YamlDocElement {
       return $result;
     }
     elseif (count($keys)==1)
-      return $data[$keys[0]];
+      return isset($data[$keys[0]]) ? $data[$keys[0]] : null;
     else {
       $t = [];
       foreach ($keys as $key) {
