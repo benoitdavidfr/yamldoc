@@ -2,6 +2,13 @@
 /*PhpDoc:
 name: yamldata.inc.php
 title: yamldata.inc.php - gestion des données
+functions:
+doc: doc intégrée en Php
+*/
+{
+$phpDocs['yamldata.inc.php'] = <<<'EOT'
+name: yamldata.inc.php
+title: yamldata.inc.php - gestion des données
 doc: |
   Pour gérer efficacement des tables assez volumineuses, il est préférable d'utiliser des clés d'accès aux
   enregistrements plutôt qu'un numéro d'ordre comme prévu dans le YamlDoc de base.
@@ -31,7 +38,8 @@ journal: |
     depuis YamlDoc::sextract
   30-31/5/2018:
   - création
-*/
+EOT;
+}
 
 // class correspondant au niveau document
 // remplace dans la structure Php l'array correspondant à une table par un objet YamlDataTable
