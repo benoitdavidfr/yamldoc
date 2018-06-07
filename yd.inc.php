@@ -13,7 +13,7 @@ doc: |
 journal: |
   7/6/2018:
   - traitement du cas $data==null dans YamlDoc::sextract()
-  - appel des métodes YamlData::yaml() et YamlData::json()
+  - appel des méthodes YamlData::yaml() et YamlData::json()
   3/6/2018:
   - dans new_yamlDoc() utilisation de la version sérialisée du doc si elle existe et est plus récente que le Yaml
   25/5/2018:
@@ -361,7 +361,7 @@ interface YamlDocElement {
 };
 
 // classe YamlDoc de base
-class YamlDoc implements YamlDocElement {
+class YamlDoc {
   protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire
   
   function __construct($data) { $this->data = $data; }

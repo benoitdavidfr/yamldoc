@@ -31,7 +31,7 @@ doc: |
 journal: |
   7/6/2018:
   - ajout de YamlData::project()
-  - définition des métodes YamlData::yaml() et YamlData::json()
+  - définition des méthodes YamlData::yaml() et YamlData::json()
   3/6/2018:
   - amélioration sérialisation
   1/6/2018:
