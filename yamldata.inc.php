@@ -31,6 +31,7 @@ doc: |
 journal: |
   7/6/2018:
   - ajout de YamlData::project()
+  - définition des métodes YamlData::yaml() et YamlData::json()
   3/6/2018:
   - amélioration sérialisation
   1/6/2018:
@@ -228,5 +229,13 @@ class YamlDataTable implements YamlDocElement {
       }
     }
     return $result;
+  }
+  
+  function yaml(): string {
+    return YamlDoc::syaml($this->data);
+  }
+  
+  function json(): string {
+    return json_encode($this->data,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
 };

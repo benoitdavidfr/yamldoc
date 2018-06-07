@@ -13,6 +13,7 @@ doc: |
 journal: |
   7/6/2018:
   - traitement du cas $data==null dans YamlDoc::sextract()
+  - appel des métodes YamlData::yaml() et YamlData::json()
   3/6/2018:
   - dans new_yamlDoc() utilisation de la version sérialisée du doc si elle existe et est plus récente que le Yaml
   25/5/2018:
@@ -355,6 +356,8 @@ function new_yamlDoc(string $docuid): ?YamlDoc {
 interface YamlDocElement {
   public function show(string $ypath);
   public function extract(string $ypath);
+  public function yaml(): string;
+  public function json(): string;
 };
 
 // classe YamlDoc de base
@@ -382,7 +385,11 @@ class YamlDoc implements YamlDocElement {
   // génère le texte correspondant au fragment défini par ypath
   // améliore la sortie en supprimant les débuts de ligne
   function yaml(string $ypath): string {
-    return self::syaml(self::sextract($this->data, $ypath));
+    $fragment = self::sextract($this->data, $ypath);
+    if (is_object($fragment))
+      return $fragment->yaml();
+    else
+      return self::syaml($fragment);
   }
   
   static function syaml($data): string {
@@ -399,8 +406,11 @@ class YamlDoc implements YamlDocElement {
   }
   
   function json(string $ypath): string {
-    $data = self::sextract($this->data, $ypath);
-    return json_encode($data,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+    $fragment = self::sextract($this->data, $ypath);
+    if (is_object($fragment))
+      return $fragment->json();
+    else
+      return json_encode($fragment,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
   
   // extrait le premier elt de $ypath en utilisant le séparateur $sep
@@ -443,8 +453,10 @@ class YamlDoc implements YamlDocElement {
       $data = self::sort($data, $matches[1]);
     else
       $data = self::project($data, $elt);
-    if (!$ypath)
+    if (!$ypath) {
+      //print_r($data);
       return $data;
+    }
     if (is_array($data))
       return self::sextract($data, $ypath);
     elseif (is_object($data))
