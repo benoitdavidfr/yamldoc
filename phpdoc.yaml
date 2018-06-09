@@ -23,13 +23,13 @@ doc: |
   par tuple.
   Les autres listes de valeurs atomiques sont affichées sous la forme d'une liste HTML.
   
-  Avec YamlData je crée des objets stockés à l'intérieur des documents ici de type YamlDataTable
-  YamlDatatable n'est pas une sous-classe de YamlDoc
-  YamlDataTable doit proposer 3 méthodes:
+  Les documents YamlData contiennent une ou plusieurs YamlDataTable qui sont des listes de tuples ayant une clé
+  définie par une ou plusieurs valeurs.
+  YamlDataTable expose 3 méthodes:
     - show() qui l'affiche en html
     - extract() qui traverse l'objet pour en sélectionner une partie
     - php() qui renvoie une structure Php pour une sortie Yaml ou JSON
-  L'interface YamlDocElement définit l'interface d'un élément dans un YamlDoc
+  L'interface YamlDocElement définit l'interface d'un élément d'un YamlDoc
   
   idées:
     - utiliser Markdown dans les textes

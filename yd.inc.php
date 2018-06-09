@@ -233,12 +233,17 @@ function is_listOfTuples_i($list) {
 }
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
-function showListOfAtoms(array $list, string $prefix) {
-  echo "<ul style='margin:0; padding:0px; list-style-position: inside;'>\n";
+function showListOfAtoms(array $list, string $prefix, int $level=0) {
+  if ($level==0)
+    echo "<ul style='margin:0; padding:0px; list-style-position: inside;'>\n";
+  else
+    echo "<ul style='margin:0px;'>\n";
   foreach ($list as $i => $elt) {
     echo "<li>";
     if (is_array($elt))
-      showListOfAtoms($elt, "$prefix/$i");
+      showListOfAtoms($elt, "$prefix/$i", $level+1);
+    elseif (is_string($elt) && ((strncmp($elt, 'http://', 7)==0) || (strncmp($elt, 'https://', 8)==0)))
+      echo "<a href='$elt' target=_blank>$elt</a>\n";
     else
       echo "$elt\n";
   }
@@ -313,6 +318,8 @@ function showDoc($data, string $prefix='') {
     // représentation brute des textes avec \n
     echo "<pre>$data</pre>";
   }
+  elseif (is_string($data) && ((strncmp($data, 'http://', 7)==0) || (strncmp($data, 'https://', 8)==0)))
+    echo "<a href='$data' target=_blank>$data</a>";
   else
     echo $data;
 }
