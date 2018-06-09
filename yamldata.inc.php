@@ -15,7 +15,7 @@ doc: |
     La classe YamlData permet de définir des documents contenant une ou plusieurs tables d'enregistrements
   accessibles au travers d'une clé éventuellement composite.
   La clé est utilisée dans la structure Php ; pour une clé composite, plusieurs clés successives Php son utilisées.
-  Un document YamlData doit définir à la racine un champ yamlClass avec la valeur yamlData.
+  Un document YamlData doit définir à la racine un champ yamlClass avec la valeur YamlData.
   Il peut alors:
     - soit contenir une seule table stockée en Yaml dans le champ data
     - soit contenir une liste de tables stockée dans une structure Yaml
@@ -26,12 +26,15 @@ doc: |
           data: enregistrements contenus dans la table
   Dans les 2 cas un YamlSchema pour chaque table est recommandé et nécessaire si une clé composite est utilisée.
   Le YamlSchema doit contenir un champ KEYS avec un sous champ ROOT et un sous-sous champ data contenant la liste
-  des clés sous la forme d'une chaine avec un nom de champ
+  des clés sous la forme d'une chaine avec un nom de champ.
+  De plus une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
 journal: |
+  9/6/2018:
+  - remplacement des méthodes YamlDataTable::yaml() et YamlDataTable::json() par YamlDataTable::php()
   7/6/2018:
   - ajout de YamlData::project()
-  - définition des méthodes YamlData::yaml() et YamlData::json()
+  - définition des méthodes YamlDataTable::yaml() et YamlDataTable::json()
   3/6/2018:
   - amélioration sérialisation
   1/6/2018:
@@ -63,6 +66,7 @@ class YamlData extends YamlDoc {
       throw new Exception("Erreur: pas un YamlData");
   }
   
+  // en plus de l'affichage, si le fichier pser n'existe pas ou n'est pas à jour, il est regénéré
   function show(string $ypath): void {
     //echo "appel de YamlData::show($ypath)<br>\n";
     parent::show($ypath);
@@ -231,11 +235,8 @@ class YamlDataTable implements YamlDocElement {
     return $result;
   }
   
-  function yaml(): string {
-    return YamlDoc::syaml($this->data);
-  }
-  
-  function json(): string {
-    return json_encode($this->data,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  // retourne une structure Php
+  function php() {
+    return $this->data;
   }
 };

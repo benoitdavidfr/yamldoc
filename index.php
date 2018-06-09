@@ -25,7 +25,6 @@ doc: |
   - un fichier protégé et non conforme Yaml n'est pas protégé
   
   IDEES:
-  - ajouter la possibilité de gérer une liste de tuples avec le mot-clé tuples
   - améliorer la gestion des catalogues
   - intégrer la gestion de mot de passe
   
@@ -208,7 +207,7 @@ echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head
 //echo getcwd() . "<br>\n";
 show_menu(CallingGraph::makeBreadcrumb());
 
-// si un verrou a été posé il est levé
+// si un verrou a été posé alors il est levé
 ydunlockall();
 
 // les 2 premières actions ne nécessitent pas le paramètre doc

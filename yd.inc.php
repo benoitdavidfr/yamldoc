@@ -11,6 +11,10 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  9/6/2018:
+  - modification de showDoc() pour qu'un texte derrière un > soit représenté comme chaine et pas comme texte
+  - amélioration de l'export en Yaml et JSON notamment des dates
+  - remplacement des appels des méthodes yaml() et json() sur les YamlDocElement par un appel à php()
   7/6/2018:
   - traitement du cas $data==null dans YamlDoc::sextract()
   - appel des méthodes YamlData::yaml() et YamlData::json()
@@ -302,8 +306,13 @@ function showDoc($data, string $prefix='') {
     showArrayAsTable($data, $prefix);
   elseif (is_null($data))
     echo 'null';
-  elseif (is_string($data) and (strpos($data, "\n")!==FALSE))
+  // un texte derrière un > sera représenté comme chaine et pas comme texte 
+  elseif (is_string($data) && (strpos($data, "\n")!==FALSE) && (strpos($data, "\n") < strlen($data)-1)) {
+    //echo "pos=",strpos($data, "\n"),"<br>\n";
+    //echo "len=",strlen($data),"<br>\n";
+    // représentation brute des textes avec \n
     echo "<pre>$data</pre>";
+  }
   else
     echo $data;
 }
@@ -356,13 +365,12 @@ function new_yamlDoc(string $docuid): ?YamlDoc {
 interface YamlDocElement {
   public function show(string $ypath);
   public function extract(string $ypath);
-  public function yaml(): string;
-  public function json(): string;
+  public function php();
 };
 
 // classe YamlDoc de base
 class YamlDoc {
-  protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire
+  protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire comme détaillé ci-dessus
   
   function __construct($data) { $this->data = $data; }
   
@@ -386,14 +394,27 @@ class YamlDoc {
   // améliore la sortie en supprimant les débuts de ligne
   function yaml(string $ypath): string {
     $fragment = self::sextract($this->data, $ypath);
-    if (is_object($fragment))
-      return $fragment->yaml();
-    else
-      return self::syaml($fragment);
+    return self::syaml(self::replaceYDEltByPhp($fragment));
   }
   
+  // remplace dans une structure Php les YamlDocElement par leur représentation Php
+  static function replaceYDEltByPhp($data) {
+    if (is_object($data) && (get_class($data)<>'DateTime'))
+      return $data->php();
+    elseif (is_array($data)) {
+      $ret = [];
+      foreach ($data as $key => $value)
+        $ret[$key] = self::replaceYDEltByPhp($value);
+      return $ret;
+    }
+    else
+      return $data;
+  }
+  
+  // améliore la sortie de Yaml::dump()
   static function syaml($data): string {
-    $text = Yaml::dump($data, 999);
+    $text = Yaml::dump($data, 999, 2);
+    return $text;
     $pattern = '!^( *-)\n +!';
     if (preg_match($pattern, $text, $matches)) {
       $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
@@ -407,12 +428,24 @@ class YamlDoc {
   
   function json(string $ypath): string {
     $fragment = self::sextract($this->data, $ypath);
-    if (is_object($fragment))
-      return $fragment->json();
-    else
-      return json_encode($fragment,  JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+    $fragment = self::replaceYDEltByPhp($fragment);
+    $fragment = self::replaceDateTimeByString($fragment);
+    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
   
+  static function replaceDateTimeByString($data) {
+    if (is_object($data) && (get_class($data)=='DateTime'))
+      return $data->format(DateTime::ATOM);
+    elseif (is_array($data)) {
+      $ret = [];
+      foreach ($data as $key => $value)
+        $ret[$key] = self::replaceDateTimeByString($value);
+      return $ret;
+    }
+    else
+      return $data;
+  }
+    
   // extrait le premier elt de $ypath en utilisant le séparateur $sep
   // le séparateur n'est pas pris en compte s'il est entre ()
   static function extract_ypath(string $sep, string $ypath): string {
