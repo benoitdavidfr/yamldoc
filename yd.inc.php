@@ -11,6 +11,13 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  10/6/2018:
+  - modification de l'affichage d'un texte et d'une chaine
+  - une chaine qui commence par http:// ou https:// est remplacée à l'affichage par un lien
+  - pour un texte, 3 possibilités de formattage:
+    - si le texte commence par "Content-Type: text/plain\n" alors affichage du texte brut
+    - si le texte commence par "<html>\n" alors affichage du texte considéré comme du HTML
+    - sinon le texte est considéré comme du Markdown
   9/6/2018:
   - modification de showDoc() pour qu'un texte derrière un > soit représenté comme chaine et pas comme texte
   - amélioration de l'export en Yaml et JSON notamment des dates
@@ -50,8 +57,10 @@ journal: |
 EOT;
 }
 require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__."/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 
 use Symfony\Component\Yaml\Yaml;
+use Michelf\MarkdownExtra;
 
 /*PhpDoc: functions
 name:  dump
@@ -232,6 +241,16 @@ function is_listOfTuples_i($list) {
   return true;
 }
 
+function showString($str) {
+  if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
+    $href = $matches[1];
+    $after = substr($str, strlen($matches[0]));
+    echo "<a href='$href' target=_blank>$href</a>$after\n";
+  }
+  else
+    echo "$str\n";
+}
+
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
 function showListOfAtoms(array $list, string $prefix, int $level=0) {
   if ($level==0)
@@ -242,10 +261,8 @@ function showListOfAtoms(array $list, string $prefix, int $level=0) {
     echo "<li>";
     if (is_array($elt))
       showListOfAtoms($elt, "$prefix/$i", $level+1);
-    elseif (is_string($elt) && ((strncmp($elt, 'http://', 7)==0) || (strncmp($elt, 'https://', 8)==0)))
-      echo "<a href='$elt' target=_blank>$elt</a>\n";
     else
-      echo "$elt\n";
+      showString($elt);
   }
   echo "</ul>\n";
 }
@@ -316,12 +333,19 @@ function showDoc($data, string $prefix='') {
     //echo "pos=",strpos($data, "\n"),"<br>\n";
     //echo "len=",strlen($data),"<br>\n";
     // représentation brute des textes avec \n
-    echo "<pre>$data</pre>";
+    if (preg_match('!^Content-Type: text/plain[\r\n]+!', $data, $matches)) {
+      $data = substr($data, strlen($matches[0]));
+      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $data),"</pre>\n";
+    }
+    elseif (preg_match('!^<html>[\r\n]+!', $data, $matches)) {
+      echo substr($data, strlen($matches[0]));
+    }
+    else {
+      echo MarkdownExtra::defaultTransform($data);
+    }
   }
-  elseif (is_string($data) && ((strncmp($data, 'http://', 7)==0) || (strncmp($data, 'https://', 8)==0)))
-    echo "<a href='$data' target=_blank>$data</a>";
   else
-    echo $data;
+    showString($data);
 }
 
 // crée un YamlDoc à partir du docuid du document
@@ -666,9 +690,12 @@ class YamlDoc {
   // test du droit en lecture indépendamment d'un éventuel mot de passe
   function authorizedReader(): bool {
     //print_r($this);
-    $ret = !isset($this->data['authorizedReaders'])
-           || (isset($_SESSION['homeCatalog'])
-              && in_array($_SESSION['homeCatalog'], $this->data['authorizedReaders']));
+    if (isset($this->data['authorizedReaders']))
+      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->data['authorizedReaders']);
+    elseif (isset($this->data['authRd']))
+      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->data['authRd']);
+    else
+      $ret = true;
     //echo "authorizedReader=$ret<br>\n";
     return $ret;
   }
@@ -679,9 +706,14 @@ class YamlDoc {
       //echo "authorizedWriter false car !reader<br>\n";
       return false;
     }
-    $ret = isset($_SESSION['homeCatalog'])
-           && (!isset($this->data['authorizedWriters'])
-             || in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']));
+    if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']=='default'))
+      $ret = false;
+    elseif (isset($this->data['authorizedWriters']))
+      $ret = in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']);
+    elseif (isset($this->data['authWr']))
+      $ret = in_array($_SESSION['homeCatalog'], $this->data['authWr']);
+    else
+      $ret = true;
     //echo "authorizedWriter=$ret<br>\n";
     return $ret;
   }

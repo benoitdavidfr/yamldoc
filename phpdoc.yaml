@@ -32,14 +32,20 @@ doc: |
   L'interface YamlDocElement définit l'interface d'un élément d'un YamlDoc
   
   idées:
-    - utiliser Markdown dans les textes
+    - affiner le YamlSchema:
+      - arbitrer coment les clés sont définies
+      - finaliser une définition formelle
+      - implémenter une vérification de conformité à un schéma
     - revoir la notion de YamlCatalog car des documents contiennent du contenu et référencent d'autres documents
       il faudrait un concept plus souple
-    - repenser l'utilisation de Git dans un contexte multi-utilisateur
+    - repenser l'utilisation de Git pour une utilisation multi-utilisateur
     - mettre en place des URI identifiant chaque document et certains fragments
     - gérer automatiquement une page référencant les docs non référencés (lost.php)
-    
+  Faits:
+    - utiliser Markdown dans les textes
 journal: |
+  10/6/2018:
+    - ajout Markdown
   29/5-1/6/2018:
     - ajout YamlData
   14/5/2018:
