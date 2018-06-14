@@ -63,7 +63,7 @@ class YamlData extends YamlDoc {
       }
     }
     else
-      throw new Exception("Erreur: pas un YamlData");
+      throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
   // en plus de l'affichage, si le fichier pser n'existe pas ou n'est pas à jour, il est regénéré
@@ -74,6 +74,12 @@ class YamlData extends YamlDoc {
      || (filemtime(__DIR__."/docs/$_GET[doc].pser") <= filemtime(__DIR__."/docs/$_GET[doc].yaml"))) {
       file_put_contents(__DIR__."/docs/$_GET[doc].pser", serialize($this));
     }
+  }
+  
+  // fusionne la table en paramètre avec la table du document et renvoie le résultat
+  function merge(YamlDataTable $table): YamlDataTable {
+    echo "YamlData::merge()<br>\n";
+    return $this->data['data']->merge($table);
   }
 };
 
@@ -86,10 +92,12 @@ class YamlDataTable implements YamlDocElement {
   protected $attrs; // liste des attributs détectés dans la table
   protected $data; // contenu de data sous forme d'un arrray Php
   
-  function __construct(array $data, ?array $yamlSchema) {
+  function __construct(array $data, ?array $yamlSchema=null) {
     $this->yamlSchema = $yamlSchema;
     $this->attrs = ['KEY'];
     $this->data = $data;
+    if (!$data)
+      return;
     foreach ($this->tuples() as $tuple) {
       foreach (array_keys($tuple) as $attr) {
         if (!in_array($attr, $this->attrs))
@@ -238,5 +246,27 @@ class YamlDataTable implements YamlDocElement {
   // retourne une structure Php
   function php() {
     return $this->data;
+  }
+  
+  // copie les enr. de la table dans la table passée en paramètre et renvoie le résultat
+  function merge(YamlDataTable $table): YamlDataTable {
+    echo "YamlDataTable::merge()<br>\n";
+    //$this->show('');
+    //echo "<ul>\n";
+    foreach ($this->data as $k => $v) {
+      //echo "<li>k=$k<br>\n";
+      $table->insert($k, $v);
+    }
+    //echo "</ul>\n";
+    return $table;
+  }
+  
+  // insertion d'un enregistrement dans la table
+  function insert($k, $v) {
+    foreach (array_keys($v) as $attr) {
+      if (!in_array($attr, $this->attrs))
+        $this->attrs[] = $attr;
+    }
+    $this->data[$k] = $v;
   }
 };

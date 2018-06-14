@@ -32,6 +32,16 @@ doc: |
   L'interface YamlDocElement définit l'interface d'un élément d'un YamlDoc
   
   idées:
+    - gérer un index plein texte pour permettre des recherches, par ex avec MySql
+    - mettre en oeuvre YamlHistoData
+    - définir une doctrine sur les relations entre enregistrements de documents YamlData
+      - formaliser la description des contraintes référentielles (dans le schema ?)
+      - spécifier les identifiants à utiliser
+        - par ex pour les communes, faut-il utiliser:
+          - fr:commune:02053@2016-01-01, dans ce cas comment accéder efficament à l'enregistrement ?
+          - 02053@2016-01-01
+          - http://ypdoc.georef.eu/communes/02053@2016-01-01
+    - mettre en oeuvre de manière générique l'opérateur de jointure
     - affiner le YamlSchema:
       - arbitrer coment les clés sont définies
       - finaliser une définition formelle
@@ -39,11 +49,14 @@ doc: |
     - revoir la notion de YamlCatalog car des documents contiennent du contenu et référencent d'autres documents
       il faudrait un concept plus souple
     - repenser l'utilisation de Git pour une utilisation multi-utilisateur
-    - mettre en place des URI identifiant chaque document et certains fragments
+    - mettre en place des URI identifiant chaque document et certains fragments -> yamldocuri
     - gérer automatiquement une page référencant les docs non référencés (lost.php)
+    - détecter les liens cassés (broken.php)
   Faits:
     - utiliser Markdown dans les textes
 journal: |
+  14/6/2018:
+    - ajout MultiData
   10/6/2018:
     - ajout Markdown
   29/5-1/6/2018:

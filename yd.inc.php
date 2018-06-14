@@ -11,6 +11,8 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  12/6/2018:
+  - correction d'un bug
   10/6/2018:
   - modification de l'affichage d'un texte et d'une chaine
   - une chaine qui commence par http:// ou https:// est remplacée à l'affichage par un lien
@@ -246,6 +248,9 @@ function showString($str) {
     $href = $matches[1];
     $after = substr($str, strlen($matches[0]));
     echo "<a href='$href' target=_blank>$href</a>$after\n";
+  }
+  elseif (is_object($str) && (get_class($str)=='DateTime')) {
+    echo $str->format('Y-m-d H:i:s');
   }
   else
     echo "$str\n";
