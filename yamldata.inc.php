@@ -76,10 +76,10 @@ class YamlData extends YamlDoc {
     }
   }
   
-  // fusionne la table en paramètre avec la table du document et renvoie le résultat
-  function merge(YamlDataTable $table): YamlDataTable {
-    echo "YamlData::merge()<br>\n";
-    return $this->data['data']->merge($table);
+  // complète la table en paramètre avec les enr. de la table du document et renvoie le résultat
+  function appendTable(YamlDataTable $table): YamlDataTable {
+    //echo "YamlData::appendTable()<br>\n";
+    return $this->data['data']->appendTable($table);
   }
 };
 
@@ -248,9 +248,9 @@ class YamlDataTable implements YamlDocElement {
     return $this->data;
   }
   
-  // copie les enr. de la table dans la table passée en paramètre et renvoie le résultat
-  function merge(YamlDataTable $table): YamlDataTable {
-    echo "YamlDataTable::merge()<br>\n";
+  // concatène à la table passée en paramètre les enr. de la table de l'objet et renvoie le résultat
+  function appendTable(YamlDataTable $table): YamlDataTable {
+    //echo "YamlDataTable::appendTable()<br>\n";
     //$this->show('');
     //echo "<ul>\n";
     foreach ($this->data as $k => $v) {
@@ -261,7 +261,7 @@ class YamlDataTable implements YamlDocElement {
     return $table;
   }
   
-  // insertion d'un enregistrement dans la table
+  // insert un enregistrement dans la table
   function insert($k, $v) {
     foreach (array_keys($v) as $attr) {
       if (!in_array($attr, $this->attrs))
