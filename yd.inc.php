@@ -518,6 +518,8 @@ class YamlDoc {
       $query = explode('=', $elt);
       $data = self::select($data, $query[0], $query[1]);
     }
+    elseif (isset($data[$elt]))
+      $data = $data[$elt];
     elseif (preg_match('!^sort\(([^)]+)\)$!', $elt, $matches))
       $data = self::sort($data, $matches[1]);
     else

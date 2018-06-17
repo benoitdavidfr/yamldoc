@@ -108,7 +108,7 @@ class YamlDataTable implements YamlDocElement {
     
   // transfert les clés dans le tuple sous l'attribut KEY
   // $level est le nbre de niveaux de clés
-  static function addkey(int $level, array $data, string $pk='') {
+  static function addkey(int $level, ?array $data, string $pk='') {
     if ($level == 0) {
       $data['KEY'] = $pk;
       return $data;
@@ -179,11 +179,15 @@ class YamlDataTable implements YamlDocElement {
   // retourne le fragment défini par path qui est une chaine
   function extract(string $ypath) {
     //echo "appel de YamlDataTable::extract($ypath)<br>\n";
+    if (!$ypath)
+      return $this->data;
     $elt = YamlDoc::extract_ypath('/', $ypath);
     if (strpos($elt,'=') !== false) {
       $query = explode('=', $elt);
       $data = $this->select($query[0], $query[1]);
     }
+    elseif (isset($this->data[$elt]))
+      $data = $this->data[$elt];
     else {
       $data = $this->project($elt);
     }
