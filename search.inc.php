@@ -4,7 +4,7 @@
 function openMySQL(string $param) {
   if (!preg_match('!^mysql://([^:]+):([^@]+)@([^/]+)/(.*)$!', $param, $matches))
     throw new Exception("param \"".$param."\" incorrect");
-  print_r($matches);
+  //print_r($matches);
   $mysqli = new mysqli($matches[3], $matches[1], $matches[2], $matches[4]);
   if (mysqli_connect_error())
 // La ligne ci-dessous ne s'affiche pas correctement si le serveur est arrêté !!!
