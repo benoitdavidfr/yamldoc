@@ -56,7 +56,7 @@ function scan($mysqli, string $docpath, string $ssdir='', string $fileNamePatter
   }
   closedir($wd);
 }
-//scan($mysqli, 'docs');
+scan($mysqli, 'docs');
 //scan($mysqli, 'docs', 'organization');
-scan($mysqli, __DIR__.'/docs', '', '^dublincore');
+//scan($mysqli, __DIR__.'/docs', '', '^dublincore');
 die("FIN OK<br>\n");
