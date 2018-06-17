@@ -35,7 +35,6 @@ doc: |
     - je pourrais remplacer:
       - la structure d'un YamlDoc par un objet à la StdClass
       - le nomage KEY par _id déjà utilisé par MongoDb
-    - gérer un index plein texte pour permettre des recherches, par ex avec MySql
     - mettre en oeuvre YamlHistoData
     - définir une doctrine sur les relations entre enregistrements de documents YamlData
       - formaliser la description des contraintes référentielles (dans le schema ?)
@@ -56,8 +55,12 @@ doc: |
     - gérer automatiquement une page référencant les docs non référencés (lost.php)
     - détecter les liens cassés (broken.php)
   Faits:
+    - gérer un index plein texte pour permettre des recherches, avec MySql
     - utiliser Markdown dans les textes
 journal: |
+  16-17/6/2018:
+    - gestion d'un index plein texte avec MySQL
+    - il faut finaliser l'outil de recherche
   14/6/2018:
     - ajout MultiData
   10/6/2018:
@@ -92,5 +95,16 @@ journal: |
 phpScripts:
   - /yamldoc/index.php
   - /yamldoc/admin.php
+  - /yamldoc/indexdoc.php
+  - /yamldoc/search.php
+  - /yamldoc/frag.php
 phpIncludes:
   - /yamldoc/yd.inc.php
+  - /yamldoc/git.inc.php
+  - /yamldoc/catalog.inc.php
+  - /yamldoc/tree.inc.php
+  - /yamldoc/yamldata.inc.php
+  - /yamldoc/multidata.inc.php
+  - /yamldoc/servreg.inc.php
+  - /yamldoc/search.inc.php
+  - /yamldoc/mysqlparams.inc.php
