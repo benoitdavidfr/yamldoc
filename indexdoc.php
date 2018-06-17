@@ -8,13 +8,14 @@ require_once __DIR__.'/tree.inc.php';
 require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/multidata.inc.php';
 require_once __DIR__.'/search.inc.php';
+require_once __DIR__.'/mysqlparams.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
-$mysqli = openMySQL("mysql://root:htpqrs28@172.17.0.3/yamldoc");
+$mysqli = openMySQL(mysqlParams());
 { // SQL truncate fragment
   $sql = "truncate fragment";
   if (!($result = $mysqli->query($sql)))
