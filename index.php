@@ -63,6 +63,8 @@ journal: |
 EOT;
 }
 session_start();
+require_once __DIR__.'/search.inc.php';
+require_once __DIR__.'/mysqlparams.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';
@@ -98,6 +100,7 @@ function show_menu(array $breadcrumb) {
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid'>clone</a></td>\n";
+    echo "<td><a href='?action=reindex&amp;doc=$docuid'>reindex</a></td>\n";
   }
   // dump
   echo "<td><a href='?action=dump",($docuid ? "&amp;doc=$docuid" : ''),$ypatharg,"'>dump</a></td>\n";
@@ -364,6 +367,24 @@ if ($_GET['action']=='check') {
   if (!($doc = new_yamlDoc($_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+  die();
+}
+
+// action reindex - modification de l'index full text pour ce document
+if ($_GET['action']=='reindex') {
+  try {
+    $doc = new_yamlDoc($_GET['doc']);
+    if (!$doc)
+      echo "Erreur new_yamlDoc($docid)<br>\n";
+    else {
+      $mysqli = openMySQL(mysqlParams());
+      deletedoc($mysqli, $_GET['doc']);
+      indexdoc($mysqli, $_GET['doc'], $doc);
+    }
+  }
+  catch (ParseException $exception) {
+    printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $_GET['doc'], $exception->getMessage());
+  }
   die();
 }
 

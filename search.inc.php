@@ -31,10 +31,17 @@ function indexstring($mysqli, string $docid, string $val) {
   }
 }
 
+function deletedoc($mysqli, $docid) {
+  $sql = "delete from fragment where fragid like '$docid/%'";
+  if (!($result = $mysqli->query($sql))) {
+    throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
+  }
+}
+
 function indexdoc($mysqli, string $docid, $doc) {
   //return;
-  //echo "indexdoc($docid)<br>\n";
-  //if ($docid=='ZZorganization/misc') { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
+  echo "indexdoc($docid)<br>\n";
+  //if (true || ($docid=='ZZorganization/misc')) { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
   static $nbremax = 100;
   if (is_array($doc))
     $content = $doc;
@@ -45,7 +52,7 @@ function indexdoc($mysqli, string $docid, $doc) {
       return;
   }
   else
-    die("erreur sur $docid");
+    die("erreur dans indexdoc() sur $docid");
   if (is_string($content)) {
     indexstring($mysqli, $docid, $content);
     return;

@@ -14,6 +14,8 @@ use Symfony\Component\Yaml\Exception\ParseException;
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>search</title></head><body>\n";
+
 $key = isset($_GET['key']) ? $_GET['key'] : '';
 $value = isset($_GET['value']) ? $_GET['value'] : '';
 echo "<form><table border=1>\n";

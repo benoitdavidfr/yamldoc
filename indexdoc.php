@@ -15,6 +15,8 @@ use Symfony\Component\Yaml\Exception\ParseException;
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
+
 $mysqli = openMySQL(mysqlParams());
 { // SQL truncate fragment
   $sql = "truncate fragment";
