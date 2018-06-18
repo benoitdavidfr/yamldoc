@@ -51,7 +51,7 @@ function deletedoc($mysqli, $docid) {
 
 function indexdoc($mysqli, string $docid, $doc) {
   //return;
-  echo "indexdoc($docid)<br>\n";
+  //echo "indexdoc($docid)<br>\n";
   //if (true || ($docid=='ZZorganization/misc')) { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
   static $nbremax = 100;
   if (is_array($doc))
