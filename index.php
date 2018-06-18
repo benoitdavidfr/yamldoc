@@ -387,7 +387,7 @@ if ($_GET['action']=='reindex') {
   catch (ParseException $exception) {
     printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $_GET['doc'], $exception->getMessage());
   }
-  die();
+  die("reindex $_GET[doc] OK<br>\n");
 }
 
 // action version - affichage Phpdoc
