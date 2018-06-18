@@ -29,6 +29,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  18/6/2018:
+  - ajout cmde reindex pour reindexer le document en full text
   21/5/2018:
   - ajout cmde synchro qui enchaine pull et push
   - ajout cmde git_pull_src

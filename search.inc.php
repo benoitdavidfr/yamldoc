@@ -1,4 +1,15 @@
 <?php
+{
+$phpDocs['search.inc.php'] = <<<EOT
+name: search.inc.php
+title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
+doc: |
+  
+journal: |
+  18/6/2018:
+  - création
+EOT;
+}
 
 // param sous la forme mysql://{user}:{passwd}@{host}/{database}
 function openMySQL(string $param) {
