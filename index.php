@@ -29,8 +29,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
-  18/6/2018:
-  - ajout cmde reindex pour reindexer le document en full text
+  18-19/6/2018:
+  - ajout cmde reindex pour reindexer les documents en full text de manière incrémentale
   21/5/2018:
   - ajout cmde synchro qui enchaine pull et push
   - ajout cmde git_pull_src
@@ -372,22 +372,10 @@ if ($_GET['action']=='check') {
   die();
 }
 
-// action reindex - modification de l'index full text pour ce document
+// action reindex - re-indexation incrémentale de tous les fichiers
 if ($_GET['action']=='reindex') {
-  try {
-    $doc = new_yamlDoc($_GET['doc']);
-    if (!$doc)
-      echo "Erreur new_yamlDoc($docid)<br>\n";
-    else {
-      $mysqli = openMySQL(mysqlParams());
-      deletedoc($mysqli, $_GET['doc']);
-      indexdoc($mysqli, $_GET['doc'], $doc);
-    }
-  }
-  catch (ParseException $exception) {
-    printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $_GET['doc'], $exception->getMessage());
-  }
-  die("reindex $_GET[doc] OK<br>\n");
+  indexAllDocs(false, 'docs');
+  die("reindex OK<br>\n");
 }
 
 // action version - affichage Phpdoc

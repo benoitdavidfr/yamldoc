@@ -543,7 +543,7 @@ class YamlDoc {
   
   // selection dans la liste de tuples $data sur $key=$value
   static function select(array $data, string $key, string $value) {
-    echo "select(data, key=$key, value=$value)<br>\n";
+    //echo "select(data, key=$key, value=$value)<br>\n";
     $result = [];
     foreach ($data as $tuple)
       if ($tuple[$key]==$value)

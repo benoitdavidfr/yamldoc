@@ -1,5 +1,6 @@
 <?php
 
+session_start();
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';
@@ -15,6 +16,10 @@ ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>search</title></head><body>\n";
+//echo "<pre>_SESSION = "; print_r($_SESSION); echo "<pre>";
+if ($_SESSION['homeCatalog']<>'benoit') {
+  die("accès interdit<br>\n");
+}
 
 $key = isset($_GET['key']) ? $_GET['key'] : '';
 $value = isset($_GET['value']) ? $_GET['value'] : '';

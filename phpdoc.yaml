@@ -58,7 +58,7 @@ doc: |
     - gérer un index plein texte pour permettre des recherches, avec MySql
     - utiliser Markdown dans les textes
 journal: |
-  16-17/6/2018:
+  16-18/6/2018:
     - gestion d'un index plein texte avec MySQL
     - il faut finaliser l'outil de recherche
   14/6/2018:
