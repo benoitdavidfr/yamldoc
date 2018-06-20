@@ -164,9 +164,9 @@ class Search {
   static function indexAllDocs(bool $global, string $docpath, string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
     if ($global) { // SQL truncate doc & fragment
-      if (!($result = $mysqli->query($sql = "truncate document")))
+      if (!($result = self::$mysqli->query($sql = "truncate document")))
         throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
-      if (!($result = $mysqli->query($sql = "truncate fragment")))
+      if (!($result = self::$mysqli->query($sql = "truncate fragment")))
         throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
       self::scanfiles($global, $docpath, $ssdir, $fileNamePattern);
     }
