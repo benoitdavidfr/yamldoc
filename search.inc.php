@@ -141,7 +141,7 @@ class Search {
     }
     while (false !== ($entry = readdir($wd))) {
       //echo "$entry a traiter<br>\n";
-      if (in_array($entry, ['.','..','.git','.htaccess']))
+      if (in_array($entry, ['.','..','.git','.gitignore','.htaccess']))
         continue;
       elseif (is_dir("$dirpath/$entry"))
         self::scanfiles($global, $docpath, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
