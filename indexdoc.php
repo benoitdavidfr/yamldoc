@@ -36,7 +36,7 @@ if (!isset($_GET['action'])) {
   die();
 }
 
-indexAllDocs($_GET['action']=='global', 'docs');
+Search::indexAllDocs($_GET['action']=='global', 'docs');
 //indexalldocs($_GET['action']=='global', 'docs', 'organization');
 //indexalldocs($_GET['action']=='global', 'docs', '', '^dublincore');
 die("FIN OK<br>\n");

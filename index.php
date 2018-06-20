@@ -20,7 +20,6 @@ doc: |
         permet de dévérouiller les documents verrouillés
 
   A REVOIR:
-  - Markdown ???
   - les fichiers servreg devraient être considérés comme des catalogues
   - un fichier protégé et non conforme Yaml n'est pas protégé
   
@@ -374,7 +373,7 @@ if ($_GET['action']=='check') {
 
 // action reindex - re-indexation incrémentale de tous les fichiers
 if ($_GET['action']=='reindex') {
-  indexAllDocs(false, 'docs');
+  Search::indexAllDocs(false, 'docs');
   die("reindex OK<br>\n");
 }
 

@@ -32,20 +32,39 @@ echo "</table></form>\n<br>\n";
 if (!$key && !$value)
   die();
 
-$mysqli = openMySQL(mysqlParams());
+$where = [];
+if ($key)
+  $where[] = "fragid like \"%$key%\"";
+if ($value)
+  $where[] = "match (text) against (\"$value\" in boolean mode)";
+if ($value)
+  $sql = "select match (text) against (\"$value\" in boolean mode) relevance, fragid, text from fragment\n"
+    ."where ".implode(' and ', $where);
+else
+  $sql = "select fragid, text from fragment\n"
+    ."where ".implode(' and ', $where);
 
-$sql = "select fragid, text from fragment "
-  ."where ".($value ? "match (text) against (\"$value\" in boolean mode) ":'')
-  .($key && $value ? " and " : '')
-  .($key ? " fragid like \"%$key%\" ":'');
-
+/*
+SELECT MATCH('Content') AGAINST ('keyword1
+keyword2') as Relevance FROM table WHERE MATCH
+('Content') AGAINST('+keyword1 +keyword2' IN
+BOOLEAN MODE) HAVING Relevance > 0.2 ORDER
+BY Relevance DESC
+*/
+  
 echo "<pre>sql=$sql</pre>\n";
-if (!($result = $mysqli->query($sql)))
-  throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
+$mysqli = Search::openMySQL(mysqlParams());
+$result = Search::query($sql);
 echo "<table border=1>\n";
 while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
   //print_r($tuple); echo "<br>\n";
-  echo "<tr><td><a href='frag.php?fragid=$tuple[fragid]'>$tuple[fragid]</a></td><td>$tuple[text]</td></tr>\n";
+  echo "<tr>";
+  if ($value)
+    printf('<td>%.2f</td>', $tuple['relevance']);
+  echo "<td><a href='frag.php?fragid=$tuple[fragid]'>$tuple[fragid]</a></td>";
+  echo "<td>";
+  showDoc($tuple['text']);
+  echo "</td></tr>\n";
 }
 echo "</table>\n";
 

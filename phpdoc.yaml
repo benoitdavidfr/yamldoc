@@ -31,32 +31,8 @@ doc: |
     - php() qui renvoie une structure Php pour une sortie Yaml ou JSON
   L'interface YamlDocElement définit l'interface d'un élément d'un YamlDoc
   
-  idées:
-    - je pourrais remplacer:
-      - la structure d'un YamlDoc par un objet à la StdClass
-      - le nomage KEY par _id déjà utilisé par MongoDb
-    - mettre en oeuvre YamlHistoData
-    - définir une doctrine sur les relations entre enregistrements de documents YamlData
-      - formaliser la description des contraintes référentielles (dans le schema ?)
-      - spécifier les identifiants à utiliser
-        - par ex pour les communes, faut-il utiliser:
-          - fr:commune:02053@2016-01-01, dans ce cas comment accéder efficament à l'enregistrement ?
-          - 02053@2016-01-01
-          - http://ypdoc.georef.eu/communes/02053@2016-01-01
-    - mettre en oeuvre de manière générique l'opérateur de jointure
-    - affiner le YamlSchema:
-      - arbitrer coment les clés sont définies
-      - finaliser une définition formelle
-      - implémenter une vérification de conformité à un schéma
-    - revoir la notion de YamlCatalog car des documents contiennent du contenu et référencent d'autres documents
-      il faudrait un concept plus souple
-    - repenser l'utilisation de Git pour une utilisation multi-utilisateur
-    - mettre en place des URI identifiant chaque document et certains fragments -> yamldocuri
-    - gérer automatiquement une page référencant les docs non référencés (lost.php)
-    - détecter les liens cassés (broken.php)
-  Faits:
-    - gérer un index plein texte pour permettre des recherches, avec MySql
-    - utiliser Markdown dans les textes
+  Les idées ont été déplacées dans doc/yamldoc/idees
+  
 journal: |
   16-18/6/2018:
     - gestion d'un index plein texte avec MySQL
