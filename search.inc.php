@@ -95,13 +95,13 @@ class Search {
 
   // indexe un doc principal cad correspondant à un fichier
   static function indexMainDoc($docid) {
-    echo "indexMainDoc($docid)<br>\n";
+    //echo "indexMainDoc($docid)<br>\n";
+    self::query("replace into document values(\"".$docid."\", now())");
     try {
       $doc = new_yamlDoc($docid);
       if (!$doc)
         echo "Erreur new_yamlDoc($docid)<br>\n";
       self::indexdoc($docid, $doc);
-      self::query("replace into document values(\"".$docid."\", now())");
     }
     catch (ParseException $exception) {
       printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
@@ -162,12 +162,28 @@ class Search {
   // indexe tous les documents globalement ou de manière incrémentale
   static function indexAllDocs(bool $global, string $docpath, string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
-    if ($global) { // SQL truncate doc & fragment
-      self::query("truncate document");
-      self::query("truncate fragment");
+    if ($global) { // reconstruction totale
+      foreach (
+        [
+          "drop table if exists document",
+          "create table document (
+            docid varchar(200) not null primary key comment 'id du doc',
+            maj datetime comment 'date et heure de maj du doc'
+          ) COMMENT = 'fragment'
+          DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
+
+          "drop table if exists fragment",
+          "create table fragment (
+            fragid varchar(200) not null primary key comment 'id du fragment',
+            text longtext comment 'texte associé'
+          ) COMMENT = 'fragment'
+          DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",        
+        ] as $sql)
+          self::query($sql);
       self::scanfiles($global, $docpath, $ssdir, $fileNamePattern);
+      self::query("create fulltext index fragment_fulltext on fragment(text)");
     }
-    else {
+    else { // ajout incrémental des fichiers ayant été modifiés depuis la dernière fois
       $result = self::query("select docid, maj from document");
       while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
         //print_r($tuple); echo "<br>\n";

@@ -37,27 +37,30 @@ function scan(string $docpath, string $ssdir='') {
   $wd = opendir($dirpath);
   while (false !== ($entry = readdir($wd))) {
     //echo "$entry a traiter<br>\n";
-    if (in_array($entry, ['.','..','.git','.htaccess']))
+    if (in_array($entry, ['.','..','.git','.gitignore','.htaccess']))
       continue;
-    elseif (is_dir($docpath.'/'.($ssdir ? "$ssdir/$entry" : $entry)))
+    elseif (is_dir($docpath.($ssdir ? "/$ssdir" : '')."/$entry"))
       scan($docpath, $ssdir ? "$ssdir/$entry" : $entry);
     elseif (preg_match('!^(.*)\.(yaml|php)$!', $entry, $matches)) {
       $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
       try {
-        $docs[$docid]['doc'] = new_yamlDoc($docid);
-        if (!$docs[$docid]['doc'])
+        $doc = new_yamlDoc($docid);
+        if (!$doc)
           echo "Erreur new_yamlDoc($docid)<br>\n";
+        elseif (get_class($doc)=='YamlData')
+          $doc->shrink();
+        $docs[$docid]['doc'] = $doc;
       }
       catch (ParseException $exception) {
         $docs[$docid]['doc'] = null;
         printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
-        $doc['txt'] = ydread($docid);
+        $docs[$docid]['txt'] = ydread($docid);
       }
       $docs[$docid]['ssdir'] = $ssdir;
       $docs[$docid]['ext'] = $matches[2];
       $docs[$docid]['size'] = filesize($docpath.'/'.($ssdir ? "$ssdir/" : '').$entry);
     }
-    else
+    elseif (!preg_match('!^(.*)\.(pser)$!', $entry))
       echo "$entry non traite<br>\n";
   }
   closedir($wd);
@@ -67,22 +70,28 @@ scan('docs');
 // enregistrement pour chaque document des catalogues dans lesquels il est référencé
 foreach ($docs as $docid => $doc) {
   if ($doc['doc'] && in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
+    //echo "Catalogue $docid<br>\n";
     $ssdir = ($doc['ssdir'] ? $doc['ssdir'].'/' : '');
     foreach ($doc['doc']->contents as $childId => $d) {
+      //echo "ssdir=$ssdir, childId=$childId<br>\n";
       if (isset($docs[$ssdir.$childId])) {
+        //echo "le document $ssdir$childId existe bien<br>\n";
         if (isset($docs[$ssdir.$childId]['catalogs']))
           $docs[$ssdir.$childId]['catalogs'][] = $docid;
         else
           $docs[$ssdir.$childId]['catalogs'] = [ $docid ];
       }
+      //else echo "le document $ssdir$childId n'existe PAS<br>\n";
     }
   }
+
 }
 //echo "<pre>docs="; print_r($docs);
 
 // affiche le doc $id
 function show(string $id, string $title=null) {
   global $docs;
+  //echo "show($id)<br>\n";
   if (!isset($docs[$id])) {
     echo "<li><b>",$title ? "$title ($id)" : $id,"</b>";
     return;
@@ -100,11 +109,16 @@ function show(string $id, string $title=null) {
   }
   if ($doc['doc'] && in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
     echo "<ul>";
+    //echo " catalogue $id<br>\n";
+    //echo "$docid -> ",dirname($docid),"<br>\n";
+    $ssdir = '';
+    if (($dirname = dirname($id)) <> '.')
+      $ssdir = "$dirname/";
     foreach ($doc['doc']->contents as $sid => $sitem) {
       if (isset($sitem['title']))
-        show($sid, $sitem['title']);
+        show($ssdir.$sid, $sitem['title']);
       else
-        show($sid);
+        show($ssdir.$sid);
     }
     echo "</ul>";
   }

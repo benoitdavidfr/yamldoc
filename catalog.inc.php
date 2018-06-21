@@ -1,15 +1,35 @@
 <?php
 /*PhpDoc:
 name: catalog.inc.php
-title: catalog.inc.php - classes des catalogues
+title: catalog.inc.php - classes des catalogues V2
 doc: |
+  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
+  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
+  En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
 journal: |
+  21/6/2018:
+    - V2
   12/5/2018:
-  - scission de yd.inc.php
+    - scission de yd.inc.php
 */
+{
+$phpDocs['catalog.inc.php'] = <<<'EOT'
+  name: catalog.inc.php
+  title: catalog.inc.php - classes des catalogues V2
+  doc: |
+    Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
+    Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
+    En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
+  journal: |
+    21/6/2018:
+      - V2
+    12/5/2018:
+      - scission de yd.inc.php
+EOT;
+}
 use Symfony\Component\Yaml\Yaml;
 
-// class des catalogues
+// classe des catalogues
 class YamlCatalog extends YamlDoc {
   function show(string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
@@ -18,13 +38,27 @@ class YamlCatalog extends YamlDoc {
       $dirname = '';
     else
       $dirname .= '/';
-    //echo "dirname=$dirname<br>\n";
-    echo "<h1>",$this->data['title'],"</h1><ul>\n";
-    foreach($this->contents as $duid => $item) {
-      $title = isset($item['title']) ? $item['title'] : $duid;
-      echo "<li><a href='?doc=$dirname$duid'>$title</a>\n";
+    echo "dirname=$dirname<br>\n";
+    if (isset($this->data['title']))
+      echo "<h1>",$this->data['title'],"</h1>\n";
+    $otherKeyShown = false;
+    foreach ($this->data as $key => $value) {
+      if ($key=='contents') {
+        if ($otherKeyShown)
+          echo "<h3>Contenu du catalogue</h3>\n";
+        echo "<ul>\n";
+        foreach($this->contents as $duid => $item) {
+          $title = isset($item['title']) ? $item['title'] : $duid;
+          echo "<li><a href='?doc=$dirname$duid'>$title</a>\n";
+        }
+        echo "</ul>\n";
+      }
+      elseif (!in_array($key,['title','yamlClass','authorizedWriters','yamlPassword'])) {
+        echo "<h3>$key</h3>\n";
+        showDoc($this->data[$key], $key);
+        $otherKeyShown = true;
+      }
     }
-    echo "</ul>\n";
   }
   
   // clone un doc dans un catalogue

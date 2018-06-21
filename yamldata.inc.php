@@ -30,6 +30,8 @@ doc: |
   De plus une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
 journal: |
+  21/6/2018:
+  - ajout de la méthode shrink() pour réduire l'espace mémoire utilisé dans admin.php
   9/6/2018:
   - remplacement des méthodes YamlDataTable::yaml() et YamlDataTable::json() par YamlDataTable::php()
   7/6/2018:
@@ -80,6 +82,13 @@ class YamlData extends YamlDoc {
   function appendTable(YamlDataTable $table): YamlDataTable {
     //echo "YamlData::appendTable()<br>\n";
     return $this->data['data']->appendTable($table);
+  }
+  
+  function shrink() {
+    if (isset($this->data['data'])) // le document ne contient qu'une seule table
+      $this->data['data'] = null;
+    elseif (isset($this->data['tables'])) // le document contient une liste de tables
+      $this->data['tables'] = null;
   }
 };
 

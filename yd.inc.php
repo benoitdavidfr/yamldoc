@@ -98,11 +98,17 @@ function ydwrite(string $uid, string $text) {
 }
 
 // lecture d'un document, prend l'uid et retourne le texte
-// cherche dans l'ordre un yaml puis un php
+// cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
 function ydread(string $uid) {
   //echo "ydread($uid)<br>\n";
   if (($text = @file_get_contents(__DIR__."/docs/$uid.yaml")) === false)
-    $text = @file_get_contents(__DIR__."/docs/$uid.php");
+    if (($text = @file_get_contents(__DIR__."/docs/$uid.php")) === false)
+      if (is_dir(__DIR__."/docs/$uid")) {
+        //echo "$uid est un répertoire<br>\n";
+        if (($text = @file_get_contents(__DIR__."/docs/$uid/index.yaml")) === false)
+          if (($text = @file_get_contents(__DIR__."/docs/$uid/index.php")) === false)
+            return false;
+      }
   return $text;
 }
 
@@ -354,31 +360,28 @@ function showDoc($data, string $prefix='') {
 }
 
 // crée un YamlDoc à partir du docuid du document
-// S'il existe un pser et qu'il est plus récent que le yaml alors renvoie la désérialisation du pser
-// Sinon Si le fichier n'existe pas renvoie null
-// Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
-// Sinon Si le texte est du Yaml alors détermine sa classe en fonction du champ yamlClass
-// Sinon retourne un YamlDoc contenant le text comme scalaire
 function new_yamlDoc(string $docuid): ?YamlDoc {
-  //rajouter un test sur le fait que le pser soit plus récent que que le yaml
-  //echo "filemtime(yaml)=", @filemtime(__DIR__."/docs/$docuid.yaml"),"<br>\n";
-  //echo "filemtime(pser)=", @filemtime(__DIR__."/docs/$docuid.pser"),"<br>\n";
+  // S'il existe un pser et qu'il est plus récent que le yaml alors renvoie la désérialisation du pser
   if (file_exists(__DIR__."/docs/$docuid.pser")
     && (filemtime(__DIR__."/docs/$docuid.pser") > filemtime(__DIR__."/docs/$docuid.yaml"))) {
       //echo "unserialize()<br>\n";
       return unserialize(@file_get_contents(__DIR__."/docs/$docuid.pser"));
   }
+  // Sinon Si le fichier n'existe pas renvoie null
   if (($text = ydread($docuid)) === FALSE)
     return null;
+  // Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
   if (strncmp($text,'<?php', 5)==0) {
     if (!$docuid)
       throw new Exception("Erreur: le paramètre docuid n'est pas défini");
     ydcheckWriteAccessForPhpCode($docuid);
     return require "docs/$docuid.php";
   }
+  // Sinon Si le texte est du Yaml alors si le résultat du parse n'est pas un array alors renvoie un objet avec le texte
   $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
   if (!is_array($data))
     $doc = new YamlDoc($text);
+  // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
   elseif (isset($data['yamlClass'])) {
     $yamlClass = $data['yamlClass'];
     if (class_exists($yamlClass))
