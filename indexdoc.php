@@ -20,8 +20,6 @@ require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/multidata.inc.php';
 require_once __DIR__.'/search.inc.php';
 require_once __DIR__.'/mysqlparams.inc.php';
-use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\Yaml\Exception\ParseException;
 
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
@@ -37,6 +35,6 @@ if (!isset($_GET['action'])) {
 }
 
 Search::indexAllDocs($_GET['action']=='global', 'docs');
-//indexalldocs($_GET['action']=='global', 'docs', 'organization');
-//indexalldocs($_GET['action']=='global', 'docs', '', '^dublincore');
+//Search::indexalldocs($_GET['action']=='global', 'docs', 'organization');
+//Search::indexalldocs($_GET['action']=='global', 'docs', '', '^gtv-meetup-20180607');
 die("FIN OK<br>\n");

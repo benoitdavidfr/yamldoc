@@ -17,6 +17,8 @@ journal: |
     - création
 EOT;
 }
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 class Search {
   static $mysqli=null; // connexion MySQL
@@ -95,9 +97,6 @@ class Search {
   static function indexMainDoc($docid) {
     echo "indexMainDoc($docid)<br>\n";
     try {
-      $sql = "replace into document values(\"".$docid."\", now())";
-      if (!($result = self::$mysqli->query($sql)))
-        throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
       $doc = new_yamlDoc($docid);
       if (!$doc)
         echo "Erreur new_yamlDoc($docid)<br>\n";
@@ -164,10 +163,8 @@ class Search {
   static function indexAllDocs(bool $global, string $docpath, string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
     if ($global) { // SQL truncate doc & fragment
-      if (!($result = self::$mysqli->query($sql = "truncate document")))
-        throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
-      if (!($result = self::$mysqli->query($sql = "truncate fragment")))
-        throw new Exception("Ligne ".__LINE__.", Req. \"$sql\" invalide: ".$mysqli->error);
+      self::query("truncate document");
+      self::query("truncate fragment");
       self::scanfiles($global, $docpath, $ssdir, $fileNamePattern);
     }
     else {
@@ -180,7 +177,7 @@ class Search {
       foreach (self::$currentDocs as $docid => $maj) {
         self::query("delete from document where docid=\"$docid\"");
         self::query("delete from fragment where fragid like \"$docid/%\"");
-        echo "Suppression de $docid $maj<br>\n";
+        echo "Suppression de $docid $maj de l'index plein texte<br>\n";
       }
     }
   }
