@@ -8,7 +8,7 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal: |
-  20/6/2018:
+  20-21/6/2018:
     - finalisation de l'indexation incrémentale
     - restructuration des fonctions en classe statique partageant $mysqli et $currentDocs
   19/6/2018:

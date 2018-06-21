@@ -7,7 +7,7 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale il faut aussi vérifier que tous les docs indexés existent encore.
 journal: |
-  19/6/2018:
+  19-21/6/2018:
     - ajout indexation incrémentale
   17-18/6/2018:
     - création
