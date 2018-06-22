@@ -38,7 +38,7 @@ class YamlCatalog extends YamlDoc {
       $dirname = '';
     else
       $dirname .= '/';
-    echo "dirname=$dirname<br>\n";
+    //echo "dirname=$dirname<br>\n";
     if (isset($this->data['title']))
       echo "<h1>",$this->data['title'],"</h1>\n";
     $otherKeyShown = false;

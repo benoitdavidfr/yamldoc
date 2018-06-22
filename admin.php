@@ -84,7 +84,6 @@ foreach ($docs as $docid => $doc) {
       //else echo "le document $ssdir$childId n'existe PAS<br>\n";
     }
   }
-
 }
 //echo "<pre>docs="; print_r($docs);
 
