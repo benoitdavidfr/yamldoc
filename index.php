@@ -277,8 +277,16 @@ if (isset($_GET['clone'])) {
 }
 
 
-// action d'affichage d'un document
+// action d'affichage d'un document ou de recherche de documents
 if (!isset($_GET['action'])) {
+  $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+  if ($ypath && (substr($ypath,0,1)<>'/')) {
+    echo "search<br>\n";
+    $dirname = dirname($_SERVER['SCRIPT_NAME']);
+    //echo "dirname=$dirname<br>\n";
+    header("Location: http://$_SERVER[SERVER_NAME]$dirname/search.php?value=".urlencode($ypath));
+    die();
+  }
   try {
     $doc = new_yamlDoc($_GET['doc']);
   }
@@ -298,7 +306,6 @@ if (!isset($_GET['action'])) {
   else {
     if ($doc->isHomeCatalog())
       $_SESSION['homeCatalog'] = $_GET['doc'];
-    $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
     if (!isset($_GET['format']))
       $doc->show($ypath);
     elseif ($_GET['format']=='yaml')
