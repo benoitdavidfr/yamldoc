@@ -13,14 +13,16 @@ if (!isset($_GET['action'])) {
   echo "<h3>Menu</h3><ul>\n";
   echo "<li><a href='?action=actions'>lsite des actions</a>\n";
   echo "<li><a href='?action=acteurs'>liste des acteurs</a>\n";
-  echo "<li><a href='?action=dump'>dump</a>\n";
+  echo "<li><a href='?action=dump'>dump actions</a>\n";
   die();
 }
-$pasactions = new_YamlDoc('satellite/pas-actions2018');
+$pas = new_YamlDoc('satellite/pas-actions2018');
+$pasactions = $pas->php()['tables']['actions']['data']->php();
+$pasorganisations = $pas->php()['tables']['organisations']['data']->php();
 
 if ($_GET['action']=='actions') {
   echo "<ul>\n";
-  foreach ($pasactions->php()['data']->php() as $paid => $pasaction) {
+  foreach ($pasactions as $paid => $pasaction) {
     echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
   }
   die();
@@ -59,7 +61,7 @@ function checkActeur(string $acteur, $acteurs): bool {
 
 if ($_GET['action']=='acteurs') {
   $acteurs = []; // nom => nbre
-  foreach ($pasactions->php()['data']->php() as $paid => $pasaction) {
+  foreach ($pasactions as $paid => $pasaction) {
     //echo "<pre>pasaction="; print_r($pasaction); echo "</pre>\n";
     if (!isset($pasaction['Acteurs clés'])) {
       echo "Pas de Acteurs clés pour $id<br>\n";
@@ -100,23 +102,22 @@ function accents(string $url): string {
 if ($_GET['action']=='actionsParActeur') {
   echo "<h3>$_GET[acteur]</h3>\n";
   $sigle = $_GET['acteur'];
-  if (isset($pasactions->php()['sigles'][$sigle])) {
-    //print_r($pasactions->php()['sigles'][$_GET['acteur']]);
-    $acteur = $pasactions->php()['sigles'][$sigle];
+  if (isset($pasorganisations[$sigle])) {
+    $acteur = $pasorganisations[$sigle];
     echo "<i>Nom:</i> $acteur[name]<br>\n";
     if (isset($acteur['sameAs']))
       echo "<i>Lien Wikipédia:</i> <a href='$acteur[sameAs]' target=_blank>",accents($acteur['sameAs']),"</a><br>\n";
     if (isset($acteur['parentOrganization'])) {
-      $acteur = $pasactions->php()['sigles'][$acteur['parentOrganization']];
+      $acteur = $pasorganisations[$acteur['parentOrganization']];
       echo "<i>Appartient à:</i> <a href='$acteur[sameAs]' target=_blank>$acteur[name]</a><br>\n";
     }
     if (isset($acteur['memberOf'])) {
-      $acteur = $pasactions->php()['sigles'][$acteur['memberOf']];
+      $acteur = $pasorganisations[$acteur['memberOf']];
       echo "<i>Est un(e):</i> <a href='$acteur[sameAs]' target=_blank>$acteur[name]</a><br>\n";
     }
   }
   echo "<h4>Liste des actions</h4><ul>\n";
-  foreach ($pasactions->php()['data']->php() as $paid => $pasaction) {
+  foreach ($pasactions as $paid => $pasaction) {
     $actionSelectionnee = false;
     foreach ($pasaction['Acteurs clés'] as $typacteur => $acteurs) {
       //echo "acteur="; print_r($acteur);
@@ -129,6 +130,6 @@ if ($_GET['action']=='actionsParActeur') {
 }
 
 if ($_GET['action']=='dump') {
-  echo "<pre>actions="; print_r($pasactions->php());
+  echo "<pre>actions="; print_r($pasactions);
   die();
 }
