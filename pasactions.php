@@ -68,12 +68,20 @@ if ($_GET['action']=='acteurs') {
       echo "Pas de Acteurs clés pour $id<br>\n";
     }
     else {
+      $actionActeurs = []; // acteurs de l'action sans doublon
       foreach ($pasaction['Acteurs clés'] as $typacteur => $acteur) {
-        if (!is_array($acteur))
-          ajoutActeurs($acteurs, [$acteur]);
-        else
-          ajoutActeurs($acteurs, $acteur);
+        if (!is_array($acteur)) {
+          if (!in_array($acteur, $actionActeurs))
+            $actionActeurs[] = $acteur;
+        }
+        else {
+          foreach ($acteur as $a)
+            if (!in_array($a, $actionActeurs))
+              $actionActeurs[] = $a;
+        }
       }
+      //echo "actionActeurs pour $paid="; print_r($actionActeurs); echo "<br>\n";
+      ajoutActeurs($acteurs, $actionActeurs);
     }
   }
   ksort($acteurs);
