@@ -94,9 +94,11 @@ class Search {
   }
 
   // indexe un doc principal cad correspondant à un fichier
-  static function indexMainDoc($docid) {
+  static function indexMainDoc(bool $global, string $docid) {
     //echo "indexMainDoc($docid)<br>\n";
-    self::query("replace into document values(\"".$docid."\", now())");
+    self::query("replace into document values(\"$docid\", now())");
+    if (!$global)
+      self::query("delete from fragment where fragid like \"$docid/%\"");
     try {
       $doc = new_yamlDoc($docid);
       if (!$doc)
@@ -140,7 +142,7 @@ class Search {
     }
     while (false !== ($entry = readdir($wd))) {
       //echo "$entry a traiter<br>\n";
-      if (in_array($entry, ['.','..','.git','.gitignore','.htaccess']))
+      if (in_array($entry, ['.','..','.git','.gitignore','.htaccess','.DS_Store']))
         continue;
       elseif (is_dir("$dirpath/$entry"))
         self::scanfiles($global, $docpath, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
@@ -151,7 +153,7 @@ class Search {
       elseif (preg_match('!^(.*)\.yaml$!', $entry, $matches)) {
         $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
         if ($global || self::isFileNewer("$dirpath/$entry", $docid))
-          self::indexMainDoc($docid);
+          self::indexMainDoc($global, $docid);
       }
       else
         echo "$entry non traite<br>\n";

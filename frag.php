@@ -1,23 +1,27 @@
 <?php
-//echo "<pre>_SERVER="; print_r($_SERVER); echo "</pre>\n";
+/*PhpDoc:
+name: frag.php
+title: frag.php - transforme un appel avec un fragid en un appel d'index.php avec doc et ypath
+doc: |
+  utilise header('Location: url') pour effectuer la transformation
+*/
+
 $fragid = explode('/', $_GET['fragid']);
-$dirpath = __DIR__."/docs";
+$dirpath = ''; // vide ou se termine par /
 $id0 = array_shift($fragid);
 //echo "id0=$id0<br>\n";
-while (is_dir("$dirpath/$id0")) {
-  $dirpath = "$dirpath/$id0";
+while (is_dir(__DIR__."/docs/$dirpath$id0")) {
+  $dirpath = "$dirpath$id0/";
   $id0 = array_shift($fragid);
 }
 //echo "dirpath=$dirpath<br>\n";
-if (is_file("$dirpath/$id0.yaml")) {
-  $dirpath = substr($dirpath, strlen(__DIR__."/docs/"));
-  $docid = ($dirpath ? "$dirpath/$id0" : $id0);
+if (is_file(__DIR__."/docs/$dirpath$id0.yaml")) {
   $ypath = '/'.implode('/', $fragid);
-  echo "<a href='index.php?doc=$docid&amp;ypath=$ypath'>$_GET[fragid]</a><br>";
+  echo "<a href='index.php?doc=$dirpath$id0&amp;ypath=$ypath'>$_GET[fragid]</a><br>";
   $dirname = dirname($_SERVER['SCRIPT_NAME']);
   //echo "dirname=$dirname<br>\n";
-  header("Location: http://$_SERVER[SERVER_NAME]$dirname/index.php?doc=$docid&ypath=$ypath");
+  header("Location: http://$_SERVER[SERVER_NAME]$dirname/index.php?doc=$dirpath$id0&ypath=$ypath");
 }
 else {
-  echo "$dirpath/$id0.yaml Not a file<br>\n";
+  echo "Erreur dans frag.php: $dirpath$id0.yaml Not a file<br>\n";
 }

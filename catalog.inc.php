@@ -33,8 +33,11 @@ use Symfony\Component\Yaml\Yaml;
 class YamlCatalog extends YamlDoc {
   function show(string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    $dirname = dirname($_GET['doc']);
-    if ($dirname=='.')
+    if (is_dir(__DIR__."/docs/$_GET[doc]")) {
+      //echo "$_GET[doc] est un répertoire";
+      $dirname = "$_GET[doc]/";
+    }
+    elseif (($dirname = dirname($_GET['doc'])) == '.')
       $dirname = '';
     else
       $dirname .= '/';

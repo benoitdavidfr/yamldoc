@@ -90,6 +90,11 @@ class YamlData extends YamlDoc {
     elseif (isset($this->data['tables'])) // le document contient une liste de tables
       $this->data['tables'] = null;
   }
+  
+  // retourne une structure Php
+  function php() {
+    return $this->data;
+  }
 };
 
 
