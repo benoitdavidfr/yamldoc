@@ -21,9 +21,10 @@ $pasactions = $pas->php()['tables']['actions']['data']->php();
 $pasorganisations = $pas->php()['tables']['organisations']['data']->php();
 
 if ($_GET['action']=='actions') {
-  echo "<ul>\n";
+  echo "<h3>Liste des actions</h3><ul>\n";
   foreach ($pasactions as $paid => $pasaction) {
-    echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
+    echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Ftables%2Factions%2Fdata%2F$paid'>",
+         "$pasaction[Titre]</a>\n";
   }
   die();
 }
@@ -125,7 +126,8 @@ if ($_GET['action']=='actionsParActeur') {
         $actionSelectionnee = true;
     }
     if ($actionSelectionnee)
-      echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
+      echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Ftables%2Factions%2Fdata%2F$paid'>",
+           "$pasaction[Titre]</a>\n";
   }
 }
 
