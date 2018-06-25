@@ -11,7 +11,7 @@ echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>pasactions</title>
 
 if (!isset($_GET['action'])) {
   echo "<h3>Menu</h3><ul>\n";
-  echo "<li><a href='?action=actions'>lsite des actions</a>\n";
+  echo "<li><a href='?action=actions'>liste des actions</a>\n";
   echo "<li><a href='?action=acteurs'>liste des acteurs</a>\n";
   echo "<li><a href='?action=dump'>dump actions</a>\n";
   die();
@@ -96,7 +96,7 @@ if ($_GET['action']=='acteurs') {
 
 // rempalec les caractères encodés par le caractère accentué correspondant
 function accents(string $url): string {
-  return str_replace(['%27','%C3%A9','%C3%A7'],["'",'é','ç'], $url);
+  return str_replace(['%27','%C3%A0','%C3%A7','%C3%A9'],["'",'à','ç','é'], $url);
 }
 
 // affichage des actions d'un acteur
