@@ -72,6 +72,7 @@ require_once __DIR__.'/servreg.inc.php';
 require_once __DIR__.'/tree.inc.php';
 require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/multidata.inc.php';
+require_once __DIR__.'/yamlskos.inc.php';
 require_once __DIR__.'/git.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;

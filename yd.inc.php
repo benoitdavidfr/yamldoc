@@ -394,6 +394,7 @@ function new_yamlDoc(string $docuid): ?YamlDoc {
   else
     $doc = new YamlDoc($data);
   ydsetWriteAccess($docuid, $doc->authorizedWriter());
+  $doc->writePser($docuid);
   return $doc;
 }
 
@@ -412,6 +413,9 @@ class YamlDoc {
   protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire comme détaillé ci-dessus
   
   function __construct($data) { $this->data = $data; }
+  
+  // Par défaut aucun .pser n'est produit
+  function writePser(string $docuid): void { }
   
   // permet d'accéder aux champs du document comme si c'était un champ de la classe
   function __get(string $name) {

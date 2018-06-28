@@ -68,13 +68,10 @@ class YamlData extends YamlDoc {
       throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
-  // en plus de l'affichage, si le fichier pser n'existe pas ou n'est pas à jour, il est regénéré
-  function show(string $ypath): void {
-    //echo "appel de YamlData::show($ypath)<br>\n";
-    parent::show($ypath);
-    if (!is_file(__DIR__."/docs/$_GET[doc].pser")
-     || (filemtime(__DIR__."/docs/$_GET[doc].pser") <= filemtime(__DIR__."/docs/$_GET[doc].yaml"))) {
-      file_put_contents(__DIR__."/docs/$_GET[doc].pser", serialize($this));
+  function writePser(string $docuid): void {
+    if (!is_file(__DIR__."/docs/$docuid.pser")
+     || (filemtime(__DIR__."/docs/$docuid.pser") <= filemtime(__DIR__."/docs/$docuid.yaml"))) {
+      file_put_contents(__DIR__."/docs/$docuid.pser", serialize($this));
     }
   }
   

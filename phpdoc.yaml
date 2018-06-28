@@ -34,6 +34,8 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  27-28/6/2018:
+    - ajout de YamlSkos pour gérer les thésaurus
   16-18/6/2018:
     - gestion d'un index plein texte avec MySQL
     - il faut finaliser l'outil de recherche

@@ -18,6 +18,7 @@ require_once __DIR__.'/servreg.inc.php';
 require_once __DIR__.'/tree.inc.php';
 require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/multidata.inc.php';
+require_once __DIR__.'/yamlskos.inc.php';
 require_once __DIR__.'/search.inc.php';
 require_once __DIR__.'/mysqlparams.inc.php';
 
