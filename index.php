@@ -28,6 +28,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  29-30/6/2018:
+  - gestion multi-store
   18-19/6/2018:
   - ajout cmde reindex pour reindexer les documents en full text de manière incrémentale
   21/5/2018:
@@ -210,6 +212,17 @@ class CallingGraph {
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
 
+{ // gestion de la variable en env store
+  if (isset($_GET['store']))
+    $_SESSION['store'] = $_GET['store'];
+  elseif (!isset($_SESSION['store'])) {
+    if ($_SERVER['SERVER_NAME']=='georef.eu')
+      $_SESSION['store'] = 'pub';
+    else
+      $_SESSION['store'] = 'docs';
+  }
+}
+
 //echo getcwd() . "<br>\n";
 show_menu(CallingGraph::makeBreadcrumb());
 
@@ -379,9 +392,9 @@ if ($_GET['action']=='check') {
   die();
 }
 
-// action reindex - re-indexation incrémentale de tous les fichiers
+// action reindex - re-indexation incrémentale de tous les fichiers du store courant
 if ($_GET['action']=='reindex') {
-  Search::indexAllDocs(false, 'docs');
+  Search::indexAllDocs(false, $_SESSION['store']);
   die("reindex OK<br>\n");
 }
 

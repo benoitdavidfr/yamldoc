@@ -3,6 +3,7 @@
 name: yamlskos.inc.php
 title: gestion d'un YamlSkos
 doc: |
+  voir le code
 journal: |
   27-28/6/2018:
   - création
@@ -33,7 +34,7 @@ $phpDocs['yamlskos.inc.php'] = <<<EOT
       - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
           - hasTopConcept qui liste les identifiants des domaines de 
   journal: |
-    27-28/6/2018:
+    27-29/6/2018:
     - création
 EOT;
 }
@@ -91,12 +92,7 @@ class YamlSkos extends YamlDoc {
     Concept::fillNarrowers($this->concepts);
   }
   
-  function writePser(string $docuid): void {
-    if (!is_file(__DIR__."/docs/$docuid.pser")
-     || (filemtime(__DIR__."/docs/$docuid.pser") <= filemtime(__DIR__."/docs/$docuid.yaml"))) {
-      file_put_contents(__DIR__."/docs/$docuid.pser", serialize($this));
-    }
-  }
+  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
   
   function __get(string $name) {
     return $this->$name ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);

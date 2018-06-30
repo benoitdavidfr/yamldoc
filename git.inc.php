@@ -24,8 +24,8 @@ function git_cmde(string $cmde, array $options=[]): int {
   //echo "cmde: $cmde<br>\n";
   //echo "getcwd=",getcwd(),"<br>\n";
   $okReturnCodes = isset($options['okReturnCodes']) ? $options['okReturnCodes'] : [0];
-  if (!isset($options['src']))
-    chdir('docs');
+  if (!isset($options['src']))  
+    chdir($_SESSION['store']);
   exec($cmde, $output, $ret);
   if (!isset($options['src']))
     chdir('..'); // permet d'enchainer plusieurs cmdes

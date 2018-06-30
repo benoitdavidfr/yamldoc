@@ -68,12 +68,7 @@ class YamlData extends YamlDoc {
       throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
-  function writePser(string $docuid): void {
-    if (!is_file(__DIR__."/docs/$docuid.pser")
-     || (filemtime(__DIR__."/docs/$docuid.pser") <= filemtime(__DIR__."/docs/$docuid.yaml"))) {
-      file_put_contents(__DIR__."/docs/$docuid.pser", serialize($this));
-    }
-  }
+  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
   
   // complète la table en paramètre avec les enr. de la table du document et renvoie le résultat
   function appendTable(YamlDataTable $table): YamlDataTable {

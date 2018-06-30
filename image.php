@@ -6,4 +6,4 @@
 $imagepath = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
 //echo "imagepath=$imagepath";
 header('Content-type: image/gif');
-echo file_get_contents(__DIR__."/docs$imagepath");
+echo file_get_contents(__DIR__."/$_SESSION[store]$imagepath");

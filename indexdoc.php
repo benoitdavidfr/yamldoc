@@ -35,7 +35,7 @@ if (!isset($_GET['action'])) {
   die();
 }
 
-Search::indexAllDocs($_GET['action']=='global', 'docs');
-//Search::indexalldocs($_GET['action']=='global', 'docs', 'organization');
-//Search::indexalldocs($_GET['action']=='global', 'docs', '', '^gtv-meetup-20180607');
+Search::indexAllDocs($_GET['action']=='global', $_SESSION['store']);
+//Search::indexalldocs($_GET['action']=='global', $_SESSION['store'], 'organization');
+//Search::indexalldocs($_GET['action']=='global', $_SESSION['store'], '', '^gtv-meetup-20180607');
 die("FIN OK<br>\n");
