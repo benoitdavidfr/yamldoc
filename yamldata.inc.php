@@ -30,6 +30,8 @@ doc: |
   De plus une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
 journal: |
+  1/7/2018:
+  - YamlDataTable implémente IteratorAggregate
   21/6/2018:
   - ajout de la méthode shrink() pour réduire l'espace mémoire utilisé dans admin.php
   9/6/2018:

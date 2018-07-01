@@ -8,6 +8,10 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal: |
+  1/7/2018:
+    - redéfinition des tables SQL pour y intégrer le multi-store
+    - possibilité d'effectuer une recherche sur pub si non benoit
+    - redéfinition des points d'entrée d'indexation
   20-21/6/2018:
     - finalisation de l'indexation incrémentale
     - restructuration des fonctions en classe statique partageant $mysqli et $currentDocs

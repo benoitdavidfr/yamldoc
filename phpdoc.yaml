@@ -34,6 +34,11 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  29/6-1/7/2018:
+    - gestion multi-store
+    - modification de la signature de plusieurs fonctions de yd.inc.php
+    - ajout implémentation de IteratorAggregate pour YamlDataTable
+    - adaptation de l'outil de recherche
   27-29/6/2018:
     - ajout de YamlSkos pour gérer les thésaurus
     - possibilité de gérer des images avec YamlSkos
