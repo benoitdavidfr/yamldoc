@@ -335,15 +335,15 @@ if (!isset($_GET['action'])) {
 // action edit - génération du formulaire d'édition du document courant
 if ($_GET['action']=='edit') {
   // verification que le document est consultable
-  if (!ydcheckReadAccess($_GET['doc']))
+  if (!ydcheckReadAccess($_SESSION['store'], $_GET['doc']))
     die("accès interdit");
   // verification que le document est modifiable
-  if (ydcheckWriteAccess($_GET['doc'])<>1)
+  if (ydcheckWriteAccess($_SESSION['store'], $_GET['doc'])<>1)
     die("mise à jour interdite");
   // verouillage du document pour éviter des mises à jour concurrentielles
-  if (!ydlock($_GET['doc']))
+  if (!ydlock($_SESSION['store'], $_GET['doc']))
     die("mise à jour impossible document verouillé");
-  $text = ydread($_GET['doc']);
+  $text = ydread($_SESSION['store'], $_GET['doc']);
   echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
        "<tr><td><textarea name='text' rows='40' cols='120'>$text</textarea></td></tr>\n",
        "<tr><td><input type='submit' value='Enregistrer'></td></tr>\n",
@@ -360,7 +360,7 @@ if ($_GET['action']=='store') {
     $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   }
   elseif (strlen($_POST['text'])==0) {
-    yddelete($_GET['doc']);
+    yddelete($_SESSION['store'], $_GET['doc']);
     echo "<b>document vide $_GET[doc] effacé</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
@@ -369,7 +369,7 @@ if ($_GET['action']=='store') {
       echo "Aucun catalogue disponible<br>\n";
   }
   else {
-    $ext = ydwrite($_GET['doc'], $_POST['text']);
+    $ext = ydwrite($_SESSION['store'], $_GET['doc'], $_POST['text']);
     echo "Enregistrement du document $_GET[doc]<br>\n";
     //git_commit($_GET['doc'], $ext);
     try {
@@ -393,7 +393,7 @@ if ($_GET['action']=='check') {
 
 // action reindex - re-indexation incrémentale de tous les fichiers du store courant
 if ($_GET['action']=='reindex') {
-  Search::indexAllDocs(false, $_SESSION['store']);
+  Search::incrIndex($_SESSION['store']);
   die("reindex OK<br>\n");
 }
 
@@ -412,10 +412,16 @@ if ($_GET['action']=='version') {
   if (!isset($_GET['name'])) {
     echo "<h2>Documentation des scripts Php</h2><ul>\n";
     foreach ($phpDocs as $name => $phpDoc) {
-      $phpDoc = Yaml::parse($phpDoc);
-      echo "<li><a href='?action=version",
-           isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
-           "&amp;name=$name'>$phpDoc[title]</a>\n";
+      try {
+        $phpDoc = Yaml::parse($phpDoc);
+        echo "<li><a href='?action=version",
+             isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
+             "&amp;name=$name'>$phpDoc[title]</a>\n";
+      }
+      catch (ParseException $exception) {
+        printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+        echo "<pre>",$phpDoc,"</pre>\n";
+      }
     }
   }
   else {

@@ -11,8 +11,9 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
-  29-30/6/2018:
+  29/6-1/7/2018:
   - gestion multi-store
+  - modification de la signature de plusieurs fonctions
   12/6/2018:
   - correction d'un bug
   10/6/2018:
@@ -170,11 +171,11 @@ function ydcheckWriteAccess(string $store, string $docuid): int {
     : -1;
 }
 
-function ydlock(string $store, string $uid): bool {
+function ydlock(string $store, string $docuid): bool {
   //echo "ydlock($uid)<br>\n";
-  if (file_exists(__DIR__."/$store/$uid.lock"))
+  if (file_exists(__DIR__."/$store/$docuid.lock"))
     return false;
-  file_put_contents(__DIR__."/$store/$uid.lock", 'lock');
+  file_put_contents(__DIR__."/$store/$docuid.lock", 'lock');
   $_SESSION['locks'][] = "$store/$docuid";
   return true;
 }

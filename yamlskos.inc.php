@@ -10,32 +10,32 @@ journal: |
 */
 {
 $phpDocs['yamlskos.inc.php'] = <<<EOT
-  name: yamlskos.inc.php
-  title: gestion d'un YamlSkos
-  doc: |
-    Un document YamlSkos comprend:
-  
-      - des champs de métadonnées DublinCore dont au moins:
-        - title: le titre du thésaurus
-        - language: la ou les langues
-      - un champ concepts qui liste les concepts ; chacun identifié par une clé et contenant au moins les champs:
-          - prefLabel qui porte une étiquete mono ou multi-lingue,
-          - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
-          - soit:
-              - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
-              - broader avec les concepts plus génériques
-      - un champ schemes qui contient les micro-thésaurus définis comme scheme Skos ; chaque scheme est identifié
-        par une clé et contient au moins les champs:
-          - prefLabel qui porte une étiquete mono ou multi-lingue,
-          - domain qui contient l'identifiant du domaine auquel le scheme est rattaché
-      - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
-        contient au moins les champs:
-          - prefLabel qui porte une étiquete mono ou multi-lingue,
-      - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
-          - hasTopConcept qui liste les identifiants des domaines de 
-  journal: |
-    27-29/6/2018:
-    - création
+name: yamlskos.inc.php
+title: gestion d'un YamlSkos
+doc: |
+  Un document YamlSkos comprend:
+
+    - des champs de métadonnées DublinCore dont au moins:
+      - title: le titre du thésaurus
+      - language: la ou les langues
+    - un champ concepts qui liste les concepts ; chacun identifié par une clé et contenant au moins les champs:
+        - prefLabel qui porte une étiquete mono ou multi-lingue,
+        - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
+        - soit:
+            - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
+            - broader avec les concepts plus génériques
+    - un champ schemes qui contient les micro-thésaurus définis comme scheme Skos ; chaque scheme est identifié
+      par une clé et contient au moins les champs:
+        - prefLabel qui porte une étiquete mono ou multi-lingue,
+        - domain qui contient l'identifiant du domaine auquel le scheme est rattaché
+    - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
+      contient au moins les champs:
+        - prefLabel qui porte une étiquete mono ou multi-lingue,
+    - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
+        - hasTopConcept qui liste les identifiants des domaines de 
+journal: |
+  27-29/6/2018:
+  - création
 EOT;
 }
 require_once __DIR__.'/../vendor/autoload.php';
@@ -95,7 +95,7 @@ class YamlSkos extends YamlDoc {
   function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
   
   function __get(string $name) {
-    return $this->$name ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
+    return isset($this->$name) ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
   }
   
   

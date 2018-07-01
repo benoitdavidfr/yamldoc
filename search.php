@@ -12,14 +12,11 @@ require_once __DIR__.'/mysqlparams.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-ini_set('memory_limit', '1024M');
-ini_set('max_execution_time', 600);
+//ini_set('memory_limit', '1024M');
+//ini_set('max_execution_time', 600);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>search</title></head><body>\n";
 //echo "<pre>_SESSION = "; print_r($_SESSION); echo "<pre>";
-if ($_SESSION['homeCatalog']<>'benoit') {
-  die("accès interdit<br>\n");
-}
 
 $key = isset($_GET['key']) ? $_GET['key'] : '';
 $value = isset($_GET['value']) ? $_GET['value'] : '';
@@ -33,6 +30,10 @@ if (!$key && !$value)
   die();
 
 $where = [];
+// solution simplifiée: si je suis benoit alors je cherche dans les différents stores,
+// sinon je ne cherche que dans pub
+if ($_SESSION['homeCatalog']<>'benoit')
+  $where[] = "store='pub'";
 if ($key)
   $where[] = "fragid like \"%$key%\"";
 if ($value)

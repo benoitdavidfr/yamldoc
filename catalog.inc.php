@@ -14,17 +14,17 @@ journal: |
 */
 {
 $phpDocs['catalog.inc.php'] = <<<'EOT'
-  name: catalog.inc.php
-  title: catalog.inc.php - classes des catalogues V2
-  doc: |
-    Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
-    Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
-    En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
-  journal: |
-    21/6/2018:
-      - V2
-    12/5/2018:
-      - scission de yd.inc.php
+name: catalog.inc.php
+title: catalog.inc.php - classes des catalogues V2
+doc: |
+  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
+  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
+  En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
+journal: |
+  21/6/2018:
+    - V2
+  12/5/2018:
+    - scission de yd.inc.php
 EOT;
 }
 use Symfony\Component\Yaml\Yaml;
