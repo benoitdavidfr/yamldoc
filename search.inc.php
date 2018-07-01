@@ -138,7 +138,8 @@ class Search {
   static function scanfiles(bool $global, string $store, string $ssdir, string $fileNamePattern) {
     $dirpath = __DIR__.'/'.$store.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
     if (($wd = opendir($dirpath))===FALSE) {
-      throw new Exception("Erreur ouverture de $dirpath");
+      echo "Erreur ouverture de $dirpath<br>\n";
+      return;
     }
     while (false !== ($entry = readdir($wd))) {
       //echo "$entry a traiter<br>\n";
