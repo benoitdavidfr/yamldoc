@@ -5,6 +5,8 @@ title: admin.php - permet de visualiser l'ensemble des docs en affichant la hié
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 journal:
+  1/7/2018:
+    adaptation multi-store
   21/5/2018:
     correction de bugs
   19/5/2018:
@@ -12,13 +14,8 @@ journal:
   12/5/2018:
     refonte
 */
-session_start();
 require_once __DIR__.'/yd.inc.php';
-require_once __DIR__.'/catalog.inc.php';
-require_once __DIR__.'/servreg.inc.php';
-require_once __DIR__.'/tree.inc.php';
-require_once __DIR__.'/yamldata.inc.php';
-require_once __DIR__.'/multidata.inc.php';
+require_once __DIR__.'/ydclasses.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
@@ -26,29 +23,40 @@ ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
-//echo "<pre>_SESSION="; print_r($_SESSION); echo "</pre>\n";
+
+if (!isset($_GET['store'])) {
+  $wd = opendir(__DIR__);
+  echo "choix du store :<ul>\n";
+  while (false !== ($entry = readdir($wd))) {
+    if (in_array($entry, ['.','..','.git']))
+      continue;
+    if (is_dir(__DIR__."/$entry"))
+      echo "<li><a href='?store=$entry'>$entry\n";
+  }
+  die("</ul>\n");
+}
 
 // [ docid=> [ 'doc'=> objet doc, 'ext'=> ext, 'ssdir'=> ssdir, 'catalogs'?=> [ catalogid ], 'shown'?=> 1 ] ]
 $docs = [];
 
 // $docpath est le chemin Unix de la racine des documents
 // $ssdir est le chemin relatif d'un répertoire
-function scan(string $docpath, string $ssdir='') {
+function scan(string $store, string $ssdir='') {
   global $docs;
-  $dirpath = $docpath.($ssdir ? '/'.$ssdir : '');
+  $dirpath = $store.($ssdir ? '/'.$ssdir : '');
   $wd = opendir($dirpath);
   while (false !== ($entry = readdir($wd))) {
     //echo "$entry a traiter<br>\n";
     if (in_array($entry, ['.','..','.git','.gitignore','.htaccess']))
       continue;
-    elseif (is_dir($docpath.($ssdir ? "/$ssdir" : '')."/$entry"))
-      scan($docpath, $ssdir ? "$ssdir/$entry" : $entry);
+    elseif (is_dir($store.($ssdir ? "/$ssdir" : '')."/$entry"))
+      scan($store, $ssdir ? "$ssdir/$entry" : $entry);
     elseif (preg_match('!^(.*)\.(yaml|php)$!', $entry, $matches)) {
       $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
       try {
-        $doc = new_yamlDoc($docid);
+        $doc = new_yamlDoc($store, $docid);
         if (!$doc)
-          echo "Erreur new_yamlDoc($docid) ligne ",__LINE__,"<br>\n";
+          echo "Erreur new_yamlDoc($store, $docid) ligne ",__LINE__,"<br>\n";
         elseif (get_class($doc)=='YamlData')
           $doc->shrink();
         $docs[$docid]['doc'] = $doc;
@@ -56,18 +64,19 @@ function scan(string $docpath, string $ssdir='') {
       catch (ParseException $exception) {
         $docs[$docid]['doc'] = null;
         printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
-        $docs[$docid]['txt'] = ydread($docid);
+        $docs[$docid]['txt'] = ydread($store, $docid);
       }
       $docs[$docid]['ssdir'] = $ssdir;
       $docs[$docid]['ext'] = $matches[2];
-      $docs[$docid]['size'] = filesize($docpath.'/'.($ssdir ? "$ssdir/" : '').$entry);
+      $docs[$docid]['size'] = filesize($store.'/'.($ssdir ? "$ssdir/" : '').$entry);
     }
     elseif (!preg_match('!^(.*)\.(pser)$!', $entry))
       echo "$entry non traite<br>\n";
   }
   closedir($wd);
 }
-scan('docs');
+
+scan($_GET['store']);
 
 // enregistrement pour chaque document des catalogues dans lesquels il est référencé
 foreach ($docs as $docid => $doc) {
@@ -175,7 +184,7 @@ else {
 }
 
 echo "<b>Menu:</b><br><ul>
-  <li><a href='?'>consulter les arborescences de documents</a>
-  <li><a href='?action=prot'>consulter les protections</a>
-  <li><a href='?action=stats'>calculer les stats</a>
+  <li><a href='?'>retour au choix du store</a>
+  <li><a href='?store=$_GET[store]&amp;action=prot'>consulter les protections</a>
+  <li><a href='?store=$_GET[store]&amp;action=stats'>calculer les stats</a>
 </ul>\n";
