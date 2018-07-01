@@ -92,7 +92,7 @@ class YamlSkos extends YamlDoc {
     Concept::fillNarrowers($this->concepts);
   }
   
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
   
   function __get(string $name) {
     return $this->$name ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);

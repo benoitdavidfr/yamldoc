@@ -25,6 +25,8 @@ require_once __DIR__.'/mysqlparams.inc.php';
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
+$stores = ['pub','docs'];
+
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
 
 if (!isset($_GET['action'])) {
@@ -35,7 +37,9 @@ if (!isset($_GET['action'])) {
   die();
 }
 
-Search::indexAllDocs($_GET['action']=='global', $_SESSION['store']);
-//Search::indexalldocs($_GET['action']=='global', $_SESSION['store'], 'organization');
-//Search::indexalldocs($_GET['action']=='global', $_SESSION['store'], '', '^gtv-meetup-20180607');
+if ($_GET['action']=='global')
+  Search::globalIndex($stores);
+else
+  foreach ($stores as $store)
+    Search::incrIndex($store);
 die("FIN OK<br>\n");

@@ -68,7 +68,7 @@ class YamlData extends YamlDoc {
       throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
   
   // complète la table en paramètre avec les enr. de la table du document et renvoie le résultat
   function appendTable(YamlDataTable $table): YamlDataTable {
@@ -93,7 +93,7 @@ class YamlData extends YamlDoc {
 // contenu d'une table
 // objet se retouvant à l'intérieur d'un doc
 // est créé par YamData lui-même détecté par le champ yamlClass du document
-class YamlDataTable implements YamlDocElement {
+class YamlDataTable implements YamlDocElement, IteratorAggregate {
   protected $yamlSchema; // yamlSchema sous forme d'un array Php ou null
   protected $attrs; // liste des attributs détectés dans la table
   protected $data; // contenu de data sous forme d'un arrray Php
@@ -279,4 +279,7 @@ class YamlDataTable implements YamlDocElement {
     }
     $this->data[$k] = $v;
   }
+  
+  // interface IteratorAggregate
+  function getIterator() { return new ArrayIterator($this->tuples()); }
 };

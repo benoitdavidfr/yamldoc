@@ -38,10 +38,10 @@ if ($key)
 if ($value)
   $where[] = "match (text) against (\"$value\" in boolean mode)";
 if ($value)
-  $sql = "select match (text) against (\"$value\" in boolean mode) relevance, fragid, text from fragment\n"
+  $sql = "select store, match (text) against (\"$value\" in boolean mode) relevance, fragid, text from fragment\n"
     ."where ".implode(' and ', $where);
 else
-  $sql = "select fragid, text from fragment\n"
+  $sql = "select store, fragid, text from fragment\n"
     ."where ".implode(' and ', $where);
 
 /*
@@ -61,7 +61,7 @@ while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
   echo "<tr>";
   if ($value)
     printf('<td>%.2f</td>', $tuple['relevance']);
-  echo "<td><a href='frag.php?fragid=$tuple[fragid]'>$tuple[fragid]</a></td>";
+  echo "<td><a href='frag.php?store=$tuple[store]&amp;fragid=$tuple[fragid]'>$tuple[fragid]</a></td>";
   echo "<td>";
   showDoc($tuple['text']);
   echo "</td></tr>\n";

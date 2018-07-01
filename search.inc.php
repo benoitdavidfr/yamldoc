@@ -43,25 +43,25 @@ class Search {
   // exécute une requête MySQL, soulève une exception en cas d'erreur, renvoie le résultat
   static function query(string $sql) {
     if (!($result = self::$mysqli->query($sql)))
-      throw new Exception("Req. \"$sql\" invalide: ".$mysqli->error);
+      throw new Exception("Req. \"$sql\" invalide: ".self::$mysqli->error);
     return $result;
   }
   
   // indexe un fragment élémentaire ($docid, $val)
-  static function indexstring(string $docid, string $val) {
-    if (strlen($docid) > 250) {
+  static function indexstring(string $store, string $docid, string $val) {
+    if (strlen($docid) > 200) {
       echo "docid \"$docid\" trop long non indexé<br>\n";
       return;
     }
     $docid = str_replace(['\\','"'],['\\\\','\"'], $docid);
     $val = str_replace(['\\','"'],['\\\\','\"'], $val);
-    self::query("replace into fragment values(\"$docid\", \"$val\")");
+    self::query("replace into fragment(store,fragid,text) values('$store', \"$docid\", \"$val\")");
   }
 
   // indexe un document
-  static function indexdoc(string $docid, $doc) {
+  static function indexdoc(string $store, string $docid, $doc) {
     //return;
-    echo "indexdoc($docid)<br>\n";
+    //echo "indexdoc($store, $docid)<br>\n";
     //if (true || ($docid=='ZZorganization/misc')) { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
     if (is_array($doc))
       $content = $doc;
@@ -74,19 +74,19 @@ class Search {
     else
       die("erreur dans indexdoc() sur $docid");
     if (is_string($content)) {
-      self::indexstring($docid, $content);
+      self::indexstring($store, $docid, $content);
       return;
     }
     //if ($docid=='ZZorganization/misc') { echo "<pre>content="; print_r($content); echo "</pre>\n"; }
     foreach ($content as $key => $val) {
       //echo "key=$key<br>\n";
       if (is_string($val))
-        self::indexstring("$docid/$key", $val);
+        self::indexstring($store, "$docid/$key", $val);
       elseif (is_numeric($val) || is_bool($val) || is_null($val)) {}
       elseif (is_array($val) || is_object($val))
-        self::indexdoc("$docid/$key", $val);
+        self::indexdoc($store, "$docid/$key", $val);
       else {
-        echo "nothing done for $docid/$key<br>\n";
+        echo "nothing done for $store $docid/$key<br>\n";
         echo "<pre>val="; var_dump($val); echo "</pre>\n";
         die("FIN ligne ".__LINE__);
       }
@@ -94,19 +94,19 @@ class Search {
   }
 
   // indexe un doc principal cad correspondant à un fichier
-  static function indexMainDoc(bool $global, string $docid) {
-    //echo "indexMainDoc($docid)<br>\n";
-    self::query("replace into document values(\"$docid\", now())");
+  static function indexMainDoc(bool $global, string $store, string $docid) {
+    echo "indexMainDoc($store, $docid)<br>\n";
+    self::query("replace into document(store,docid,maj,readers) values('$store', \"$docid\", now(), null)");
     if (!$global)
-      self::query("delete from fragment where fragid like \"$docid/%\"");
+      self::query("delete from fragment where store='$store' and fragid like \"$docid/%\"");
     try {
-      $doc = new_yamlDoc($docid);
+      $doc = new_yamlDoc($store, $docid);
       if (!$doc)
-        echo "Erreur new_yamlDoc($docid)<br>\n";
-      self::indexdoc($docid, $doc);
+        echo "Erreur new_yamlDoc($store, $docid)<br>\n";
+      self::indexdoc($store, $docid, $doc);
     }
     catch (ParseException $exception) {
-      printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
+      printf("<b>Analyse YAML erronée sur document %s/%s: %s</b><br>", $store, $docid, $exception->getMessage());
     }
   }
 
@@ -132,11 +132,11 @@ class Search {
 
   // scanne récursiveme,nt le répertoire et appelle indexMainDoc() pour chaque fichier concerné
   // $global vaut true si 'global' ou false si 'incremental'
-  // $docpath est le chemin Unix relatif de la racine des documents
+  // $$store est le nom du store
   // $ssdir est le chemin relatif d'un répertoire
   // $fileNamePattern est un éventuel motif de nom de fichier
-  static function scanfiles(bool $global, string $docpath, string $ssdir, string $fileNamePattern) {
-    $dirpath = __DIR__.'/'.$docpath.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
+  static function scanfiles(bool $global, string $store, string $ssdir, string $fileNamePattern) {
+    $dirpath = __DIR__.'/'.$store.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
     if (($wd = opendir($dirpath))===FALSE) {
       throw new Exception("Erreur ouverture de $dirpath");
     }
@@ -144,8 +144,8 @@ class Search {
       //echo "$entry a traiter<br>\n";
       if (in_array($entry, ['.','..','.git','.gitignore','.htaccess','.DS_Store']))
         continue;
-      elseif (is_dir("$dirpath/$entry"))
-        self::scanfiles($global, $docpath, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
+      elseif (is_dir("$store/$entry"))
+        self::scanfiles($global, $store, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
       elseif (preg_match('!^(.*)\.(php|pser)$!', $entry))
         continue;
       elseif ($fileNamePattern && !preg_match("!$fileNamePattern!", $entry))
@@ -153,7 +153,7 @@ class Search {
       elseif (preg_match('!^(.*)\.yaml$!', $entry, $matches)) {
         $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
         if ($global || self::isFileNewer("$dirpath/$entry", $docid))
-          self::indexMainDoc($global, $docid);
+          self::indexMainDoc($global, $store, $docid);
       }
       else
         echo "$entry non traite<br>\n";
@@ -161,42 +161,50 @@ class Search {
     closedir($wd);
   }
 
-  // indexe tous les documents globalement ou de manière incrémentale
-  static function indexAllDocs(bool $global, string $docpath, string $ssdir='', string $fileNamePattern='') {
+  // indexe de manière incrémentale un store
+  static function incrIndex(string $store, string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
-    if ($global) { // reconstruction totale
-      foreach (
-        [
-          "drop table if exists document",
-          "create table document (
-            docid varchar(200) not null primary key comment 'id du doc',
-            maj datetime comment 'date et heure de maj du doc'
-          ) COMMENT = 'fragment'
-          DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
+    self::$currentDocs = [];
+    $result = self::query("select docid, maj from document where store='$store'");
+    while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
+      //print_r($tuple); echo "<br>\n";
+      self::$currentDocs[$tuple['docid']] = $tuple['maj'];
+    }
+    self::scanfiles(false, $store, $ssdir, $fileNamePattern);
+    foreach (self::$currentDocs as $docid => $maj) {
+      self::query("delete from document where store='$store' and docid=\"$docid\"");
+      self::query("delete from fragment where store='$store' and fragid like \"$docid/%\"");
+      echo "Suppression de $docid $maj de l'index plein texte<br>\n";
+    }
+  }
 
-          "drop table if exists fragment",
-          "create table fragment (
-            fragid varchar(200) not null primary key comment 'id du fragment',
-            text longtext comment 'texte associé'
-          ) COMMENT = 'fragment'
-          DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",        
-        ] as $sql)
-          self::query($sql);
-      self::scanfiles($global, $docpath, $ssdir, $fileNamePattern);
-      self::query("create fulltext index fragment_fulltext on fragment(text)");
-    }
-    else { // ajout incrémental des fichiers ayant été modifiés depuis la dernière fois
-      $result = self::query("select docid, maj from document");
-      while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
-        //print_r($tuple); echo "<br>\n";
-        self::$currentDocs[$tuple['docid']] = $tuple['maj'];
-      }
-      self::scanfiles($global, $docpath, $ssdir, $fileNamePattern);
-      foreach (self::$currentDocs as $docid => $maj) {
-        self::query("delete from document where docid=\"$docid\"");
-        self::query("delete from fragment where fragid like \"$docid/%\"");
-        echo "Suppression de $docid $maj de l'index plein texte<br>\n";
-      }
-    }
+  // indexe tous les documents globalement une liste de store
+  static function globalIndex(array $stores, string $ssdir='', string $fileNamePattern='') {
+    self::openMySQL(mysqlParams());
+    foreach (
+      [
+        "drop table if exists document",
+        "create table document (
+          store varchar(20) not null comment 'store',
+          docid varchar(200) not null comment 'id du doc',
+          maj datetime comment 'date et heure de maj du doc',
+          readers varchar(200) comment 'liste des lecteurs autorisés, null ssi tous',
+          primary key storedocid (store,docid)
+        ) COMMENT = 'document'
+        DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
+
+        "drop table if exists fragment",
+        "create table fragment (
+          store varchar(20) not null comment 'store',
+          fragid varchar(200) not null comment 'id du fragment',
+          text longtext comment 'texte associé',
+          primary key storefragid (store,fragid)
+        ) COMMENT = 'fragment'
+        DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
+      ] as $sql)
+        self::query($sql);
+    foreach ($stores as $store)
+      self::scanfiles(true, $store, $ssdir, $fileNamePattern);
+    self::query("create fulltext index fragment_fulltext on fragment(text)");
   }
 }

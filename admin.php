@@ -12,6 +12,7 @@ journal:
   12/5/2018:
     refonte
 */
+session_start();
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';
@@ -25,6 +26,7 @@ ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
+//echo "<pre>_SESSION="; print_r($_SESSION); echo "</pre>\n";
 
 // [ docid=> [ 'doc'=> objet doc, 'ext'=> ext, 'ssdir'=> ssdir, 'catalogs'?=> [ catalogid ], 'shown'?=> 1 ] ]
 $docs = [];
@@ -46,7 +48,7 @@ function scan(string $docpath, string $ssdir='') {
       try {
         $doc = new_yamlDoc($docid);
         if (!$doc)
-          echo "Erreur new_yamlDoc($docid)<br>\n";
+          echo "Erreur new_yamlDoc($docid) ligne ",__LINE__,"<br>\n";
         elseif (get_class($doc)=='YamlData')
           $doc->shrink();
         $docs[$docid]['doc'] = $doc;

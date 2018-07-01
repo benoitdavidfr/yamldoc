@@ -83,7 +83,7 @@ ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
 // Affichage du menu et du fil d'ariane comme array de docid
-function show_menu(array $breadcrumb) {
+function show_menu(string $store, array $breadcrumb) {
   // affichage du menu
   $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
   $ypatharg = $ypath ? '&amp;ypath='.urlencode($ypath): '';
@@ -96,10 +96,13 @@ function show_menu(array $breadcrumb) {
     echo "<td><a href='?doc=$docuid$ypatharg&amp;format=yaml'>yaml</a></td>\n";
     // showAsJSON
     echo "<td><a href='?doc=$docuid$ypatharg&amp;format=json'>json</a></td>\n";
+    // showPhpSrc - affiche le source Php
+    if ($docuid && (ydext($store, $docuid)=='php'))
+      echo "<td><a href='?action=showPhpSrc&amp;doc=$docuid'>PhpSrc</a></td>\n";
     // check
     //echo "<td><a href='?action=check&amp;doc=$docuid$ypatharg'>check</a></td>\n";
     // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
-    if (ydcheckWriteAccess($docuid)<>0)
+    if (ydcheckWriteAccess($store,$docuid)<>0)
       echo "<td><a href='?action=edit&amp;doc=$docuid'>edit</a></td>\n";
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
@@ -210,21 +213,17 @@ class CallingGraph {
   }
 }
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml</title></head><body>\n";
-
 { // gestion de la variable en env store
-  if (isset($_GET['store']))
+  if (isset($_GET['store'])) // si le paramètre store est défini alors la variable est reaffectée
     $_SESSION['store'] = $_GET['store'];
-  elseif (!isset($_SESSION['store'])) {
-    if ($_SERVER['SERVER_NAME']=='georef.eu')
-      $_SESSION['store'] = 'pub';
-    else
-      $_SESSION['store'] = 'docs';
-  }
+  elseif (!isset($_SESSION['store'])) // si non si la variable n'est pas affectée alors elle l'est par défaut
+    $_SESSION['store'] = in_array($_SERVER['SERVER_NAME'], ['georef.eu','localhost']) ? 'pub' : 'docs';
 }
 
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml $_SESSION[store]</title></head><body>\n";
+
 //echo getcwd() . "<br>\n";
-show_menu(CallingGraph::makeBreadcrumb());
+show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());
 
 // si un verrou a été posé alors il est levé
 ydunlockall();
@@ -236,12 +235,12 @@ if (isset($_GET['action']) && ($_GET['action']=='dump')) {
   echo "_SESSION = "; print_r($_SESSION);
   echo "_SERVER = "; print_r($_SERVER);
   if (isset($_GET['doc'])) {
-    if (!ydcheckReadAccess($_GET['doc']))
+    if (!ydcheckReadAccess($_SESSION['store'], $_GET['doc']))
       die("accès interdit");
     $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
     //$text = ydread($_GET['doc']);
     echo "<h2>doc $_GET[doc]</h2>\n";
-    $doc = new_yamlDoc($_GET['doc']);
+    $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
     if ($ypath)
       echo "ypath=$ypath\n";
     echo str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
@@ -271,7 +270,7 @@ if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='git_')) {
 
 // évite d'avoir à tester le paramètre doc dans les actions suivantes
 if (!isset($_GET['doc'])) {
-  die("<a href='?doc=default'>Accès au document par défaut</a>\n");
+  die("<a href='?doc=index'>Accès au document par défaut</a>\n");
 }
 
 
@@ -302,11 +301,11 @@ if (!isset($_GET['action'])) {
     die();
   }
   try {
-    $doc = new_yamlDoc($_GET['doc']);
+    $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
   }
   catch (Symfony\Component\Yaml\Exception\ParseException $exception) {
     printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-    echo "<pre>",ydread($_GET['doc']),"</pre>\n";
+    echo "<pre>",ydread($_SESSION['store'], $_GET['doc']),"</pre>\n";
     die();
   }
   if (!$doc) {
@@ -315,7 +314,7 @@ if (!isset($_GET['action'])) {
       echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
            "L'effacer dans le catalogue $parent</a><br>\n";
   }
-  elseif (!$doc->checkReadAccess($_GET['doc']))
+  elseif (!$doc->checkReadAccess($_SESSION['store'], $_GET['doc']))
     die("accès interdit");
   else {
     if ($doc->isHomeCatalog())
@@ -357,7 +356,7 @@ if ($_GET['action']=='store') {
   // graitement du cas d'appel de store non lié à l'edit
   if (!isset($_POST['text'])) {
     echo "<b>Erreur d'appel de la commande: aucun texte transmis</b><br>\n";
-    $doc = new_yamlDoc($_GET['doc']);
+    $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
     $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   }
   elseif (strlen($_POST['text'])==0) {
@@ -374,7 +373,7 @@ if ($_GET['action']=='store') {
     echo "Enregistrement du document $_GET[doc]<br>\n";
     //git_commit($_GET['doc'], $ext);
     try {
-      $doc = new_yamlDoc($_GET['doc']);
+      $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
       $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
     }
     catch (ParseException $exception) {
@@ -386,7 +385,7 @@ if ($_GET['action']=='store') {
 
 // action check - verification de la conformité d'un document à son éventuel schema
 if ($_GET['action']=='check') {
-  if (!($doc = new_yamlDoc($_GET['doc'])))
+  if (!($doc = new_yamlDoc($_SESSION['store'], $_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   die();
@@ -397,6 +396,16 @@ if ($_GET['action']=='reindex') {
   Search::indexAllDocs(false, $_SESSION['store']);
   die("reindex OK<br>\n");
 }
+
+// action showPhpSrc - affiche le source Php
+if ($_GET['action']=='showPhpSrc') {
+  if (ydext($_GET['doc'])<>'php')
+    die("Le document $_GET[doc] n'est pas une requête<br>\n");
+  echo "<b>Code source Php de $_GET[doc]</b>\n";
+  echo "<pre>",str_replace(['<'],['&lt;'],ydread($_GET['doc'])),"</pre>\n";
+  die("<br>\n");
+}
+
 
 // action version - affichage Phpdoc
 if ($_GET['action']=='version') {
