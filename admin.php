@@ -5,7 +5,7 @@ title: admin.php - permet de visualiser l'ensemble des docs en affichant la hié
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 journal:
-  1/7/2018:
+  1-2/7/2018:
     adaptation multi-store
   21/5/2018:
     correction de bugs
@@ -25,6 +25,7 @@ ini_set('max_execution_time', 600);
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
 if (!isset($_GET['store'])) {
+  // lecture de la liste des stores dans le fichier de configuration
   try {
     $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
   }
@@ -33,6 +34,7 @@ if (!isset($_GET['store'])) {
     echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
     die();
   }
+  // affichage du menu
   echo "choix du store :<ul>\n";
   foreach ($config['stores'] as $storeid => $store)
     echo "<li><a href='?store=$storeid'>$store[title]\n";

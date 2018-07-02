@@ -7,25 +7,34 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale il faut aussi vérifier que tous les docs indexés existent encore.
 journal: |
+  1-2/7/2018:
+    - adaptation au multi-store
+    - lecture de la liste des stores dans le fichier de configuration
   19-21/6/2018:
     - ajout indexation incrémentale
   17-18/6/2018:
     - création
 */
 require_once __DIR__.'/yd.inc.php';
-require_once __DIR__.'/catalog.inc.php';
-require_once __DIR__.'/servreg.inc.php';
-require_once __DIR__.'/tree.inc.php';
-require_once __DIR__.'/yamldata.inc.php';
-require_once __DIR__.'/multidata.inc.php';
-require_once __DIR__.'/yamlskos.inc.php';
+require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
 require_once __DIR__.'/mysqlparams.inc.php';
 
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
-$stores = ['pub','docs'];
+// lecture de la liste des stores dans le fichier de configuration
+{
+  try {
+    $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
+  }
+  catch (ParseException $exception) {
+    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+    echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
+    die();
+  }
+  $stores = array_keys($config['stores']);
+}
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
 
