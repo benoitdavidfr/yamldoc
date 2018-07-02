@@ -18,7 +18,8 @@ journal: |
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/mysqlparams.inc.php';
+if (file_exists(__DIR__.'/mysqlparams.inc.php'))
+  require_once __DIR__.'/mysqlparams.inc.php';
 
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
@@ -27,6 +28,11 @@ ini_set('max_execution_time', 600);
 $stores = array_keys(config()['stores']);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
+
+if (!function_exists('mysqlParams')) {
+  die("L'indexation n'est pas disponible car l'utilisation de MySQL n'a pas été paramétrée.<br>\n"
+    ."Pour le paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
+}
 
 if (!isset($_GET['action'])) {
   echo "<ul>",
