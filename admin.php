@@ -25,18 +25,10 @@ ini_set('max_execution_time', 600);
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>admin</title></head><body>\n";
 
 if (!isset($_GET['store'])) {
-  // lecture de la liste des stores dans le fichier de configuration
-  try {
-    $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
-  }
-  catch (ParseException $exception) {
-    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-    echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
-    die();
-  }
   // affichage du menu
+  // lecture de la liste des stores dans le fichier de configuration
   echo "choix du store :<ul>\n";
-  foreach ($config['stores'] as $storeid => $store)
+  foreach (config()['stores'] as $storeid => $store)
     echo "<li><a href='?store=$storeid'>$store[title]\n";
   die("</ul>\n");
 }

@@ -4,7 +4,8 @@ session_start();
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/mysqlparams.inc.php';
+if (file_exists(__DIR__.'/mysqlparams.inc.php'))
+  require_once __DIR__.'/mysqlparams.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
@@ -13,6 +14,11 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>search</title></head><body>\n";
 //echo "<pre>_SESSION = "; print_r($_SESSION); echo "<pre>";
+
+if (!function_exists('mysqlParams')) {
+  die("La recherche n'est pas disponible car l'utilisation de MySQL n'a pas été paramétrée.<br>\n"
+    ."Pour le paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
+}
 
 $key = isset($_GET['key']) ? $_GET['key'] : '';
 $value = isset($_GET['value']) ? $_GET['value'] : '';

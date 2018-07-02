@@ -67,7 +67,8 @@ EOT;
 }
 session_start();
 require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/mysqlparams.inc.php';
+if (file_exists(__DIR__.'/mysqlparams.inc.php'))
+  require_once __DIR__.'/mysqlparams.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/git.inc.php';
@@ -102,7 +103,8 @@ function show_menu(string $store, array $breadcrumb) {
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid'>clone</a></td>\n";
-    echo "<td><a href='?action=reindex&amp;doc=$docuid'>reindex</a></td>\n";
+    if (function_exists('mysqlParams'))
+      echo "<td><a href='?action=reindex&amp;doc=$docuid'>reindex</a></td>\n";
   }
   // dump
   echo "<td><a href='?action=dump",($docuid ? "&amp;doc=$docuid" : ''),$ypatharg,"'>dump</a></td>\n";
@@ -388,8 +390,12 @@ if ($_GET['action']=='check') {
 
 // action reindex - re-indexation incrémentale de tous les fichiers du store courant
 if ($_GET['action']=='reindex') {
-  Search::incrIndex($_SESSION['store']);
-  die("reindex OK<br>\n");
+  if (function_exists('mysqlParams')) {
+    Search::incrIndex($_SESSION['store']);
+    die("reindex OK<br>\n");
+  }
+  else
+    die("reindex impossible, fonction mysqlParams() non définie<br>\n");
 }
 
 // action showPhpSrc - affiche le source Php

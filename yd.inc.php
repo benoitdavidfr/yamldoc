@@ -11,7 +11,7 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
-  29/6-1/7/2018:
+  29/6-2/7/2018:
   - gestion multi-store
   - modification de la signature de plusieurs fonctions
   12/6/2018:
@@ -86,6 +86,22 @@ function dump($string) {
     echo "</tr>\n";
     $line++;
   }
+}
+
+// lecture du fichier de configuration
+function config() {
+  static $config = null;
+  if (!$config) {
+    try {
+      $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
+    }
+    catch (ParseException $exception) {
+      printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+      echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
+      die();
+    }
+  }
+  return $config;
 }
 
 // écriture d'un document, prend l'uid et le texte

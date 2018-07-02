@@ -24,17 +24,7 @@ ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
 // lecture de la liste des stores dans le fichier de configuration
-{
-  try {
-    $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
-  }
-  catch (ParseException $exception) {
-    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-    echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
-    die();
-  }
-  $stores = array_keys($config['stores']);
-}
+$stores = array_keys(config()['stores']);
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
 
