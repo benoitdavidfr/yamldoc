@@ -11,13 +11,13 @@ function mysqlParams() {
   // params doit contenir les paramètres de connexion à MySQL en fonction du serveur
   // la clé du tableau est le nom du serveur sur lequel fonctionne YamlDoc
   // la valeur associée définit les paramètres de connexions MySQL sous la forme
-  //   mysql://{login}:{mot_de_passe}@{serveur}/{base_de_données}
+  //   mysql://{login}:{mot_de_passe}@{serveurMySql}/{base_de_données}
   // où:
   //   - {login} et {mot_de_passe} sont le login et le mot de passe associé dans MySQL
-  //   - {serveur} est le nom du serveur MySQL
+  //   - {serveurMySql} est le nom du serveur MySQL
   //   - {base_de_données} est le nom de la base de données MySQL
   $params = [
-    'localhost'=> 'mysql://{login}:{mot_de_passe}@{serveur}/{base_de_données}',
+    'localhost'=> 'mysql://{login}:{mot_de_passe}@{serveurMySql}/{base_de_données}',
   ];
   if (php_sapi_name()<>'cli') {
   //    echo "NOT CLI<br>\n";
@@ -30,5 +30,5 @@ function mysqlParams() {
   if (isset($params[$server_name]))
     return $params[$server_name];
   else
-    throw new Exception("No params for $server_name");
+    throw new Exception("No params for $server_name dans mysqlparams.inc.php");
 }
