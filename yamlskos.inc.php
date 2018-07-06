@@ -4,9 +4,6 @@ name: yamlskos.inc.php
 title: gestion d'un YamlSkos
 doc: |
   voir le code
-journal: |
-  27-28/6/2018:
-  - création
 */
 {
 $phpDocs['yamlskos.inc.php'] = <<<EOT
@@ -30,10 +27,13 @@ doc: |
         - domain qui contient l'identifiant du domaine auquel le scheme est rattaché
     - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
       contient au moins les champs:
-        - prefLabel qui porte une étiquete mono ou multi-lingue,
+        - prefLabel qui porte une étiquette mono ou multi-lingue,
     - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
-        - hasTopConcept qui liste les identifiants des domaines de 
+        - hasTopConcept qui liste les identifiants des domaines de premier niveau
 journal: |
+  4/7/2018:
+  - possibilité d'une arborescence des domaines
+  - définition d'une classe DomainScheme
   27-29/6/2018:
   - création
 EOT;
@@ -53,77 +53,88 @@ class YamlSkos extends YamlDoc {
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
   protected $language; // liste des langages
   protected $domainScheme; // thésaurus des domaines
-  protected $domains; // liste des domaines décrits comme concepts Skos
-  protected $schemes; // liste des micro-thésaurus
-  protected $concepts; // liste des concepts
+  protected $domains; // dictionnaire des domaines décrits comme concepts Skos
+  protected $schemes; // dictionnaire des micro-thésaurus
+  protected $concepts; // dictionnaire des concepts
   
-  function __construct(array $yaml) {
+  function __construct(array &$yaml) {
     if (!isset($yaml['title']))
-      throw new Exception("Erreur: title absent dans la création YamlSkos");
+      throw new Exception("Erreur: champ title absent dans la création YamlSkos");
     if (!isset($yaml['language']))
-      throw new Exception("Erreur: language absent dans la création YamlSkos");
+      throw new Exception("Erreur: champ language absent dans la création YamlSkos");
     $this->language = is_string($yaml['language']) ? [ $yaml['language'] ] : $yaml['language'];
     if (!isset($yaml['domainScheme']))
-      throw new Exception("Erreur: domainScheme absent dans la création YamlSkos");
-    $this->domainScheme = $yaml['domainScheme'];
+      throw new Exception("Erreur: champ domainScheme absent dans la création YamlSkos");
+    $this->domainScheme = new DomainScheme($yaml['domainScheme'], $this->language);
     unset($yaml['domainScheme']);
     if (!isset($yaml['domains']))
-      throw new Exception("Erreur: domains absent dans la création YamlSkos");
+      throw new Exception("Erreur: champ domains absent dans la création YamlSkos");
     $this->domains = [];
     foreach ($yaml['domains'] as $id => $domain)
       $this->domains[$id] = new Domain($domain, $this->language);
     unset($yaml['domains']);
     if (!isset($yaml['schemes']))
-      throw new Exception("Erreur: schemes absent dans la création YamlSkos");
+      throw new Exception("Erreur: champ schemes absent dans la création YamlSkos");
     $this->schemes = [];
     foreach ($yaml['schemes'] as $id => $scheme)
       $this->schemes[$id] = new Scheme($scheme, $this->language);
     unset($yaml['schemes']);
     if (!isset($yaml['concepts']))
-      throw new Exception("Erreur: concepts absent dans la création YamlSkos");
+      throw new Exception("Erreur: champ concepts absent dans la création YamlSkos");
     $this->concepts = [];
     foreach ($yaml['concepts'] as $id => $concept)
       $this->concepts[$id] = new Concept($concept, $this->language);
     unset($yaml['concepts']);
     $this->_c = $yaml;
+    // remplit le lien domain -> scheme à partir du lien inverse
+    Scheme::fillSchemeChildren($this->schemes, $this->domains);
     // Si les micro-thésaurus ne référencent pas de topConcept alors ils sont déduits des concepts
     Scheme::fillTopConcepts($this);
-    // Si les concepts ne référencent pas de narrower alors ils sont déduits des broader
+    // Si les domaines ne référencent pas de narrower alors ils sont déduits des broader
+    Concept::fillNarrowers($this->domains);
+    // Si les concepts ne comportent pas de narrower alors ils sont déduits des broader
     Concept::fillNarrowers($this->concepts);
   }
   
-  function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
+  //function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
   
   function __get(string $name) {
     return isset($this->$name) ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
   }
   
-  
   function show(string $ypath): void {
+    //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath) {
       showDoc($this->_c);
-      $this->showSchemes();
+      $this->domainScheme->show($this->domains, $this->schemes);
     }
     elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
       showDoc($this->_c[$matches[1]]);
-    elseif (preg_match('!^/(schemes|concepts)(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/(schemes|concepts|domains)(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
       //print_r($matches);
       $what = $matches[1];
+      // affichage de tous les schemes ou tous les concepts
       if (!isset($matches[3])) {
         if ($what=='schemes')
-          $this->showSchemes();
-        else
+          $this->domainScheme->show($this->domains, $this->schemes);
+        elseif ($what=='concepts')
           Concept::showConcepts($this->concepts);
+        elseif ($what=='domains')
+          $this->domainScheme->show($this->domains, $this->schemes);
       }
       else {
         $id = $matches[3];
+        // affichage d'un scheme ou d'un concept particulier
         if (!isset($matches[5])) {
           if ($what=='schemes')
             $this->showScheme($id, null);
-          else
+          elseif ($what=='concepts')
             $this->showConcept($id, null);
+          elseif ($what=='domains')
+            $this->showDomain($id, null);
         }
         else {
+          // affichage d'un fragment d'un scheme ou d'un concept particulier
           $field = $matches[5];
           if ($what=='schemes')
             showDoc($this->schemes[$id]->extract($field));
@@ -133,33 +144,19 @@ class YamlSkos extends YamlDoc {
       }
     }
     else {
-      echo "ypath=$ypath inconnu<br>\n";
+      throw new Exception("ypath=$ypath non reconnu");
     }
   }
   
-  // Affiche l'ensemble des micro-thésaurus organisés par domaine
-  function showSchemes() {
-    $prefLabel = $this->domainScheme['prefLabel'];
-    if (!is_string($prefLabel))
-      $prefLabel = $prefLabel['fr'];
-    echo "<h2>$prefLabel</h2>\n";
-    //echo "<pre>domainScheme="; print_r($this->domainScheme); echo "</pre>\n";
-    echo "<ul>\n";
-    foreach ($this->domainScheme['hasTopConcept'] as $did) {
-      $domain = $this->domains[$did];
-      echo "<li>",$domain,"<ul>\n";
-      $children = [];
-      foreach ($this->schemes as $sid => $scheme) {
-        if ($scheme->domain && in_array($did, $scheme->domain)) {
-          $children[(string)$scheme] = $sid;
-        }
-      }
-      ksort($children);
-      foreach ($children as $label => $sid)
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$sid'>$label</a></li>\n";
-      echo "</ul>\n";
+  // affiche un domaine
+  function showDomain(string $domid, ?string $format) {
+    //echo "YamlSkos::showScheme(sid=$sid)<br>\n";
+    if ($this->domains[$domid]) {
+      $this->domains[$domid]->show($this);
     }
-    echo "</ul>\n";
+    else {
+      echo "Erreur: domaine $domid inconnu<br>\n";
+    }
   }
   
   // affiche un micro-thésaurus
@@ -196,6 +193,7 @@ class YamlSkos extends YamlDoc {
   }
 };
 
+// la classe Elt est une super-classe de Domain, Scheme et Concept
 class Elt {
   protected $_c; // stockage du contenu comme array
   
@@ -203,23 +201,85 @@ class Elt {
     $this->_c = $yaml;
     if (is_string($this->prefLabel)) {
       if (count($language)==1)
-        $this->prefLabel = [$language[0] => $this->prefLabel];
-      else
+        $this->_c['prefLabel'] = [$language[0] => $this->prefLabel];
+      else {
+        print_r($yaml);
+        print_r($language);
         throw new Exception("Erreur sur prefLabel dans Elt::__construct()");
+      }
     }
   }
   
+  function addNarrower(string $nid) { $this->_c['narrower'][] = $nid; }
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
-  function  __tostring() { return $this->prefLabel['fr']; }
+  
+  function __tostring() {
+    return isset($this->prefLabel['n']) ? $this->prefLabel['n']
+        : (isset($this->prefLabel['fr']) ? $this->prefLabel['fr']
+        : (isset($this->prefLabel['en']) ? $this->prefLabel['en'] : 'aucun prefLabel'));
+  }
+  
   function asArray() { return $this->_c; }
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
   function showInYaml(YamlSkos $skos) { echo "<pre>",Yaml::dump($this->_c),"</pre>"; }
 };
 
+// classe du domainScheme
+class DomainScheme extends Elt {
+    
+  // Affiche l'arbre des domaines avec un lien vers chaque micro-thésaurus
+  function show(array $domains, array $schemes) {
+    echo "<h2>$this</h2><ul>\n";
+    //echo "<pre>domainScheme="; print_r($this); echo "</pre>\n";
+    foreach ($this->hasTopConcept as $domid) {
+      echo "<li>$domains[$domid]</li>\n";
+      $domains[$domid]->showDomainTree($domains, $schemes);
+    }
+    echo "</ul>\n";
+  }
+};
+  
 class Domain extends Elt {
+  // affiche le sous-arbre correspondant au domaine avec un lien vers chaque micro-thésaurus
+  function showDomainTree(array $domains, array $schemes) {
+    //echo "<pre>this = "; print_r($this); echo "</pre>\n";
+    if ($this->narrower) {
+      $children = [];
+      foreach ($this->narrower as $narrower) {
+        $children[$narrower] = suppAccents((string)$domains[$narrower]);
+      }
+      asort($children);
+      echo "<ul>\n";
+      foreach (array_keys($children) as $narrower) {
+        echo "<li>$domains[$narrower]</li>\n";
+        $domains[$narrower]->showDomainTree($domains, $schemes);
+      }
+      echo "</ul>\n";
+    }
+    if ($this->schemeChildren) {
+      echo "<ul>\n";
+      foreach ($this->schemeChildren as $sid) {
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$sid'>$schemes[$sid]</a></li>\n";
+      }
+      echo "</ul>\n";
+    }
+  }
+  
+  function addSchemeChild(string $sid) { $this->_c['schemeChildren'][] = $sid; }
 };
 
 class Scheme extends Elt {
+  // remplit le lien domain -> scheme à partir du lien inverse
+  static function fillSchemeChildren(array $schemes, array $domains) {
+    foreach ($schemes as $sid => $scheme) {
+      if ($scheme->domain) {
+        foreach ($scheme->domain as $domid) {
+          $domains[$domid]->addSchemeChild($sid);
+        }
+      }
+    }
+  }
+    
   // Si les micro-thésaurus ne référencent pas de topConcept alors ils sont déduits des concepts
   static function fillTopConcepts(YamlSkos $skos) {
     foreach ($skos->schemes as $sid => $scheme) {
@@ -237,15 +297,19 @@ class Scheme extends Elt {
   // affiche un micro-thesaurus avec l'arbre des termes correspondant
   function show(array $concepts) {
     //echo "<pre>Scheme::show("; print_r($this); echo ")</pre>\n";
-    echo "<h2>",$this->prefLabel['fr'],"</h2><ul>\n";
+    echo "<h2>$this</h2><ul>\n";
     $children = []; // [ id => label ]
     foreach ($this->hasTopConcept as $cid) {
-      $children[$cid] = suppAccents($concepts[$cid]->prefLabel['fr']);
+      //echo "cid=$cid<br>\n";
+      $children[$cid] = suppAccents((string)$concepts[$cid]);
     }
-    asort($children);
+    if ($this->options && in_array('sort', $this->options))
+      asort($children);
     //echo "<pre>children="; print_r($children); echo "</pre>\n";
     foreach (array_keys($children) as $childid) {
-      Concept::showConceptTree($concepts, $childid);
+      $child = $concepts[$childid];
+      echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$childid'>$child</a></li>\n";
+      $concepts[$childid]->showConceptTree($concepts);
     }
     echo "</ul>\n";
   }
@@ -261,19 +325,19 @@ class Concept extends Elt {
     echo "</ul>\n";
   }
   
-  // affiche l'arbre des concepts correspondant à un thésaurus
-  static function showConceptTree(array $concepts, string $id) {
-    $concept = $concepts[$id];
-    echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$id'>",$concept->prefLabel['fr'],"</a></li>\n";
-    if ($concept->narrower) {
+  // affiche le sous-arbre des concepts du concept courant
+  function showConceptTree(array $concepts) {
+    if ($this->narrower) {
       $children = [];
-      foreach ($concept->narrower as $narrower) {
-        $children[$narrower] = suppAccents($concepts[$narrower]->prefLabel['fr']);
+      foreach ($this->narrower as $nid) {
+        $children[$nid] = suppAccents($concepts[$nid]->prefLabel['fr']);
       }
       asort($children);
       echo "<ul>\n";
-      foreach (array_keys($children) as $narrower) {
-        self::showConceptTree($concepts, $narrower);
+      foreach (array_keys($children) as $nid) {
+        $narrower = $concepts[$nid];
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$nid'>$narrower</a></li>\n";
+        $narrower->showConceptTree($concepts);
       }
       echo "</ul>\n";
     }
@@ -282,24 +346,19 @@ class Concept extends Elt {
   // Si les concepts ne référencent pas de narrower alors ils sont déduits des broader
   static function fillNarrowers(array $concepts) {
     foreach ($concepts as $cid => $concept) {
+      //echo "Concept::fillNarrowers($cid)<br>\n";
       if ($concept->broader) {
         foreach ($concept->broader as $broaderId) {
           $broader = $concepts[$broaderId];
           if (!$broader->narrower || !in_array($cid, $broader->narrower)) {
-            echo "Ajout $broaderId narrower $cid<br>\n";
+            //echo "Ajout $broaderId narrower $cid<br>\n";
             $broader->addNarrower($cid);
           }
         }
       }
     }
   }
-  
-  function addNarrower(string $nid) {
-    $this->_c['narrower'][] = $nid;
-  }
-  
-  function  __tostring() { return $this->prefLabel['fr']; }
-  
+    
   function show(YamlSkos $skos) {
     //echo "<pre>Concept::show("; print_r($this); echo ")</pre>\n";
     echo "<h3>",$this,"</h3>\n";
@@ -348,11 +407,14 @@ class Concept extends Elt {
         else {
           foreach ($this->$key as $lang => $labels) {
             echo "<b>$key($lang):</b><br>\n";
-            foreach ($labels as $label) {
-              echo MarkdownExtra::defaultTransform($label);
-              //foreach (explode("\n", $label) as $line)
-                //echo "$line<br>\n";
-            }
+            if (is_string($labels))
+              echo MarkdownExtra::defaultTransform($labels);
+            else
+              foreach ($labels as $label) {
+                echo MarkdownExtra::defaultTransform($label);
+                //foreach (explode("\n", $label) as $line)
+                  //echo "$line<br>\n";
+              }
           }
         }
       }
