@@ -20,7 +20,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dldomain</title></head><body>\n";
   
-if (!is_file('themes.pser')) { // themes
+if (true || !is_file('themes.pser')) { // themes
   $turtle = readcache('http://turtle.docinspire.eu/eutext/theme');
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 
@@ -58,7 +58,7 @@ else
   $themes = unserialize(file_get_contents('themes.pser'));
 //echo "<pre>themes="; print_r($themes); echo "</pre>\n";
 
-if (!is_file('models.pser')) { // models
+if (true || !is_file('models.pser')) { // models
   $turtle = readcache('http://turtle.docinspire.eu/eutext/model');
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 
@@ -96,7 +96,7 @@ else
   $models = unserialize(file_get_contents('models.pser'));
 //echo "<pre>models="; print_r($models); echo "</pre>\n";
 
-if (!is_file('packages.pser')) { // packages
+if (true || !is_file('packages.pser')) { // packages
   $turtle = readcache('http://turtle.docinspire.eu/eutext/package');
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 

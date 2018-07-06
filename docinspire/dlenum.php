@@ -1,9 +1,9 @@
 <?php
 /*PhpDoc:
-name: dlcodelist.php
-title: dlcodelist.php - constituition des codelists de inspire-datamodel à partir de docinspire
+name: dlenum.php
+title: dlenum.php - constituition des enums de inspire-datamodel à partir de docinspire
 doc: |
-  génère le fichier codelist.pser
+  génère le fichier enum.pser
   et en sortie un texte Yaml des schemes et des concepts à include dans inspire-datamodel.yaml
   
   chaque codelist est générée sous la forme suivante:
@@ -28,7 +28,7 @@ doc: |
       broader: // liste d'id des concepts génériques
     
 journal: |
-  4-6/7/2018:
+  6/7/2018:
     création
 */
 
@@ -41,28 +41,29 @@ require_once __DIR__.'/readcache.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dlcodelist</title></head><body>\n";
 $eutext = 'http://uri.docinspire.eu/eutext';
-$uricodelist = 'http://uri.docinspire.eu/eutext/codelist';
+$urienum = 'http://uri.docinspire.eu/eutext/enum';
 
 
 // lit un turtle concept et retourne un array d'array le décrivant lui et ses descendants
 // $cid est l'id long du concept de la forme {clid}:{scid}
 // $clid est l'id de la codelist
 // $scid est l'id court du concept, valable pour la codelist
-function readconcept(string $cid, string $uricodelist): array {
-  list($clid, $scid) = explode(':', $cid);
-  $concepts = [$cid => ['inScheme' => [$clid]]];
-  $turtle = readcache("http://turtle.docinspire.eu/eutext/codelist/$clid/$scid");
-  $turtle = preg_replace("!<$uricodelist/$cid> !", '', $turtle);
+function readconcept(string $cid, string $urienum): array {
+  list($eid, $scid) = explode(':', $cid);
+  $concepts = [$cid => ['inScheme' => [$eid]]];
+  $turtle = readcache("http://turtle.docinspire.eu/eutext/enum/$eid/$scid");
+  $turtle = preg_replace("!<$urienum/$cid> !", '', $turtle);
   
   $pattern = '!skos:topConceptOf <([^>]*)>\.\n!';
   if (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
-    $concepts[$cid]['topConceptOf'] = [$clid];
+    $concepts[$cid]['topConceptOf'] = [$eid];
   }
   
-  $pattern = "!skos:broader <$uricodelist/([^/]*)/([^>]*)>\.!";
+  $pattern = "!skos:broader <$urienum/([^/]*)/([^>]*)>\.!";
   while (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
     $concepts[$cid]['broader'][] = "$matches[1]:$matches[2]";
@@ -87,14 +88,14 @@ function readconcept(string $cid, string $uricodelist): array {
     $concepts[$cid]['exactMatch'] = [$matches[1]];
   }
   
-  $pattern = "!skos:narrower <$uricodelist/([^/]*)/([^>]*)>\.!";
+  $pattern = "!skos:narrower <$urienum/([^/]*)/([^>]*)>\.!";
   while (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
     $concepts[$cid]['narrower'][] = "$matches[1]:$matches[2]";
   }
   if (isset($concepts[$cid]['narrower'])) {
     foreach ($concepts[$cid]['narrower'] as $narrower) {
-      $concepts = array_merge($concepts, readconcept($narrower, $uricodelist));
+      $concepts = array_merge($concepts, readconcept($narrower, $urienum));
     }
   }
   
@@ -114,24 +115,24 @@ function readconcept(string $cid, string $uricodelist): array {
 }
 
 
-if (true || !is_file('codelist.pser')) {
-  $turtle = readcache('http://turtle.docinspire.eu/eutext/codelist');
+if (true || !is_file('enum.pser')) {
+  $turtle = readcache('http://turtle.docinspire.eu/eutext/enum');
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
-  $pattern = "!<$uricodelist> skos:hasTopConcept <$uricodelist/([^>]*)>\.!";
-  $codelists = [];
+  $pattern = "!<$urienum> skos:hasTopConcept <$urienum/([^>]*)>\.!";
+  $enums = [];
   $concepts = [];
   while (preg_match($pattern, $turtle, $matches)) {
     //echo "<pre>"; print_r($matches); echo "</pre>\n";
     $turtle = preg_replace($pattern, '', $turtle, 1);
     //if ($matches[1] <> 'AnthropogenicGeomorphologicFeatureTypeValue') continue;
-    $codelists[$matches[1]] = ['type'=> ['codelist']];
+    $enums[$matches[1]] = ['type'=> ['enumeration']];
   }
-  //echo "<pre>codelists="; print_r($codelists); echo "</pre>\n";
+  //echo "<pre>enums="; print_r($enums); echo "</pre>\n"; die("ligne ".__LINE__);
 
-  foreach (array_keys($codelists) as $clid) {
+  foreach (array_keys($enums) as $eid) {
     //echo "<b>$clid</b><br>\n";
-    $turtle = readcache("http://turtle.docinspire.eu/eutext/codelist/$clid");
-    $turtle = preg_replace("!<$uricodelist/$clid> !", '', $turtle);
+    $turtle = readcache("http://turtle.docinspire.eu/eutext/enum/$eid");
+    $turtle = preg_replace("!<$urienum/$eid> !", '', $turtle);
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     $pattern = "!skos:broader <$eutext/(theme|package|model)/([^>]*)>\.\n!";
     if (!preg_match($pattern, $turtle, $matches)) {
@@ -139,7 +140,7 @@ if (true || !is_file('codelist.pser')) {
       echo "<pre>",str_replace(['&','<'],['&amp;','&lt;'], $turtle),"</pre>\n";
       die();
     }
-    $codelists[$clid]['domain'] = ["$matches[1]-$matches[2]"];
+    $enums[$eid]['domain'] = ["$matches[1]-$matches[2]"];
     $turtle = preg_replace($pattern, '', $turtle, 1);
     
     foreach (['prefLabel','definition'] as $tag) {
@@ -147,61 +148,39 @@ if (true || !is_file('codelist.pser')) {
       while (preg_match($pattern, $turtle, $matches)) {
         //echo "<pre>"; print_r($matches); echo "</pre>\n";
         if (in_array($matches[2], ['fr','en']))
-          $codelists[$clid][$tag][$matches[2]] = $matches[1];
+          $enums[$eid][$tag][$matches[2]] = $matches[1];
         $turtle = preg_replace($pattern, '', $turtle, 1);
       }
     }
-    
-    $pattern = "!skos:broader <$eutext/codelist/([^>]*)>\.!";
-    while (preg_match($pattern, $turtle, $matches)) {
-      //echo "<pre>"; print_r($matches); echo "</pre>\n";
-      $codelists[$clid]['parent-codelist'][] = $matches[1];
-      $turtle = preg_replace($pattern, '', $turtle, 1);
-    }
-    
-    $pattern = '!skos:broader <http://uri.docinspire.eu/eutextproperty/extensibility/([^>]*)>\.!';
-    if (preg_match($pattern, $turtle, $matches)) {
-      $turtle = preg_replace($pattern, '', $turtle, 1);
-      $codelists[$clid]['extensibility'] = $matches[1];
-    }
-    else
-      $codelists[$clid]['extensibility'] = 'undefined';
-    
-    $pattern = "!skos:broader <$eutext/(requirement|technicalguide|refdoc|docextract)/([^>]*)>\.!";
-    while (preg_match($pattern, $turtle, $matches)) {
-      $turtle = preg_replace($pattern, '', $turtle, 1);
-      $codelists[$clid][$matches[1]] = $matches[2];
-    }
-    
+        
     if (preg_match('!skos:broader!', $turtle)) {
       echo "Erreur sur broader sur $clid<br>\n";
       echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
       die("ligne ".__LINE__);
     }
     
-    $pattern = "!skos:hasTopConcept <$uricodelist/$clid/([^>]*)>\.!";
+    $pattern = "!skos:hasTopConcept <$urienum/$eid/([^>]*)>\.!";
     while (preg_match($pattern, $turtle, $matches)) {
       //echo "<pre>"; print_r($matches); echo "</pre>\n";
-      $codelists[$clid]['hasTopConcept'][] = "$clid:$matches[1]";
+      $enums[$eid]['hasTopConcept'][] = "$eid:$matches[1]";
       $turtle = preg_replace($pattern, '', $turtle, 1);
     }
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
-    //echo "<pre>",Yaml::dump($codelists, 999, 2),"</pre>\n";
+    //echo "<pre>",Yaml::dump($enums, 999, 2),"</pre>\n"; die("ligne ".__LINE__);
     
-    if (isset($codelists[$clid]['hasTopConcept'])) {
-      $codelists[$clid]['hasTopConcept'] = array_reverse($codelists[$clid]['hasTopConcept']);
-      foreach ($codelists[$clid]['hasTopConcept'] as $cid) {
-        $concepts = array_merge($concepts, readconcept($cid, $uricodelist));
+    if (isset($enums[$eid]['hasTopConcept'])) {
+      $enums[$eid]['hasTopConcept'] = array_reverse($enums[$eid]['hasTopConcept']);
+      foreach ($enums[$eid]['hasTopConcept'] as $cid) {
+        $concepts = array_merge($concepts, readconcept($cid, $urienum));
       }
     }
     //echo "<pre>",Yaml::dump(['schemes'=> array_reverse($codelists), 'concepts'=> array_reverse($concepts)], 999, 2),"</pre>\n";
     //die("ligne ".__LINE__);
   }
-  $contents = ['schemes'=> array_reverse($codelists), 'concepts'=> array_reverse($concepts)];
-  file_put_contents('codelist.pser', serialize($contents)); 
+  $contents = ['schemes'=> array_reverse($enums), 'concepts'=> array_reverse($concepts)];
+  file_put_contents('enum.pser', serialize($contents)); 
   echo "<pre>",Yaml::dump($contents, 999, 2),"</pre>\n";
 }
 else {
-  echo "<pre>",Yaml::dump(unserialize(file_get_contents('codelist.pser')), 999, 2),"</pre>\n";
+  echo "<pre>",Yaml::dump(unserialize(file_get_contents('enum.pser')), 999, 2),"</pre>\n";
 }
-

@@ -182,14 +182,41 @@ class YamlSkos extends YamlDoc {
   }
   
   function extract(string $ypath) {
-    if ($ypath)
+    if (!$ypath) {
+      $result = $this->_c;
+      foreach (['domains','schemes','concepts'] as $field) {
+        foreach($this->$field as $id => $elt)
+          $result[$field][$id] = $elt->asArray();
+      }
+      return $result;
+    }
+    elseif ($ypath == '/domainScheme')
+      return $this->domainScheme->asArray();
+    elseif (preg_match('!^/(domains|schemes|concepts)(/([^/]*))?$!', $ypath, $matches)) {
+      if (!isset($matches[2])) {
+        foreach($this->{$matches[1]} as $id => $elt)
+          $result[$id] = $elt->asArray();
+        return $result;
+      }
+      else
+        return $this->{$matches[1]}[$matches[3]]->asArray();
+    }
+    elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
+      return $this->_c[$matches[1]];
+    else
       throw new Exception("Erreur YamlSkos::extract(ypath=$ypath)");
-    $result = $this->_c;
-    foreach($this->schemes as $sid => $scheme)
-      $result['schemes'][$sid] = $scheme->asArray();
-    foreach($this->concepts as $cid => $concept)
-      $result['concepts'][$cid] = $concept->asArray();
-    return $result;
+  }
+  
+  // génère le texte correspondant au fragment défini par ypath
+  // améliore la sortie en supprimant les débuts de ligne
+  function yaml(string $ypath): string {
+    $fragment = $this->extract($ypath);
+    return YamlDoc::syaml(YamlDoc::replaceYDEltByPhp($fragment));
+  }
+  
+  function json(string $ypath): string {
+    $fragment = $this->extract($ypath);
+    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
 };
 

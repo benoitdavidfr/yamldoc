@@ -19,7 +19,6 @@ doc: |
   A FAIRE:
     - ajouter un attribut lang dans les appels
     - lire:
-      - les enums
       - les AbstractType / Uniontype / Datatype / Externaltype / unknown
     - voir comment gérer les super-listes ! en faire un type ?
     - gestion:
@@ -105,7 +104,7 @@ class DMDomain extends Domain {
       asort($children);
       echo "<ul>\n";
       foreach (array_keys($children) as $narrower) {
-        if (!$domains[$narrower]->schemeChildren)
+        if (!$domains[$narrower]->schemeChildren and !$domains[$narrower]->objectTypeChildren)
           echo "<li>$domains[$narrower]</li>\n";
         else
           echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/domains/$narrower'>$domains[$narrower]</a></li>\n";
