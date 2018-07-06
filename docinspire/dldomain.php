@@ -1,7 +1,14 @@
 <?php
-// dldomain.php - constituition des domaines de inspire-datamodel à partir de docinspire
-// 4-5/7/2018
-
+/*PhpDoc:
+name: dldomain.php
+title: dldomain.php - constituition des domaines de inspire-datamodel à partir de docinspire
+doc: |
+  génère les fichiers themes.pser, models.pser et packages.pser
+  et en sortie un texte Yaml des domaines à include dans inspire-datamodel.yaml
+journal: |
+  4-5/7/2018:
+    création
+*/
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
@@ -11,6 +18,8 @@ require_once __DIR__.'/readcache.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dldomain</title></head><body>\n";
+  
 if (!is_file('themes.pser')) { // themes
   $turtle = readcache('http://turtle.docinspire.eu/eutext/theme');
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";

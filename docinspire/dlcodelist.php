@@ -1,6 +1,14 @@
 <?php
-// dlcodelist.php - constituition des codelists de inspire-datamodel à partir de docinspire
-// 4-5/7/2018
+/*PhpDoc:
+name: dlcodelist.php
+title: dlcodelist.php - constituition des codelists de inspire-datamodel à partir de docinspire
+doc: |
+  génère le fichier codelist.pser
+  et en sortie un texte Yaml des schemes et des concepts à include dans inspire-datamodel.yaml
+journal: |
+  4-5/7/2018:
+    création
+*/
 
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
@@ -155,7 +163,7 @@ if (1 || !is_file('codelist.pser')) {
       $codelists[$clid]['hasTopConcept'][] = "$clid:$matches[1]";
       $turtle = preg_replace($pattern, '', $turtle, 1);
     }
-    echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
+    //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     //echo "<pre>",Yaml::dump($codelists, 999, 2),"</pre>\n";
     
     if (isset($codelists[$clid]['hasTopConcept'])) {
