@@ -41,11 +41,11 @@ require_once __DIR__.'/readcache.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+if (php_sapi_name()<>'cli')
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dlcodelist</title></head><body><pre>\n";
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dlcodelist</title></head><body>\n";
 $eutext = 'http://uri.docinspire.eu/eutext';
 $urienum = 'http://uri.docinspire.eu/eutext/enum';
-
 
 // lit un turtle concept et retourne un array d'array le décrivant lui et ses descendants
 // $cid est l'id long du concept de la forme {clid}:{scid}
@@ -54,7 +54,8 @@ $urienum = 'http://uri.docinspire.eu/eutext/enum';
 function readconcept(string $cid, string $urienum): array {
   list($eid, $scid) = explode(':', $cid);
   $concepts = [$cid => ['inScheme' => [$eid]]];
-  $turtle = readcache("http://turtle.docinspire.eu/eutext/enum/$eid/$scid");
+  $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='
+                       .urlencode("http://uri.docinspire.eu/eutext/enum/$eid/$scid"));
   $turtle = preg_replace("!<$urienum/$cid> !", '', $turtle);
   
   $pattern = '!skos:topConceptOf <([^>]*)>\.\n!';
@@ -116,7 +117,7 @@ function readconcept(string $cid, string $urienum): array {
 
 
 if (true || !is_file('enum.pser')) {
-  $turtle = readcache('http://turtle.docinspire.eu/eutext/enum');
+  $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode('http://uri.docinspire.eu/eutext/enum'));
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
   $pattern = "!<$urienum> skos:hasTopConcept <$urienum/([^>]*)>\.!";
   $enums = [];
@@ -131,7 +132,8 @@ if (true || !is_file('enum.pser')) {
 
   foreach (array_keys($enums) as $eid) {
     //echo "<b>$clid</b><br>\n";
-    $turtle = readcache("http://turtle.docinspire.eu/eutext/enum/$eid");
+    $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='
+                         .urlencode("http://uri.docinspire.eu/eutext/enum/$eid"));
     $turtle = preg_replace("!<$urienum/$eid> !", '', $turtle);
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     $pattern = "!skos:broader <$eutext/(theme|package|model)/([^>]*)>\.\n!";

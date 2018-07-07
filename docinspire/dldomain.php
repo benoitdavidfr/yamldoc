@@ -18,10 +18,11 @@ require_once __DIR__.'/readcache.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dldomain</title></head><body>\n";
+if (php_sapi_name()<>'cli')
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dldomain</title></head><body><pre>\n";
   
 if (true || !is_file('themes.pser')) { // themes
-  $turtle = readcache('http://turtle.docinspire.eu/eutext/theme');
+  $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode('http://uri.docinspire.eu/eutext/theme'));
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 
   $themes = [];
@@ -34,7 +35,8 @@ if (true || !is_file('themes.pser')) { // themes
   //echo "<pre>themes="; print_r($themes); echo "</pre>\n";
 
   foreach (array_keys($themes) as $themeid) {
-    $turtle = readcache("http://turtle.docinspire.eu/eutext/theme/$themeid");
+    $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='
+                         .urlencode("http://uri.docinspire.eu/eutext/theme/$themeid"));
     $turtle = preg_replace("!<http://uri.docinspire.eu/eutext/theme/$themeid> !", '', $turtle);
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     if (!preg_match('!skos:broader <http://uri.docinspire.eu/eutext/\?CELEX=02010R1089&annex=([^>]*)>\.!', $turtle, $matches)) {
@@ -59,7 +61,7 @@ else
 //echo "<pre>themes="; print_r($themes); echo "</pre>\n";
 
 if (true || !is_file('models.pser')) { // models
-  $turtle = readcache('http://turtle.docinspire.eu/eutext/model');
+  $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode('http://uri.docinspire.eu/eutext/model'));
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 
   $models = [];
@@ -72,7 +74,8 @@ if (true || !is_file('models.pser')) { // models
   //echo "<pre>models="; print_r($models); echo "</pre>\n";
 
   foreach (array_keys($models) as $modelid) {
-    $turtle = readcache("http://turtle.docinspire.eu/eutext/model/$modelid");
+    $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='
+                         .urlencode("http://uri.docinspire.eu/eutext/model/$modelid"));
     $turtle = preg_replace("!<http://uri.docinspire.eu/eutext/model/$modelid> !", '', $turtle);
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     if (!preg_match('!skos:broader <http://uri.docinspire.eu/eutext/\?CELEX=02010R1089&annex=([^>]*)>\.!', $turtle, $matches)) {
@@ -97,7 +100,7 @@ else
 //echo "<pre>models="; print_r($models); echo "</pre>\n";
 
 if (true || !is_file('packages.pser')) { // packages
-  $turtle = readcache('http://turtle.docinspire.eu/eutext/package');
+  $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode('http://uri.docinspire.eu/eutext/package'));
   //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
 
   $packages = [];
@@ -110,7 +113,8 @@ if (true || !is_file('packages.pser')) { // packages
   //echo "<pre>packages="; print_r($packages); echo "</pre>\n";
 
   foreach (array_keys($packages) as $id) {
-    $turtle = readcache("http://turtle.docinspire.eu/eutext/package/$id");
+    $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='
+                         .urlencode("http://uri.docinspire.eu/eutext/package/$id"));
     $turtle = preg_replace("!<http://uri.docinspire.eu/eutext/package/$id> !", '', $turtle);
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
     if (!preg_match('!skos:broader <http://uri.docinspire.eu/eutext/(theme|model)/([^>]*)>\.!', $turtle, $matches)) {
@@ -202,4 +206,4 @@ foreach (array_reverse($packages) as $id=>$package) {
 }
 
 //echo "<pre>domains="; print_r($domains); echo "</pre>\n";
-echo "<pre>",Yaml::dump($domains, 999, 2),"</pre>\n";
+echo Yaml::dump($domains, 999, 2);

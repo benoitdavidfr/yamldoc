@@ -10,6 +10,9 @@ $phpDocs['yamlskos.inc.php'] = <<<EOT
 name: yamlskos.inc.php
 title: gestion d'un YamlSkos
 doc: |
+  La définition de YamlSkos est inspirée de la structure utilisée pour EuroVoc.
+  Elle a été étendue pour gérer les listes de codes et énumérations du règlement interopérabilité Inspire.
+  
   Un document YamlSkos comprend:
 
     - des champs de métadonnées DublinCore dont au moins:
@@ -20,7 +23,7 @@ doc: |
         - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
         - soit:
             - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
-            - broader avec les concepts plus génériques
+            - broader avec les identifiants des concepts plus génériques
     - un champ schemes qui contient les micro-thésaurus définis comme scheme Skos ; chaque scheme est identifié
       par une clé et contient au moins les champs:
         - prefLabel qui porte une étiquete mono ou multi-lingue,
@@ -28,8 +31,15 @@ doc: |
     - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
       contient au moins les champs:
         - prefLabel qui porte une étiquette mono ou multi-lingue,
+      Les domaines qui ne sont pas de premier niveau doivent définir un champ broader définissant un concept plus
+      générique.
     - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
         - hasTopConcept qui liste les identifiants des domaines de premier niveau
+        
+  La notion de scheme est étendue pour gérer les listes de listes de codes.
+  Une telle liste est définie comme liste de code et comporte une propriété hasPart contenant la liste des
+  identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
+  auxquelles elles appartiennent. Ces propriétés sont définies dans Dublin Core.
 journal: |
   4/7/2018:
   - possibilité d'une arborescence des domaines
@@ -50,8 +60,30 @@ function suppAccents(string $str): string {
 }
 
 class YamlSkos extends YamlDoc {
+  // traduction des champs utilisés en français et en anglais pour l'affichage
+  static $keyTranslations = [
+    'hasPart'=> ['fr'=>"Est composé de", 'en'=> "Has part"],
+    'isPartOf'=> ['fr'=>"Est une partie de", 'en'=> "Is part of"],
+    'content'=> ['fr'=>"Contenu", 'en'=>"Content"],
+    'inScheme'=> ['fr'=>"Elément du schéma", 'en'=>"In scheme"],
+    'hasTopConcept'=> ['fr'=>"Elements de premier niveau", 'en'=>"Top concepts"],
+    'topConceptOf'=> ['fr'=>"Elément de premier niveau du schéma", 'en'=>"Top concept of"],
+    'prefLabel'=> ['fr'=>"Forme lexicale préférentielle", 'en'=>"Prefered label"],
+    'altLabel'=> ['fr'=> "Forme lexicale alternative", 'en'=>"Alternative label"],
+    'hiddenLabel'=> ['fr'=>"Forme cachée", 'en'=>"Hidden label"],
+    'definition'=> ['fr'=>"Définition", 'en'=> "Definition"],
+    'note'=> ['fr'=>"Note", 'en'=>"Note"],
+    'scopeNote'=> ['fr'=>"Note d'application ", 'en'=>"Scope note"],
+    'historyNote'=> ['fr'=>"Note historique", 'en'=>"History note"],
+    'editorialNote'=> ['fr'=>"Note éditoriale", 'en'=>"Editorial note"], 
+    'example'=> ['fr'=>"Exemple", 'en'=>"Example"],
+    'broader'=> ['fr'=>"concept générique", 'en'=>"Broader"],
+    'narrower'=> ['fr'=>"concept spécifique", 'en'=>"Narrower"],
+    'related'=> ['fr'=>"concept associé", 'en'=>"Related"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+  ];
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
-  protected $language; // liste des langages
+  protected $language; // liste des langues
   protected $domainScheme; // thésaurus des domaines
   protected $domains; // dictionnaire des domaines décrits comme concepts Skos
   protected $schemes; // dictionnaire des micro-thésaurus
@@ -96,7 +128,20 @@ class YamlSkos extends YamlDoc {
     Concept::fillNarrowers($this->concepts);
   }
   
-  //function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
+  function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
+  
+  // traduction dans la bonne langue des noms des champs
+  static function keyTranslate(string $key): string {
+    if (!isset(self::$keyTranslations[$key]))
+      return $key;
+    if (isset($_GET['lang']) && isset(self::$keyTranslations[$key][$_GET['lang']]))
+      return self::$keyTranslations[$key][$_GET['lang']];
+    else
+      foreach (['fr','en','n'] as $lang)
+        if (isset(self::$keyTranslations[$key][$lang]))
+          return self::$keyTranslations[$key][$lang];
+    return "<b>Traduction non définie pour $key</b>";
+  }
   
   function __get(string $name) {
     return isset($this->$name) ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
@@ -163,7 +208,7 @@ class YamlSkos extends YamlDoc {
   function showScheme(string $sid, ?string $format) {
     //echo "YamlSkos::showScheme(sid=$sid)<br>\n";
     if ($this->schemes[$sid]) {
-      $this->schemes[$sid]->show($this->concepts);
+      $this->schemes[$sid]->show($this->concepts, $this);
     }
     else {
       echo "Erreur: scheme $sid inconnu<br>\n";
@@ -181,6 +226,7 @@ class YamlSkos extends YamlDoc {
       $this->concepts[$cid]->showInYaml($this);
   }
   
+  // renvoie un array récursif du fragment défini par ypath
   function extract(string $ypath) {
     if (!$ypath) {
       $result = $this->_c;
@@ -237,18 +283,67 @@ class Elt {
     }
   }
   
-  function addNarrower(string $nid) { $this->_c['narrower'][] = $nid; }
+  function addNarrower(string $nid): void { $this->_c['narrower'][] = $nid; }
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
+  function asArray(): array { return $this->_c; }
+  function extract(string $ypath): array { return YamlDoc::sextract($this->_c, $ypath); }
+  function showInYaml(): void { echo "<pre>",Yaml::dump($this->_c, 999, 2),"</pre>"; }
   
-  function __tostring() {
-    return isset($this->prefLabel['n']) ? $this->prefLabel['n']
-        : (isset($this->prefLabel['fr']) ? $this->prefLabel['fr']
-        : (isset($this->prefLabel['en']) ? $this->prefLabel['en'] : 'aucun prefLabel'));
+  // pour un texte/chaine multi-lingue renvoie la langue à afficher ou ''
+  function getLangForText(string $key): string {
+    if (isset($_GET['lang']) && isset($this->$key[$_GET['lang']]))
+      return $_GET['lang'];
+    else
+      foreach (['fr','en','n'] as $lang)
+        if (isset($this->$key[$lang]))
+          return $lang;
+    return '';
   }
   
-  function asArray() { return $this->_c; }
-  function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
-  function showInYaml(YamlSkos $skos) { echo "<pre>",Yaml::dump($this->_c),"</pre>"; }
+  function __tostring() {
+    $lang = $this->getLangForText('prefLabel');
+    return $lang ? $this->prefLabel[$lang] : 'aucun prefLabel';
+  }
+  
+  function showLinks(string $key, YamlSkos $skos) {
+    if ($this->$key) {
+      echo "<b>",YamlSkos::keyTranslate($key),":</b><ul style='margin-top:0;'>\n";
+      foreach ($this->$key as $lid) {
+        //echo "lid=$lid<br>\n";
+        $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
+        if (isset($skos->concepts[$lid]))
+          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
+               $skos->concepts[$lid],"</a>\n";
+        elseif (isset($skos->schemes[$lid]))
+          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
+               $skos->schemes[$lid],"</a>\n";
+        else
+          echo "<li>lien $lid trouvé ni dans concepts ni dans schemes\n";
+      }
+      echo "</ul>\n";
+    }
+  }
+  
+  function showTexts(string $key) {
+    if ($this->$key) {
+      if (is_string($this->$key)) { // texte mono-lingue
+        echo "<b>$key:</b><br>\n";
+        echo MarkdownExtra::defaultTransform($this->$key);
+      }
+      else {
+        $lang = $this->getLangForText($key);
+        $labels = $this->$key[$lang];
+        echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n";
+        if (is_string($labels))
+          echo MarkdownExtra::defaultTransform($labels);
+        else {
+          foreach ($labels as $label) {
+            echo MarkdownExtra::defaultTransform($label);
+          }
+        }
+      }
+    }
+  }
 };
 
 // classe du domainScheme
@@ -322,23 +417,30 @@ class Scheme extends Elt {
   }
   
   // affiche un micro-thesaurus avec l'arbre des termes correspondant
-  function show(array $concepts) {
+  function show(array $concepts, YamlSkos $skos) {
     //echo "<pre>Scheme::show("; print_r($this); echo ")</pre>\n";
-    echo "<h2>$this</h2><ul>\n";
-    $children = []; // [ id => label ]
-    foreach ($this->hasTopConcept as $cid) {
-      //echo "cid=$cid<br>\n";
-      $children[$cid] = suppAccents((string)$concepts[$cid]);
+    $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
+    echo "<h2>$this$type</h2>\n";
+    foreach (['hasPart','isPartOf'] as $key)
+      $this->showLinks($key, $skos);
+    $this->showTexts('definition');
+    if ($this->hasTopConcept) {
+      echo "<h3>",YamlSkos::keyTranslate('content'),"</h3><ul>\n";
+      $children = []; // [ id => label ]
+      foreach ($this->hasTopConcept as $cid) {
+        //echo "cid=$cid<br>\n";
+        $children[$cid] = suppAccents((string)$concepts[$cid]);
+      }
+      if ($this->options && in_array('sort', $this->options))
+        asort($children);
+      //echo "<pre>children="; print_r($children); echo "</pre>\n";
+      foreach (array_keys($children) as $childid) {
+        $child = $concepts[$childid];
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$childid'>$child</a></li>\n";
+        $concepts[$childid]->showConceptTree($concepts);
+      }
+      echo "</ul>\n";
     }
-    if ($this->options && in_array('sort', $this->options))
-      asort($children);
-    //echo "<pre>children="; print_r($children); echo "</pre>\n";
-    foreach (array_keys($children) as $childid) {
-      $child = $concepts[$childid];
-      echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$childid'>$child</a></li>\n";
-      $concepts[$childid]->showConceptTree($concepts);
-    }
-    echo "</ul>\n";
   }
 };
 
@@ -389,8 +491,6 @@ class Concept extends Elt {
   function show(YamlSkos $skos) {
     //echo "<pre>Concept::show("; print_r($this); echo ")</pre>\n";
     echo "<h3>",$this,"</h3>\n";
-    if (isset($this->prefLabel['en']))
-      echo "<b>prefLabel (en):</b> ",$this->prefLabel['en'],"<br><br>\n";
     if ($this->altLabel) {
       if (is_numeric(array_keys($this->altLabel)[0])) {
         echo "<b>altLabel:</b><ul style='margin-top:0;'>\n";
@@ -399,53 +499,25 @@ class Concept extends Elt {
         echo "</ul>\n";
       }
       else {
-        foreach ($this->altLabel as $lang => $labels) {
-          echo "<b>altLabel ($lang):</b><ul style='margin-top:0;'>\n";
-          foreach ($labels as $label)
-            echo "<li>$label\n";
-          echo "</ul>\n";
-        }
-      }
-    }
-    foreach (['inScheme','topConceptOf','broader','narrower','related','hasTopConcept'] as $key) {
-      if ($this->$key) {
-        echo "<b>$key:</b><ul style='margin-top:0;'>\n";
-        foreach ($this->$key as $lid) {
-          //echo "lid=$lid<br>\n";
-          if (isset($skos->concepts[$lid]))
-            echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid'>",$skos->concepts[$lid],"</a>\n";
-          elseif (isset($skos->schemes[$lid]))
-            echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid'>",$skos->schemes[$lid],"</a>\n";
-          else
-            echo "<li>lien $lid trouvé ni dans concepts ni dans schemes\n";
+        $lang = $this->getLangForText('altLabel');
+        $labels = $this->altLabel[$lang];
+        echo "<b>",YamlSkos::keyTranslate('altLabel')," ($lang):</b><ul>\n";
+        foreach ($labels as $label) {
+          echo "<li>$label\n";
         }
         echo "</ul>\n";
       }
     }
+    
+    foreach (['inScheme','topConceptOf','broader','narrower','related','hasTopConcept'] as $key) {
+      $this->showLinks($key, $skos);
+    }
+    
     //echo "<pre>this="; print_r($this); echo "</pre>\n";
     foreach (['definition','scopeNote','historyNote','example'] as $key) {
-      if ($this->$key) {
-        if (is_string($this->$key)) {
-          echo "<b>$key:</b><br>\n";
-          echo MarkdownExtra::defaultTransform($this->$key);
-          //foreach (explode("\n", $this->$key) as $line)
-            //echo "$line<br>\n";
-        }
-        else {
-          foreach ($this->$key as $lang => $labels) {
-            echo "<b>$key($lang):</b><br>\n";
-            if (is_string($labels))
-              echo MarkdownExtra::defaultTransform($labels);
-            else
-              foreach ($labels as $label) {
-                echo MarkdownExtra::defaultTransform($label);
-                //foreach (explode("\n", $label) as $line)
-                  //echo "$line<br>\n";
-              }
-          }
-        }
-      }
+      $this->showTexts($key);
     }
+    
     if ($this->depiction) {
       echo "<b>depiction:</b><br>";
       foreach ($this->depiction as $imagepath)

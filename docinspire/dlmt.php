@@ -11,14 +11,14 @@ require_once __DIR__.'/readcache.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dlmt</title></head><body>\n";
+if (php_sapi_name()<>'cli')
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>dlmt</title></head><body><pre>\n";
 
 function dlmt(string $mttag) {
   $eutext = 'http://uri.docinspire.eu/eutext';
   $urimt = "http://uri.docinspire.eu/eutext/$mttag";
 
   if (!is_file("$mttag.pser")) {
-    //$turtle = readcache("http://turtle.docinspire.eu/eutext/$mttag");
     $turtle = readcache("http://docinspire.eu/get.php?fmt=ttl&uri=".urlencode($urimt));
     
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
@@ -33,7 +33,6 @@ function dlmt(string $mttag) {
   
     foreach (array_keys($mts) as $mtid) {
       //echo "<b>$mtid</b><br>\n";
-      //$turtle = readcache("http://turtle.docinspire.eu/eutext/$mttag/$mtid");
       $turtle = readcache("http://docinspire.eu/get.php?fmt=ttl&uri=".urlencode("$urimt/$mtid"));
       $turtle = preg_replace("!<$urimt/$mtid> !", '', $turtle);
       //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
@@ -93,7 +92,7 @@ function dlmt(string $mttag) {
       foreach (['a'=>'attritutes','r'=>'relations'] as $prefix => $field) {
         if (isset($mts[$mtid][$field]))
           foreach ($mts[$mtid][$field] as $attr=>$value) {
-            $turtle = readcache("http://turtle.docinspire.eu/eutext/$mttag/$mtid/$prefix$attr");
+            $turtle = readcache("http://docinspire.eu/get.php?fmt=ttl&uri=".urlencode("$urimt/$mtid/$prefix$attr"));
             //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
             $pattern = "!skos:definition \"([^\"]*)\"@(..)\.!";
             while (preg_match($pattern, $turtle, $matches)) {
@@ -139,5 +138,5 @@ function dlmt(string $mttag) {
 }
 
 foreach(['datatype','externaltype','unknowntype','uniontype'] as $mttag) {
-  echo "<pre>",Yaml::dump(dlmt($mttag), 999, 2),"</pre>\n";
+  echo Yaml::dump(dlmt($mttag), 999, 2);
 }

@@ -18,7 +18,9 @@ doc: |
         évite de retester si un document est modifiable
     - locks : liste des documents verrouillés
         permet de dévérouiller les documents verrouillés
-
+    - language : pour chaque document multi-lingue (champ language) indique la liste des langues
+        permet d'afficher la liste des langues possibles dans le menu
+    
   A REVOIR:
   - les fichiers servreg devraient être considérés comme des catalogues
   - un fichier protégé et non conforme Yaml n'est pas protégé
@@ -28,6 +30,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  7/7/2018:
+  - gestion multi-lingue
   29-30/6/2018:
   - gestion multi-store
   18-19/6/2018:
@@ -127,12 +131,28 @@ function show_menu(string $store, array $breadcrumb) {
   if ($breadcrumb) {
     $doc = array_pop($breadcrumb);
     echo "<form>\n";
-    foreach ($breadcrumb as $docuid)
-      echo "<a href='?doc=$docuid'>&gt;</a> ";
+    foreach ($breadcrumb as $docuid2)
+      echo "<a href='?doc=$docuid2'>&gt;</a> ";
     echo "<b>*</b>&nbsp;";
     echo "<input type='hidden' name='doc' value='$doc'>";
     echo isset($_GET['format']) ? "<input type='hidden' name='format' value='$_GET[format]'>" : '';
-    echo "<input type='text' name='ypath' size=80 value=\"$ypath\"></form>\n<br>\n";
+    echo "<input type='text' name='ypath' size=80 value=\"$ypath\">\n";
+    
+    // choix de la langue pour un document multi-lingue
+    //echo "docuid=$docuid, ",implode(',',$_SESSION['language'][$docuid]);
+    if (isset($_SESSION['language'][$docuid])) {
+      echo str_repeat("&nbsp;", 10);
+      $url = '?';
+      foreach (['action','doc','ypath','format'] as $param)
+        $url .= (isset($_GET[$param]) ? "$param=".urlencode($_GET[$param]).'&amp;' : '');
+      foreach ($_SESSION['language'][$docuid] as $lang) {
+        if (isset($_GET['lang']) && ($_GET['lang']==$lang))
+          echo "<b>$lang</b>&nbsp;";
+        else
+          echo "<a href='${url}lang=$lang'>$lang</a>&nbsp;";
+      }
+    }
+    echo "</form><br>\n";
   }
 }
 
@@ -316,6 +336,10 @@ if (!isset($_GET['action'])) {
   else {
     if ($doc->isHomeCatalog())
       $_SESSION['homeCatalog'] = $_GET['doc'];
+    if ($doc->language) {
+      //echo "doc multilingue: ",implode(',',$doc->language);
+      $_SESSION['language'][$_GET['doc']] = $doc->language;
+    }
     if (!isset($_GET['format']))
       $doc->show($ypath);
     elseif ($_GET['format']=='yaml')

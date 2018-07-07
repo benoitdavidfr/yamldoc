@@ -17,19 +17,17 @@ doc: |
       http://docinspire.eu/get.php?uri=http%3A%2F%2Furi.docinspire.eu%2Feutext%2Fcodelist%2FBoreholePurposeValue
 
   A FAIRE:
-    - ajouter un attribut lang dans les appels
-    - lire:
-      - les AbstractType / Uniontype / Datatype / Externaltype / unknown
-    - voir comment gérer les super-listes ! en faire un type ?
+    - vérifier l'intégrité des références internes
+
+  Version ultérieure:
     - gestion:
+      - codelist.(requirement|technicalguide|refdoc|docextract) -> source
       - codelist.extensibility
       - codelist.requirement -> scopeNote
-      - codelist.(requirement|technicalguide|refdoc|docextract) -> source
       - scheme.exactMatch
       - objecttype.broadMatch
     - lien vers la source du règlement: source ?
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
-    - vérifier l'intégrité des références internes
 
 journal: |
   4-6/7/2018:
@@ -91,6 +89,43 @@ class DataModel extends YamlSkos {
         echo $exception->getMessage(),"<br>\n";
     }
   }
+  
+  // renvoie un array récursif du fragment défini par ypath
+  function extract(string $ypath) {
+    if (!$ypath) {
+      $result = $this->_c;
+      foreach (['domains','schemes','concepts','objecttypes'] as $field) {
+        foreach($this->$field as $id => $elt)
+          $result[$field][$id] = $elt->asArray();
+      }
+      return $result;
+    }
+    else {
+      try {
+        return parent::extract($ypath);
+      }
+      catch (Exception $exception) {
+        if (preg_match('!^/objectTypes(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
+          if (!isset($matches[2])) {
+            foreach ($this->objectTypes as $id => $elt) {
+              $result[$id] = $elt->asArray();
+            return $result;
+            }
+          }
+          elseif (!isset($matches[4])) {
+            return $this->objectTypes[$matches[2]]->asArray();
+          }
+          else {
+            $id = $matches[2];
+            $field = $matches[4];
+            return $this->objectTypes[$id]->extract($field);
+          }
+        }
+        else
+          echo $exception->getMessage(),"<br>\n";
+      }
+    }
+  }
 };
 
 // Domain adapté pour Data Model
@@ -134,7 +169,7 @@ class DMDomain extends Domain {
       }
       echo "</ul>\n";
     }
-  } 
+  }
 };
 
 class ObjectType extends Elt {
@@ -150,7 +185,9 @@ class ObjectType extends Elt {
   }
   
   function show(DataModel $datamodel) {
-    echo "<h3>",$this->type[0]," $this</h3>\n";
-    echo "<pre>ObjectType::show() on "; print_r($this); echo "</pre>\n";
+    $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
+    echo "<h2>$this$type</h2>\n";
+    //echo "<pre>ObjectType::show() on "; print_r($this); echo "</pre>\n";
+    $this->showInYaml();
   }
 };
