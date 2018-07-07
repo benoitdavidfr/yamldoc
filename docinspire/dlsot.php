@@ -139,5 +139,5 @@ else
   $sots = unserialize(file_get_contents('sot.pser'));
 //echo "<pre>spatialobjecttypes="; print_r($spatialobjecttypes); echo "</pre>\n";
 
-echo "<pre>",Yaml::dump($sots, 999, 2),"</pre>\n";
+echo Yaml::dump($sots, 999, 2);
 

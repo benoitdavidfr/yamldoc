@@ -181,8 +181,8 @@ if (true || !is_file('enum.pser')) {
   }
   $contents = ['schemes'=> array_reverse($enums), 'concepts'=> array_reverse($concepts)];
   file_put_contents('enum.pser', serialize($contents)); 
-  echo "<pre>",Yaml::dump($contents, 999, 2),"</pre>\n";
+  echo Yaml::dump($contents, 999, 2);
 }
 else {
-  echo "<pre>",Yaml::dump(unserialize(file_get_contents('enum.pser')), 999, 2),"</pre>\n";
+  echo Yaml::dump(unserialize(file_get_contents('enum.pser')), 999, 2);
 }

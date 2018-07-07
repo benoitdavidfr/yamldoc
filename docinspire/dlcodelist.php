@@ -264,7 +264,7 @@ if (true || !is_file('codelist.pser')) {
   }
   $contents = ['schemes'=> array_reverse($codelists), 'concepts'=> array_reverse($concepts)];
   file_put_contents('codelist.pser', serialize($contents)); 
-  echo "<pre>",Yaml::dump($contents, 999, 2),"</pre>\n";
+  echo Yaml::dump($contents, 999, 2);
 }
 else {
   echo Yaml::dump(unserialize(file_get_contents('codelist.pser')), 999, 2);
