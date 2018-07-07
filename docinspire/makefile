@@ -14,3 +14,7 @@ sot.pser : dlsot.php
 	php dlsot.php > /dev/null
 datatype.pser : dlmt.php
 	php dlmt.php > /dev/null
+install : docinspire.yaml
+	cp docinspire.yaml ../docs/inspire-datamodel.yaml
+clean:
+	rm *.pser domains.yaml schemes.yaml objectypes.yaml

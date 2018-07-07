@@ -5,17 +5,6 @@ title: gestion d'un modèle de données sous la forme d'un document Yaml
 doc: |
   voir le code
   
-  tests:
-    Paquet géologie:
-      http://127.0.0.1/yamldoc/index.php?doc=inspire-datamodel&ypath=/domains/package-ge
-      http://docinspire.eu/get.php?uri=http%3A%2F%2Furi.docinspire.eu%2Feutext%2Fpackage%2Fge
-    SOT Forage:
-      http://127.0.0.1/yamldoc/index.php?doc=inspire-datamodel&ypath=/objectTypes/ge:Borehole
-      http://docinspire.eu/get.php?uri=http%3A%2F%2Furi.docinspire.eu%2Feutext%2Fspatialobjecttype%2Fge%3ABorehole
-    CL But du forage:
-      http://127.0.0.1/yamldoc/index.php?doc=inspire-datamodel&ypath=/schemes/BoreholePurposeValue
-      http://docinspire.eu/get.php?uri=http%3A%2F%2Furi.docinspire.eu%2Feutext%2Fcodelist%2FBoreholePurposeValue
-
   A FAIRE:
     - vérifier l'intégrité des références internes
 
@@ -30,7 +19,7 @@ doc: |
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
 
 journal: |
-  4-6/7/2018:
+  4-7/7/2018:
   - création
 */
 {
@@ -38,18 +27,26 @@ $phpDocs['datamodel.inc.php'] = <<<EOT
 name: datamodel.inc.php
 title: gestion d'un modèle de données
 doc: |
-  Un document modèle de données est une extension d'un document YamlSkos, il contient en outre:
-
-    - un champ types qui définit les types qui comportent chacun les champs suivants:
-        - domain qui liste les domaines auquel le type appartient,
-        - kind
-        - attribut
+  Un document modèle de données est une extension d'un document YamlSkos,
+  il contient en outre un champ objectTypes qui définit les types qui comportent chacun les champs suivants:
+    - type liste les types peuvent être 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
+    - domain liste les domaines auquel le type appartient,
+    - prefLabel fournit le nom du type en multi-lingue ou en neutre
+    - definition fournit la definition du type en multi-lingue
+    - abstracttype vaut 'abstracttype' ou 'notAbstracttype'
+    - attributes liste les attributs
+    - relations liste les relations
+  Les attributs et relations sont identfiés par un nom et comporte les champs suivants:
+  - definition fournit la definition de l'attribut ou relation en multi-lingue
+  - type sous la forme [ typedetype => nomdutype ]
+    les typedetype sont 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
+  - voidability vaut 'voidable' ou 'notVoidable'
 journal: |
-  4/7/2018:
+  4-7/7/2018:
   - création
 EOT;
 }
-
+        
 class DataModel extends YamlSkos {
   protected $objectTypes; // dictionnaire des types
   

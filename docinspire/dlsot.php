@@ -1,6 +1,12 @@
 <?php
-// dlsot.php - constituition des spatialobjecttypes de inspire-datamodel à partir de docinspire
-// 4-7/7/2018
+/*PhpDoc:
+name: dlsot.php
+title: dlsot.php - constituition des spatialobjecttypes de inspire-datamodel à partir de docinspire
+doc: |
+journal: |
+  4-7/7/2018:
+    création
+*/
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 

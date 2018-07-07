@@ -1,4 +1,9 @@
 <?php
+/*PhpDoc:
+name: search.php
+title: search.php - script de recherche
+doc: |
+*/
 
 session_start();
 require_once __DIR__.'/yd.inc.php';

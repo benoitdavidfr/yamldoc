@@ -1,4 +1,10 @@
 <?php
+/*PhpDoc:
+name: search.inc.php
+title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
+doc: |
+  voir le code
+*/
 {
 $phpDocs['search.inc.php'] = <<<'EOT'
 name: search.inc.php

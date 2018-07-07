@@ -76,6 +76,8 @@ journal: |
   - ajout du cryptage optionnel
   8/4/2018:
   - première version
+submodules:
+  - /yamldoc/docinspire
 phpScripts:
   - /yamldoc/index.php
   - /yamldoc/admin.php

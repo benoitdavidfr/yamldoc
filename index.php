@@ -1,4 +1,10 @@
 <?php
+/*PhpDoc:
+name: index.php
+title: index.php - version 2 du visualiseur de documents Yaml
+doc: |
+  voir le code
+*/
 {
 $phpDocs['index.php'] = <<<EOT
 name: index.php

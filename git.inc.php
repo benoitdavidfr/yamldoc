@@ -1,4 +1,10 @@
 <?php
+/*PhpDoc:
+name: git.inc.php
+title: git.inc.php - commandes Git
+doc: |
+  voir le code
+*/
 {
 $phpDocs['git.inc.php'] = <<<EOT
 name: git.inc.php

@@ -1,7 +1,12 @@
 <?php
-// dlmt.php - constituition des types divers de inspire-datamodel à partir de docinspire
-// 7/7/2018
-
+/*PhpDoc:
+name: dlmt.php
+title: dlmt.php - constituition des types divers de inspire-datamodel à partir de docinspire
+doc: |
+journal: |
+  7/7/2018:
+    création
+*/
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
@@ -18,7 +23,7 @@ function dlmt(string $mttag) {
   $eutext = 'http://uri.docinspire.eu/eutext';
   $urimt = "http://uri.docinspire.eu/eutext/$mttag";
 
-  if (!is_file("$mttag.pser")) {
+  if (true || !is_file("$mttag.pser")) {
     $turtle = readcache("http://docinspire.eu/get.php?fmt=ttl&uri=".urlencode($urimt));
     
     //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
@@ -48,12 +53,14 @@ function dlmt(string $mttag) {
       }
     
       foreach (['prefLabel','definition'] as $tag) {
-        $pattern = "!skos:$tag \"([^\"]*)\"@(..)\.!";
+        $pattern = "!skos:$tag \"([^\"]*)\"(@(..))?\.!";
         while (preg_match($pattern, $turtle, $matches)) {
           //echo "<pre>"; print_r($matches); echo "</pre>\n";
           $turtle = preg_replace($pattern, '', $turtle, 1);
-          if (in_array($matches[2], ['fr','en']))
-            $mts[$mtid][$tag][$matches[2]] = $matches[1];
+          if (!isset($matches[3]))
+            $mts[$mtid][$tag]['n'] = $matches[1];
+          elseif (in_array($matches[3], ['fr','en']))
+            $mts[$mtid][$tag][$matches[3]] = $matches[1];
         }
       }
     

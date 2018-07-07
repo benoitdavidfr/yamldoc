@@ -1,5 +1,9 @@
 <?php
-// mkscheme.php - fabrique les champs scheme et concepts de inspire-datamodel.yaml
+/*PhpDoc:
+name: mkscheme.php
+title: mkscheme.php - fabrique les champs scheme et concepts de inspire-datamodel.yaml
+doc: |
+*/
 
 require_once __DIR__.'/../../vendor/autoload.php';
 
