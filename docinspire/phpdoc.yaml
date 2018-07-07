@@ -6,6 +6,7 @@ doc: |
   Les scripts mkscheme.php et mkot.php produisent chacun une partie du document DataModel
   Un makefile enchaine les commandes
   make install copie le fichier dans docs 
+  make clean supprime les yaml intermédiaires et les pser
 journal: |
   7/7/2018:
     création
