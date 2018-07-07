@@ -1,0 +1,31 @@
+title: description du modèle de données Inspire
+doc: |
+  Réflexion sur une structuration du modèle de données Inspire dans un document Yaml étendant YamlSkos
+language: [fr,en]
+organisation:
+  domains:
+    def: organisation hiérarchique des schemes et des nomenclatures
+    kind: annex / theme / model / package
+    struct: arborescence de domaines de YamlSkos
+  schemes+concepts:
+    def: organisation des codelist et enum en schemes et concepts
+    type: Enum / Codelist
+    struct:
+      - organisation hiérarchique des listes de codes en utilisant broader
+      - une liste contient une arborescence de concepts
+  objectTypes:
+    KEY: identifiant 
+    def: définition des types d'objets
+    type: AbstractType / SpatialObjectType / Uniontype / Datatype / Externaltype
+    struct:
+      attributes: dictionnaire nom -> type / nomenclature
+      domain: domain
+yamlClass: DataModel
+domainScheme:
+  prefLabel:
+    fr: Sommaire
+  hasTopConcept:
+    - annexI
+    - annexII
+    - annexIII
+    - annexIV
