@@ -22,11 +22,12 @@ doc: |
       - les AbstractType / Uniontype / Datatype / Externaltype / unknown
     - voir comment gérer les super-listes ! en faire un type ?
     - gestion:
-      - scheme.extensibility
-      - scheme.(requirement|technicalguide|refdoc|docextract)
+      - codelist.extensibility
+      - codelist.requirement -> scopeNote
+      - codelist.(requirement|technicalguide|refdoc|docextract) -> source
       - scheme.exactMatch
       - objecttype.broadMatch
-    - lien vers la source du règlement:
+    - lien vers la source du règlement: source ?
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
     - vérifier l'intégrité des références internes
 
