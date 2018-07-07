@@ -1,5 +1,5 @@
 docinspire.yaml : start.yaml domains.yaml schemes.yaml objectypes.yaml
-	cat start.yaml schemes.yaml objectypes.yaml > docinspire.yaml
+	cat start.yaml domains.yaml schemes.yaml objectypes.yaml > docinspire.yaml
 domains.yaml : dldomain.php
 	php dldomain.php > domains.yaml
 schemes.yaml : mkscheme.php codelist.pser enum.pser
