@@ -206,4 +206,4 @@ foreach (array_reverse($packages) as $id=>$package) {
 }
 
 //echo "<pre>domains="; print_r($domains); echo "</pre>\n";
-echo Yaml::dump($domains, 999, 2);
+echo Yaml::dump(['domains'=> $domains], 999, 2);
