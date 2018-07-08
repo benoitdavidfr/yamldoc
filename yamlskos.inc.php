@@ -305,7 +305,10 @@ class Elt {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
   function asArray(): array { return $this->_c; }
   function extract(string $ypath): array { return YamlDoc::sextract($this->_c, $ypath); }
-  function showInYaml(): void { echo "<pre>",Yaml::dump($this->_c, 999, 2),"</pre>"; }
+  
+  function showInYaml(): void {
+    echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],Yaml::dump($this->_c, 999, 2)),"</pre>";
+  }
   
   // pour un texte/chaine multi-lingue renvoie la langue à afficher ou ''
   function getLangForText(string $key): string {
