@@ -46,28 +46,48 @@ doc: |
     les typedetype sont 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
   - voidability vaut 'voidable' ou 'notVoidable'
 journal: |
-  4-7/7/2018:
+  4-8/7/2018:
   - création
 EOT;
 }
         
 class DataModel extends YamlSkos {
+  static $keyTranslations = [
+    'attributes'=> ['fr'=>"Attributs", 'en'=>"Attributes"],
+    'relations'=> ['fr'=>"Relations", 'en'=>"Relations"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+  ];
   protected $objectTypes; // dictionnaire des types
   
   function __construct(array &$yaml) {
-    //echo "DataModel::__construct()<br>\n";
+    echo "DataModel::__construct()<br>\n";
     parent::__construct($yaml);
     foreach ($this->domains as $domid => $domain)
       $this->domains[$domid] = new DMDomain($domain->asArray(), $this->language);
     if (!isset($yaml['objectTypes']))
       throw new Exception("Erreur: champ objectTypes absent dans la création DataModel");
-    $this->objectTypes = [];
-    foreach ($yaml['objectTypes'] as $id => $objectType)
-      $this->objectTypes[$id] = new ObjectType($objectType, $this->language);
+    //print_r($yaml['objectTypes']);
+    foreach ($yaml['objectTypes'] as $objid => $objectType)
+      $this->objectTypes[$objid] = new ObjectType($objectType, $this->language);
+    unset($this->_c['objectTypes']);
     unset($yaml['objectTypes']);
-    $this->_c = $yaml;
     // remplit le lien domain -> objectType à partir du lien inverse
     ObjectType::fillObjectTypeChildren($this->objectTypes, $this->domains);
+  }
+  
+  // traduction dans la bonne langue des noms des champs
+  static function keyTranslate(string $key): string {
+    if (!isset(self::$keyTranslations[$key]))
+      return parent::keyTranslate($key);
+    if (isset($_GET['lang']) && isset(self::$keyTranslations[$key][$_GET['lang']]))
+      return self::$keyTranslations[$key][$_GET['lang']];
+    else
+      foreach (['fr','en','n'] as $lang)
+        if (isset(self::$keyTranslations[$key][$lang]))
+          return self::$keyTranslations[$key][$lang];
+    return "<b>Traduction non définie pour $key</b>";
   }
   
   function show(string $ypath): void {
@@ -182,6 +202,23 @@ class DMDomain extends Domain {
 };
 
 class ObjectType extends Elt {
+  function __construct(array $yaml, array $language) {
+    parent::__construct($yaml, $language);
+    //echo "ObjectType::__contruct($this)<br>\n";
+    if ($this->attributes) {
+      foreach ($this->attributes as $name => $attr) {
+        if (isset($attr['definition']))
+          $this->_c['attributes'][$name]['definition'] = new MLString($attr['definition'], $language);
+      }
+    }
+    if ($this->relations) {
+      foreach ($this->relations as $name => $rel) {
+        if (isset($rel['definition']))
+          $this->_c['relations'][$name]['definition'] = new MLString($rel['definition'], $language);
+      }
+    }
+  }
+  
   // remplit le lien domain -> scheme à partir du lien inverse
   static function fillObjectTypeChildren(array $objectTypes, array $domains) {
     foreach ($objectTypes as $otid => $objectType) {
@@ -202,27 +239,51 @@ class ObjectType extends Elt {
       $this->showTextsInTable($key);
     }
     echo "</table>\n";
-    
+    //$this->showInYaml();
     if ($this->attributes) {
-      echo "<h3>",YamlSkos::keyTranslate('attributes'),"</h3>\n";
-      echo "<table border = 1>\n";
-      foreach ($this->attributes as $name => $attr) {
-        echo "<tr><td>$name</td></tr>\n";
+      echo "<h3>",DataModel::keyTranslate('attributes'),"</h3>\n";
+      echo "<table border=1><th>name</th><th>definition</th><th>type</th><th>voidability</th>\n";
+      foreach ($this->attributes as $name => $elt) {
+        echo "<tr><td>$name</td><td>",str2html($elt['definition']->__toString()),"</td>\n";
+        $toftype = array_keys($elt['type'])[0];
+        $type = $elt['type'][$toftype];
+        $url = "?doc=$_GET[doc]&amp;ypath="
+                .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
+                .(isset($_GET['lang']) ? "lang=$_GET[lang]" : '');
+        echo "<td><a href='$url'>$type</a> ($toftype)</td>";
+        echo "<td>$elt[voidability]</td></tr>\n";
       }
       echo "</table>\n";
     }
-/*
-  $lang = $this->getLangForText($key);
-  $labels = $this->$key[$lang];
-  echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n";
-  if (is_string($labels))
-    echo MarkdownExtra::defaultTransform($labels);
-  else {
-    foreach ($labels as $label) {
-      echo MarkdownExtra::defaultTransform($label);
+    if ($this->relations) {
+      echo "<h3>",DataModel::keyTranslate('relations'),"</h3>\n";
+      echo "<table border=1><th>name</th><th>definition</th><th>type</th><th>voidability</th>\n";
+      foreach ($this->relations as $name => $elt) {
+        echo "<tr><td>$name</td><td>",str2html($elt['definition']->__toString()),"</td>\n";
+        $toftype = array_keys($elt['type'])[0];
+        $type = $elt['type'][$toftype];
+        $url = "?doc=$_GET[doc]&amp;ypath="
+                .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
+                .(isset($_GET['lang']) ? "lang=$_GET[lang]" : '');
+        echo "<td><a href='$url'>$type</a> ($toftype)</td>";
+        echo "<td>$elt[voidability]</td></tr>\n";
+      }
+      echo "</table>\n";
     }
-*/
-    $this->showInYaml();
+    //$this->showInYaml();
+    //echo "<pre>"; print_r($this); echo "</pre>\n";
+  }
+  
+  function asArray(): array {
+    $result = parent::asArray();
+    foreach (['attributes','relations'] as $key) {
+      if ($this->$key) {
+        foreach ($this->$key as $name => $elt) {
+          $result[$key][$name]['definition'] = $elt['definition']->get();
+        }
+      }
+    }
+    return $result;
   }
   
   function checkIntegrity(string $id, array $domains, array $objecttypes): void {

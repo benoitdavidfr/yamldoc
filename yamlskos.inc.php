@@ -87,9 +87,6 @@ class YamlSkos extends YamlDoc {
     'broader'=> ['fr'=>"Concept générique", 'en'=>"Broader"],
     'narrower'=> ['fr'=>"Concept spécifique", 'en'=>"Narrower"],
     'related'=> ['fr'=>"Concept associé", 'en'=>"Related"],
-    'attributes'=> ['fr'=>"Attributs", 'en'=>"Attributes"],
-    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
-    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
   ];
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
@@ -294,6 +291,7 @@ class YamlSkos extends YamlDoc {
 
 
 // la classe Elt est une super-classe de Domain, Scheme et Concept
+// A la construction les champs chaine sont transformés en objet MLString
 class Elt {
   static $strFields = [
     'prefLabel','altLabel','hiddenLabel','definition',
@@ -407,26 +405,14 @@ class Elt {
   
   // affichage de texts comme une ligne dans une table
   function showTextsInTable(string $key) {
-    if ($this->$key) {
-      if (is_string($this->$key)) { // texte mono-lingue
-        echo "<tr><td>$key:</td>\n";
-        echo '<td>',MarkdownExtra::defaultTransform($this->$key),"</td></tr>\n";
-      }
-      else {
-        $lang = $this->getLangForText($key);
-        $labels = $this->$key[$lang];
-        if (is_string($labels)) {
-          echo "<tr><td>",YamlSkos::keyTranslate($key)," ($lang):</td>\n";
-          echo '<td>',MarkdownExtra::defaultTransform($labels),"</td></tr>\n";
-        }
-        else {
-          $nblabels = count($labels);
-          echo "<tr><td rowspan='$nblabels'>",YamlSkos::keyTranslate($key)," ($lang):</td>\n";
-          foreach ($labels as $i => $label) {
-            echo $i?'<tr>':'','<td>',MarkdownExtra::defaultTransform($label),'</td></tr>';
-          }
-        }
-      }
+    if (!$this->$key)
+      return;
+    $lang = $this->$key->getLang();
+    $labels = $this->$key->getInLang();
+    $nblabels = count($labels);
+    echo "<tr><td rowspan='$nblabels'>",YamlSkos::keyTranslate($key)," ($lang):</td>\n";
+    foreach ($labels as $i => $label) {
+      echo $i?'<tr>':'','<td>',MarkdownExtra::defaultTransform($label),'</td></tr>';
     }
   }
   
