@@ -168,11 +168,12 @@ class DMDomain extends Domain {
       }
       asort($children);
       echo "<ul>\n";
+      $langp = (isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
       foreach (array_keys($children) as $narrower) {
-        if (!$domains[$narrower]->schemeChildren and !$domains[$narrower]->objectTypeChildren)
+        if (!$domains[$narrower]->schemeChildren && !$domains[$narrower]->objectTypeChildren)
           echo "<li>$domains[$narrower]</li>\n";
         else
-          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/domains/$narrower'>$domains[$narrower]</a></li>\n";
+          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/domains/$narrower$langp'>$domains[$narrower]</a></li>\n";
         $domains[$narrower]->showDomainTree($domains, $schemes);
       }
       echo "</ul>\n";
@@ -184,17 +185,20 @@ class DMDomain extends Domain {
   function show(DataModel $datamodel) {
     //echo "<pre>DMDomain::show(), this="; print_r($this); echo "</pre>\n";
     echo "<h2>$this</h2>\n";
+    $langp = (isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
     if ($this->schemeChildren) {
       echo "<h3>Listes de codes et énumérations</h3><ul>\n";
       foreach ($this->schemeChildren as $sid) {
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$sid'>",$datamodel->schemes[$sid],"</a></li>\n";
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=".urlencode("/schemes/$sid")."$langp'>",
+             $datamodel->schemes[$sid],"</a></li>\n";
       }
       echo "</ul>\n";
     }
     if ($this->objectTypeChildren) {
       echo "<h3>Listes des types</h3><ul>\n";
       foreach ($this->objectTypeChildren as $otid) {
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/objectTypes/$otid'>",$datamodel->objectTypes[$otid],"</a></li>\n";
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=".urlencode("/objectTypes/$otid")."$langp'>",
+             $datamodel->objectTypes[$otid],"</a></li>\n";
       }
       echo "</ul>\n";
     }
@@ -249,7 +253,7 @@ class ObjectType extends Elt {
         $type = $elt['type'][$toftype];
         $url = "?doc=$_GET[doc]&amp;ypath="
                 .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
-                .(isset($_GET['lang']) ? "lang=$_GET[lang]" : '');
+                .(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
         echo "<td><a href='$url'>$type</a> ($toftype)</td>";
         echo "<td>$elt[voidability]</td></tr>\n";
       }
@@ -264,7 +268,7 @@ class ObjectType extends Elt {
         $type = $elt['type'][$toftype];
         $url = "?doc=$_GET[doc]&amp;ypath="
                 .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
-                .(isset($_GET['lang']) ? "lang=$_GET[lang]" : '');
+                .(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
         echo "<td><a href='$url'>$type</a> ($toftype)</td>";
         echo "<td>$elt[voidability]</td></tr>\n";
       }

@@ -97,11 +97,13 @@ class YamlSkos extends YamlDoc {
   protected $concepts; // dictionnaire des concepts
   
   function __construct(array &$yaml) {
+    unset($yaml['yamlClass']);
     if (!isset($yaml['title']))
       throw new Exception("Erreur: champ title absent dans la création YamlSkos");
     if (!isset($yaml['language']))
       throw new Exception("Erreur: champ language absent dans la création YamlSkos");
     $this->language = is_string($yaml['language']) ? [ $yaml['language'] ] : $yaml['language'];
+    //unset($yaml['language']);
     if (!isset($yaml['domainScheme']))
       throw new Exception("Erreur: champ domainScheme absent dans la création YamlSkos");
     $this->domainScheme = new DomainScheme($yaml['domainScheme'], $this->language);
@@ -157,7 +159,7 @@ class YamlSkos extends YamlDoc {
   function show(string $ypath): void {
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath) {
-      showDoc($this->_c);
+      showDoc(array_merge($this->_c, ['language'=> '['.implode(', ', $this->language).']']));
       $this->domainScheme->show($this->domains, $this->schemes);
     }
     elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
@@ -477,8 +479,9 @@ class Domain extends Elt {
     }
     if ($this->schemeChildren) {
       echo "<ul>\n";
+      $langp = (isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
       foreach ($this->schemeChildren as $sid) {
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$sid'>$schemes[$sid]</a></li>\n";
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$sid$langp'>$schemes[$sid]</a></li>\n";
       }
       echo "</ul>\n";
     }

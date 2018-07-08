@@ -1,25 +1,21 @@
-title: description du modèle de données Inspire
-doc: |
-  Réflexion sur une structuration du modèle de données Inspire dans un document Yaml étendant YamlSkos
+# Ce fichier contient l'en-tête du modèle de données Inspire
+# Il sera complété par les domaines, les schemes, les concepts et les objectTypes
+title: Modèle de données Inspire déduit du règlement interopérabilité
+description: |
+  Ce document structure le
+  [règlement interopérabilité Inspire](http://eur-lex.europa.eu/legal-content/fr/NOT/?uri=CELEX:02010R1089-20141231)
+  en se fondant sur les éléments suivants:
+    
+    - un sommaire hiérarchique du document en domaines définis par les annexes, les thèmes, les modèles et les paquets
+      définis par le règlement,
+    - les listes de codes et les énumérations structurées comme schéma de concepts Skos,
+    - les éléments de ces listes de codes et de ces énumérations structurés comme concepts Skos,
+    - les différents types (spatialobjecttype, datatype, uniontype) définis dans le règlement,
+      les externtype utilisés dans le règlement et définis en dehors du règlement,
+      et les unknowntype qui sont aussi utilisés dans le règlement mais ne sont définis nulle part.
+      
+  Ce document contient les infos des versions françaises et anglaises du règlement.
 language: [fr,en]
-organisation:
-  domains:
-    def: organisation hiérarchique des schemes et des nomenclatures
-    kind: annex / theme / model / package
-    struct: arborescence de domaines de YamlSkos
-  schemes+concepts:
-    def: organisation des codelist et enum en schemes et concepts
-    type: Enum / Codelist
-    struct:
-      - organisation hiérarchique des listes de codes en utilisant broader
-      - une liste contient une arborescence de concepts
-  objectTypes:
-    KEY: identifiant 
-    def: définition des types d'objets
-    type: AbstractType / SpatialObjectType / Uniontype / Datatype / Externaltype
-    struct:
-      attributes: dictionnaire nom -> type / nomenclature
-      domain: domain
 yamlClass: DataModel
 domainScheme:
   prefLabel:
