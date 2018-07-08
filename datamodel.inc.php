@@ -115,7 +115,7 @@ class DataModel extends YamlSkos {
   function extract(string $ypath) {
     if (!$ypath) {
       $result = $this->_c;
-      foreach (['domains','schemes','concepts','objecttypes'] as $field) {
+      foreach (['domains','schemes','concepts','objectTypes'] as $field) {
         foreach($this->$field as $id => $elt)
           $result[$field][$id] = $elt->asArray();
       }
