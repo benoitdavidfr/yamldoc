@@ -43,15 +43,17 @@ doc: |
   identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
   auxquelles elles appartiennent. Ces propriétés sont définies dans Dublin Core.
 journal: |
+  8/7/2018:
+  - utilisation de la classe MLString pour gérer les chaines multi-lingues
   4/7/2018:
   - possibilité d'une arborescence des domaines
-  - définition d'une classe DomainScheme
   27-29/6/2018:
   - création
 EOT;
 }
 require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__."/../yamldoc/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
+require_once __DIR__.'/mlstring.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Michelf\MarkdownExtra;
@@ -61,13 +63,16 @@ function suppAccents(string $str): string {
   return strtolower(str_replace(['é','É','Î'],['e','e','i'], $str));
 }
 
+function str2html($str) { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
+
 class YamlSkos extends YamlDoc {
   // traduction des champs utilisés en français et en anglais pour l'affichage
   static $keyTranslations = [
+    'domain'=> ['fr'=>"Domaine", 'en'=> "Domain"],
     'hasPart'=> ['fr'=>"Est composé de", 'en'=> "Has part"],
     'isPartOf'=> ['fr'=>"Est une partie de", 'en'=> "Is part of"],
     'content'=> ['fr'=>"Contenu", 'en'=>"Content"],
-    'inScheme'=> ['fr'=>"Elément du schéma", 'en'=>"In scheme"],
+    'inScheme'=> ['fr'=>"Schéma de l'élément", 'en'=>"In scheme"],
     'hasTopConcept'=> ['fr'=>"Elements de premier niveau", 'en'=>"Top concepts"],
     'topConceptOf'=> ['fr'=>"Elément de premier niveau du schéma", 'en'=>"Top concept of"],
     'prefLabel'=> ['fr'=>"Forme lexicale préférentielle", 'en'=>"Prefered label"],
@@ -79,9 +84,12 @@ class YamlSkos extends YamlDoc {
     'historyNote'=> ['fr'=>"Note historique", 'en'=>"History note"],
     'editorialNote'=> ['fr'=>"Note éditoriale", 'en'=>"Editorial note"], 
     'example'=> ['fr'=>"Exemple", 'en'=>"Example"],
-    'broader'=> ['fr'=>"concept générique", 'en'=>"Broader"],
-    'narrower'=> ['fr'=>"concept spécifique", 'en'=>"Narrower"],
-    'related'=> ['fr'=>"concept associé", 'en'=>"Related"],
+    'broader'=> ['fr'=>"Concept générique", 'en'=>"Broader"],
+    'narrower'=> ['fr'=>"Concept spécifique", 'en'=>"Narrower"],
+    'related'=> ['fr'=>"Concept associé", 'en'=>"Related"],
+    'attributes'=> ['fr'=>"Attributs", 'en'=>"Attributes"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
   ];
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
@@ -284,48 +292,47 @@ class YamlSkos extends YamlDoc {
   }
 };
 
+
 // la classe Elt est une super-classe de Domain, Scheme et Concept
 class Elt {
+  static $strFields = [
+    'prefLabel','altLabel','hiddenLabel','definition',
+    'note','scopeNote','editorialNote','historyNote','example',
+  ];
   protected $_c; // stockage du contenu comme array
   
   function __construct(array $yaml, array $language) {
     $this->_c = $yaml;
-    if (is_string($this->prefLabel)) {
-      if (count($language)==1)
-        $this->_c['prefLabel'] = [$language[0] => $this->prefLabel];
-      else {
-        print_r($yaml);
-        print_r($language);
-        throw new Exception("Erreur sur prefLabel dans Elt::__construct()");
-      }
+    foreach (self::$strFields as $strField) {
+      if (isset($this->_c[$strField]))
+        $this->_c[$strField] = new MLString($this->_c[$strField], $language);
     }
   }
   
   function addNarrower(string $nid): void { $this->_c['narrower'][] = $nid; }
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
-  function asArray(): array { return $this->_c; }
-  function extract(string $ypath): array { return YamlDoc::sextract($this->_c, $ypath); }
   
+  function asArray(): array {
+    $result = [];
+    foreach ($this->_c as $field => $value) {
+      if (in_array($field, self::$strFields))
+        $result[$field] = $value->get();
+      else
+        $result[$field] = $value;
+    }
+    return $result;
+  }
+  
+  function extract(string $ypath): array { return YamlDoc::sextract($this->asArray(), $ypath); }
+  
+  // Affiche en HTML une représentation Yaml
   function showInYaml(): void {
-    echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],Yaml::dump($this->_c, 999, 2)),"</pre>";
+    echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],Yaml::dump($this->asArray(), 999, 2)),"</pre>";
   }
+    
+  function __tostring(): string { return $this->prefLabel->__toString(); }
   
-  // pour un texte/chaine multi-lingue renvoie la langue à afficher ou ''
-  function getLangForText(string $key): string {
-    if (isset($_GET['lang']) && isset($this->$key[$_GET['lang']]))
-      return $_GET['lang'];
-    else
-      foreach (['fr','en','n'] as $lang)
-        if (isset($this->$key[$lang]))
-          return $lang;
-    return '';
-  }
-  
-  function __tostring() {
-    $lang = $this->getLangForText('prefLabel');
-    return $lang ? $this->prefLabel[$lang] : 'aucun prefLabel';
-  }
-  
+  // affichage de liens
   function showLinks(string $key, YamlSkos $skos) {
     if ($this->$key) {
       echo "<b>",YamlSkos::keyTranslate($key),":</b><ul style='margin-top:0;'>\n";
@@ -345,21 +352,78 @@ class Elt {
     }
   }
   
+  // affichage de liens comme une ligne dans une table
+  function showLinksInTable(string $key, YamlSkos $skos) {
+    if ($this->$key) {
+      $nblinks = count($this->$key);
+      echo "<tr><td>",YamlSkos::keyTranslate($key),"</td><td>";
+      if ($nblinks > 1)
+        echo "<ul style='margin-top:0;'>\n";
+      foreach ($this->$key as $lid) {
+        //echo "lid=$lid<br>\n";
+        $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
+        if ($nblinks > 1)
+          echo "<li>";
+        if (isset($skos->concepts[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
+               $skos->concepts[$lid],"</a>\n";
+        elseif (isset($skos->schemes[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
+               $skos->schemes[$lid],"</a>\n";
+        elseif (isset($skos->domains[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/domains/$lid$langp'>",
+               $skos->domains[$lid],"</a>\n";
+        else
+          echo "lien $lid trouvé ni dans concepts ni dans schemes ni dans domains\n";
+      }
+      if ($nblinks > 1)
+        echo "</ul>";
+      echo "</td></tr>\n";
+    }
+  }
+  
+  // affichage de textes
+  function showStrings(string $key) {
+    if (!$this->$key)
+      return;
+    $lang = $this->$key->getLang();
+    echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n<ul style='margin-top:0;'>\n";
+    foreach ($this->$key->getInLang() as $label) {
+      echo '<li>',str2html($label),"\n";
+    }
+    echo "</ul>\n";
+  }
+  
+  // affichage de textes
   function showTexts(string $key) {
+    if (!$this->$key)
+      return;
+    $lang = $this->$key->getLang();
+    echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n";
+    foreach ($this->$key->getInLang() as $label) {
+      echo MarkdownExtra::defaultTransform($label);
+    }
+  }
+  
+  // affichage de texts comme une ligne dans une table
+  function showTextsInTable(string $key) {
     if ($this->$key) {
       if (is_string($this->$key)) { // texte mono-lingue
-        echo "<b>$key:</b><br>\n";
-        echo MarkdownExtra::defaultTransform($this->$key);
+        echo "<tr><td>$key:</td>\n";
+        echo '<td>',MarkdownExtra::defaultTransform($this->$key),"</td></tr>\n";
       }
       else {
         $lang = $this->getLangForText($key);
         $labels = $this->$key[$lang];
-        echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n";
-        if (is_string($labels))
-          echo MarkdownExtra::defaultTransform($labels);
+        if (is_string($labels)) {
+          echo "<tr><td>",YamlSkos::keyTranslate($key)," ($lang):</td>\n";
+          echo '<td>',MarkdownExtra::defaultTransform($labels),"</td></tr>\n";
+        }
         else {
-          foreach ($labels as $label) {
-            echo MarkdownExtra::defaultTransform($label);
+          $nblabels = count($labels);
+          echo "<tr><td rowspan='$nblabels'>",YamlSkos::keyTranslate($key)," ($lang):</td>\n";
+          foreach ($labels as $i => $label) {
+            echo $i?'<tr>':'','<td>',MarkdownExtra::defaultTransform($label),'</td></tr>';
           }
         }
       }
@@ -521,7 +585,7 @@ class Concept extends Elt {
     if ($this->narrower) {
       $children = [];
       foreach ($this->narrower as $nid) {
-        $children[$nid] = suppAccents($concepts[$nid]->prefLabel['fr']);
+        $children[$nid] = suppAccents($concepts[$nid]->prefLabel->__toString());
       }
       asort($children);
       echo "<ul>\n";
@@ -552,24 +616,8 @@ class Concept extends Elt {
     
   function show(YamlSkos $skos) {
     //echo "<pre>Concept::show("; print_r($this); echo ")</pre>\n";
-    echo "<h3>",$this,"</h3>\n";
-    if ($this->altLabel) {
-      if (is_numeric(array_keys($this->altLabel)[0])) {
-        echo "<b>altLabel:</b><ul style='margin-top:0;'>\n";
-        foreach ($this->altLabel as $label)
-          echo "<li>$label\n";
-        echo "</ul>\n";
-      }
-      else {
-        $lang = $this->getLangForText('altLabel');
-        $labels = $this->altLabel[$lang];
-        echo "<b>",YamlSkos::keyTranslate('altLabel')," ($lang):</b><ul>\n";
-        foreach ($labels as $label) {
-          echo "<li>$label\n";
-        }
-        echo "</ul>\n";
-      }
-    }
+    echo "<h3>$this</h3>\n";
+    $this->showStrings('altLabel');
     
     foreach (['inScheme','topConceptOf','broader','narrower','related','hasTopConcept'] as $key) {
       $this->showLinks($key, $skos);

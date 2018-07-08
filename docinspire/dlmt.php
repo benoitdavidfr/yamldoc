@@ -97,7 +97,7 @@ function dlmt(string $mttag) {
       //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
       //die("ligne ".__LINE__);
     
-      foreach (['a'=>'attritutes','r'=>'relations'] as $prefix => $field) {
+      foreach (['a'=>'attributes','r'=>'relations'] as $prefix => $field) {
         $pattern = "!skos:hasTopConcept <$urimt/$mtid/$prefix([^>]*)>\.!";
         while (preg_match($pattern, $turtle, $matches)) {
           //echo "<pre>"; print_r($matches); echo "</pre>\n";
@@ -106,7 +106,7 @@ function dlmt(string $mttag) {
         }
       }
     
-      foreach (['a'=>'attritutes','r'=>'relations'] as $prefix => $field) {
+      foreach (['a'=>'attributes','r'=>'relations'] as $prefix => $field) {
         if (isset($mts[$mtid][$field]))
           foreach ($mts[$mtid][$field] as $attr=>$value) {
             $turtle = readcache("http://docinspire.eu/get.php?fmt=ttl&uri=".urlencode("$urimt/$mtid/$prefix$attr"));

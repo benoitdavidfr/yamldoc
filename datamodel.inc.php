@@ -35,6 +35,9 @@ doc: |
     - definition fournit la definition du type en multi-lingue (sauf externaltype et unkowntype)
     - subtypeOf? liste les super-types
     - property? contient éventuellement 'abstracttype' ou 'associationclass'
+    - source liste de ressources desquelles dérive l'élément, chaque ressource est identifié par une clé et peut
+      être définie dans différentes langues, les mots-clés suivants sont utilisés:
+      - eutext pour identifier les extraits de la directive Inspire
     - attributes liste les attributs
     - relations liste les relations
   Les attributs et relations sont identfiés par un nom et comporte les champs suivants:
@@ -193,7 +196,32 @@ class ObjectType extends Elt {
   function show(DataModel $datamodel) {
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
-    //echo "<pre>ObjectType::show() on "; print_r($this); echo "</pre>\n";
+    echo "<table border=1>\n";
+    $this->showLinksInTable('domain', $datamodel);
+    foreach (['definition','scopeNote','historyNote','example'] as $key) {
+      $this->showTextsInTable($key);
+    }
+    echo "</table>\n";
+    
+    if ($this->attributes) {
+      echo "<h3>",YamlSkos::keyTranslate('attributes'),"</h3>\n";
+      echo "<table border = 1>\n";
+      foreach ($this->attributes as $name => $attr) {
+        echo "<tr><td>$name</td></tr>\n";
+      }
+      echo "</table>\n";
+    }
+/*
+  $lang = $this->getLangForText($key);
+  $labels = $this->$key[$lang];
+  echo "<b>",YamlSkos::keyTranslate($key)," ($lang):</b><br>\n";
+  if (is_string($labels))
+    echo MarkdownExtra::defaultTransform($labels);
+  else {
+    foreach ($labels as $label) {
+      echo MarkdownExtra::defaultTransform($label);
+    }
+*/
     $this->showInYaml();
   }
   
