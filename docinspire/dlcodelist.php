@@ -139,9 +139,9 @@ function readscheme(string $stag, string $sid, string $isPartOf=''): array {
   $uricodelist = "$eutext/$stag";
   $codelist = ['type'=> [$stag]];
   $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode("$uricodelist/$sid"));
+  //if ($isPartOf) echo str_replace(['&','<'],['&amp;','&lt;'], $turtle);
   $turtle = preg_replace("!<$uricodelist/$sid> !", '', $turtle);
-  //echo "<pre>",str_replace(['<'],['&lt;'], $turtle),"</pre>\n";
-  
+
   $pattern = "!skos:broader <$eutext/(theme|package|model)/([^>]*)>\.\n!";
   if (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
@@ -242,7 +242,7 @@ if (true || !is_file('codelist.pser')) {
     //echo "<pre>"; print_r($matches); echo "</pre>\n";
     $turtle = preg_replace($pattern, '', $turtle, 1);
     //if ($matches[1] <> 'AnthropogenicGeomorphologicFeatureTypeValue') continue;
-    $codelists[$matches[1]] = ['type'=> ['codelist']];
+    $codelists[$matches[1]] = true;
   }
   //echo "<pre>codelists="; print_r($codelists); echo "</pre>\n";
 
@@ -254,7 +254,7 @@ if (true || !is_file('codelist.pser')) {
     if (isset($codelists[$sid]['hasPart']) && $codelists[$sid]['hasPart']) {
       foreach ($codelists[$sid]['hasPart'] as $pid) {
         if (!isset($codelists[$pid])) {
-          //echo "Lecture de la sous-liste $pid de $sid<br>\n";
+          //echo "Lecture de la sous-liste $pid de $sid\n";
           $codelists[$pid] = readscheme($stag, $pid, $sid);
           $concepts = array_merge($concepts, $codelists[$pid]['concepts']);
           unset($codelists[$pid]['concepts']);
@@ -262,6 +262,10 @@ if (true || !is_file('codelist.pser')) {
       }
     }
   }
+  //   Redéfinition des codelists mal définies dans docinspire
+  $suppcodelists = Yaml::parse(@file_get_contents(__DIR__.'/suppcodelist.yaml'));
+  $codelists = array_merge($codelists, $suppcodelists['codelists']);
+  
   $contents = ['schemes'=> array_reverse($codelists), 'concepts'=> array_reverse($concepts)];
   file_put_contents('codelist.pser', serialize($contents)); 
   echo Yaml::dump($contents, 999, 2);

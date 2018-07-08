@@ -326,7 +326,7 @@ if (!isset($_GET['action'])) {
   try {
     $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
   }
-  catch (Symfony\Component\Yaml\Exception\ParseException $exception) {
+  catch (ParseException $exception) {
     printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
     echo "<pre>",ydread($_SESSION['store'], $_GET['doc']),"</pre>\n";
     die();
@@ -349,9 +349,9 @@ if (!isset($_GET['action'])) {
     if (!isset($_GET['format']))
       $doc->show($ypath);
     elseif ($_GET['format']=='yaml')
-      echo "<pre>",$doc->yaml($ypath),"</pre>\n";
+      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->yaml($ypath)),"</pre>\n";
     elseif ($_GET['format']=='json')
-      echo "<pre>",$doc->json($ypath),"</pre>\n";
+      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->json($ypath)),"</pre>\n";
     else
       echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
   }
@@ -415,6 +415,14 @@ if ($_GET['action']=='check') {
   if (!($doc = new_yamlDoc($_SESSION['store'], $_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+  die();
+}
+
+// action checkIntegrity - verification adhoc d'intégrité
+if ($_GET['action']=='checkIntegrity') {
+  if (!($doc = new_yamlDoc($_SESSION['store'], $_GET['doc'])))
+    die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
+  $doc->checkIntegrity();
   die();
 }
 

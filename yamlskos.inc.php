@@ -19,15 +19,17 @@ doc: |
       - title: le titre du thésaurus
       - language: la ou les langues
     - un champ concepts qui liste les concepts ; chacun identifié par une clé et contenant au moins les champs:
-        - prefLabel qui porte une étiquete mono ou multi-lingue,
-        - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
-        - soit:
-            - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
-            - broader avec les identifiants des concepts plus génériques
+      - prefLabel qui porte une étiquete mono ou multi-lingue,
+      - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
+      - soit:
+        - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
+        - broader avec les identifiants des concepts plus génériques
     - un champ schemes qui contient les micro-thésaurus définis comme scheme Skos ; chaque scheme est identifié
       par une clé et contient au moins les champs:
         - prefLabel qui porte une étiquete mono ou multi-lingue,
-        - domain qui contient l'identifiant du domaine auquel le scheme est rattaché
+        - soit:
+          - domain qui contient la liste des identifiants des domaines auxquels le scheme est rattaché
+          - isPartOf qui contient la liste des identifiants des schemes auxquels il fait partie
     - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
       contient au moins les champs:
         - prefLabel qui porte une étiquette mono ou multi-lingue,
@@ -264,6 +266,22 @@ class YamlSkos extends YamlDoc {
     $fragment = $this->extract($ypath);
     return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
+  
+  // vérification de l'intégrité du document
+  function checkIntegrity() {
+    echo "methode YamlSkos::checkIntegrity()<br>\n";
+    foreach ($this->concepts as $cid => $concept)
+      $concept->checkIntegrityOfAConcept($cid, $this->concepts, $this->schemes);
+    echo "checkIntegrity() on concepts ok<br>\n";
+  
+    foreach ($this->schemes as $sid => $scheme)
+      $scheme->checkIntegrity($sid, $this->domains, $this->schemes);
+    echo "checkIntegrity() on schemes ok<br>\n";
+  
+    foreach ($this->domains as $did => $domain)
+      $domain->checkIntegrityOfAConcept($did, $this->domains);
+    echo "checkIntegrity() on domains ok<br>\n";
+  }
 };
 
 // la classe Elt est une super-classe de Domain, Scheme et Concept
@@ -343,6 +361,32 @@ class Elt {
         }
       }
     }
+  }
+  
+  // vérifie l'intégrité d'un concept
+  // Si $schemes est [] ne vérifie pas les liens avec le scheme
+  function checkIntegrityOfAConcept(string $cid, array $concepts, array $schemes=[]) {
+    if (!$this->prefLabel)
+      echo "Concept $cid sans prefLabel<br>\n";
+    if ($schemes) {
+      if (!$this->inScheme)
+        echo "Concept $cid sans inScheme<br>\n";
+      else
+        foreach ($this->inScheme as $s)
+          if (!isset($schemes[$s]))
+            echo "Concept $cid inScheme absent de schemes<br>\n";
+      if (!$this->topConceptOf && !$this->broader)
+        echo "Concept $cid sans topConceptOf et sans broader<br>\n";
+      if ($this->topConceptOf)
+        foreach ($this->topConceptOf as $s)
+          if (!isset($schemes[$s]))
+            echo "Concept $cid topConceptOf absent schemes<br>\n";
+    }
+    foreach (['broader','narrower','related'] as $key)
+      if ($this->$key)
+        foreach ($this->$key as $c)
+          if (!isset($concepts[$c]))
+            echo "Concept $cid $key absent concepts<br>\n";
   }
 };
 
@@ -441,6 +485,21 @@ class Scheme extends Elt {
       }
       echo "</ul>\n";
     }
+  }
+  
+  function checkIntegrity(string $sid, array $domains, array $schemes) {
+    if (!$this->prefLabel)
+      echo "Scheme $sid sans prefLabel<br>\n";
+    if (!$this->domain && !$this->isPartOf)
+      echo "Scheme $sid sans domain ni isPartOf<br>\n";
+    if ($this->domain)
+      foreach ($this->domain as $d)
+        if (!isset($domains[$d]))
+          echo "Scheme $sid domain absent de domains<br>\n";
+    if ($this->isPartOf)
+      foreach ($this->isPartOf as $s)
+        if (!isset($schemes[$s]))
+          echo "Scheme $sid isPartOf $s absent de schemes<br>\n";
   }
 };
 

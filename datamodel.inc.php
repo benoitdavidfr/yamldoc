@@ -30,10 +30,11 @@ doc: |
   Un document modèle de données est une extension d'un document YamlSkos,
   il contient en outre un champ objectTypes qui définit les types qui comportent chacun les champs suivants:
     - type liste les types peuvent être 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
-    - domain liste les domaines auquel le type appartient,
+    - domain liste les domaines auqxuels le type appartient (sauf pour les unknowntype),
     - prefLabel fournit le nom du type en multi-lingue ou en neutre
-    - definition fournit la definition du type en multi-lingue
-    - abstracttype vaut 'abstracttype' ou 'notAbstracttype'
+    - definition fournit la definition du type en multi-lingue (sauf externaltype et unkowntype)
+    - subtypeOf? liste les super-types
+    - property? contient éventuellement 'abstracttype' ou 'associationclass'
     - attributes liste les attributs
     - relations liste les relations
   Les attributs et relations sont identfiés par un nom et comporte les champs suivants:
@@ -123,6 +124,14 @@ class DataModel extends YamlSkos {
       }
     }
   }
+  
+  // vérification de l'intégrité du document
+  function checkIntegrity() {
+    parent::checkIntegrity();
+    foreach ($this->objectTypes as $id => $objectType)
+      $objectType->checkIntegrity($id, $this->domains, $this->objectTypes);
+    echo "methode DataModel::checkIntegrity() non implémentée<br>\n";
+  }
 };
 
 // Domain adapté pour Data Model
@@ -186,5 +195,42 @@ class ObjectType extends Elt {
     echo "<h2>$this$type</h2>\n";
     //echo "<pre>ObjectType::show() on "; print_r($this); echo "</pre>\n";
     $this->showInYaml();
+  }
+  
+  function checkIntegrity(string $id, array $domains, array $objecttypes): void {
+    // type liste les types peuvent être 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
+    if (!$this->type)
+      echo "ObjectType $id sans type<br>\n";
+    else
+      foreach ($this->type as $type)
+        if (!in_array($type,['spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype']))
+          echo "ObjectType $id type $type hors liste<br>\n";
+    // domain liste les domaines auqxuels le type appartient (sauf pour les unknowntype),
+    if (!in_array('unknowntype', $this->type)) {
+      if (!$this->domain)
+        echo implode(',',$this->type)," $id sans domain<br>\n";
+      else
+        foreach ($this->domain as $d)
+          if (!isset($domains[$d]))
+            echo implode(',',$this->type)," $sid domain absent de domains<br>\n";
+    }
+    // prefLabel fournit le nom du type en multi-lingue ou en neutre
+    if (!$this->prefLabel)
+      echo "ObjectType $id sans prefLabel<br>\n";
+    // definition fournit la definition du type en multi-lingue (sauf externaltype et unkowntype)
+    if (!in_array('externaltype', $this->type) && !in_array('unknowntype', $this->type)) {
+      if (!$this->definition)
+        echo implode(',',$this->type)," $id sans definition<br>\n";
+    }
+    // property? contient éventuellement 'abstracttype' ou 'associationclass'
+    if ($this->property)
+      foreach ($this->property as $property)
+        if (!in_array($property,['abstracttype', 'associationclass']))
+          echo implode(',',$this->type)," $id property $property hors liste<br>\n";
+    // subtypeOf? liste les super-types
+    if ($this->subtypeOf)
+      foreach ($this->subtypeOf as $subtypeOf)
+        if (!isset($objecttypes[$subtypeOf]))
+          echo implode(',',$this->type)," $id subtypeOf $subtypeOf absent de objecttypes<br>\n";
   }
 };

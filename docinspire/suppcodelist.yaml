@@ -1,0 +1,58 @@
+title: codelistes supplémentaires
+language: [fr,en]
+description: |
+  Redéfinition des codelists mal définies dans docinspire
+source:
+  - http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=19.5.2.1.&language=fr
+  - http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=19.5.2.1.&language=en
+codelists:
+  GeothermalPotentialValue:
+    type: [codelist]
+    isPartOf: [PotentialTypeValue]
+    prefLabel:
+      fr: Potentiel géothermique
+      en: Geothermal Potential
+    definition:
+      fr: Types d'énergie géothermique potentielle.
+      en: Types of potential geothermal energy.
+    extensibility: undefined
+  HydroPotentialValue:
+    type: [codelist]
+    isPartOf: [PotentialTypeValue]
+    prefLabel:
+      fr: Potentiel hydroélectrique
+      en: Hydro Potential
+    definition:
+      fr: Types d'énergie hydroélectrique potentielle.
+      en: Types of potential hydro energy.
+    extensibility: undefined
+  SolarPotentialValue:
+    type: [codelist]
+    isPartOf: [PotentialTypeValue]
+    prefLabel:
+      fr: Potentiel solaire
+      en: Solar Potential
+    definition:
+      fr: Types d'énergie solaire potentielle.
+      en: Types of potential solar energy.
+    extensibility: undefined
+  TidalPotentialValue:
+    type: [codelist]
+    isPartOf: [PotentialTypeValue]
+    prefLabel:
+      fr: Potentiel d'énergie des marées
+      en: Tidal Potential
+    definition:
+      fr: Types d'énergie des marées potentielle.
+      en: Types of potential tidal energy.
+    extensibility: undefined
+  WindPotentialValue:
+    type: [codelist]
+    isPartOf: [PotentialTypeValue]
+    prefLabel:
+      fr: Potentiel éolien
+      en: Wind Potential
+    definition:
+      fr: Types d'énergie éolienne potentielle.
+      en: Types of potential wind energy.
+    extensibility: undefined
