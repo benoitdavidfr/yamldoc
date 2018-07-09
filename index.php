@@ -438,10 +438,10 @@ if ($_GET['action']=='reindex') {
 
 // action showPhpSrc - affiche le source Php
 if ($_GET['action']=='showPhpSrc') {
-  if (ydext($_GET['doc'])<>'php')
+  if (ydext($_SESSION['store'], $_GET['doc'])<>'php')
     die("Le document $_GET[doc] n'est pas une requête<br>\n");
   echo "<b>Code source Php de $_GET[doc]</b>\n";
-  echo "<pre>",str_replace(['<'],['&lt;'],ydread($_GET['doc'])),"</pre>\n";
+  echo "<pre>",str_replace(['<'],['&lt;'],ydread($_SESSION['store'], $_GET['doc'])),"</pre>\n";
   die("<br>\n");
 }
 

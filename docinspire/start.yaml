@@ -14,7 +14,8 @@ description: |
       les externtype utilisés dans le règlement et définis en dehors du règlement,
       et les unknowntype qui sont aussi utilisés dans le règlement mais ne sont définis nulle part.
       
-  Ce document contient les infos des versions françaises et anglaises du règlement.
+  Ce document contient les infos des versions françaises et anglaises du règlement.  
+  Il correspond à la version 1.0 du 9/7/2018.
 language: [fr,en]
 yamlClass: DataModel
 domainScheme:
