@@ -19,7 +19,7 @@ doc: |
       - title: le titre du thésaurus
       - language: la ou les langues
     - un champ concepts qui liste les concepts ; chacun identifié par une clé et contenant au moins les champs:
-      - prefLabel qui porte une étiquete mono ou multi-lingue,
+      - prefLabel qui porte une étiquette mono ou multi-lingue,
       - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
       - soit:
         - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
@@ -239,6 +239,7 @@ class YamlSkos extends YamlDoc {
   function extract(string $ypath) {
     if (!$ypath) {
       $result = $this->_c;
+      $result['domainScheme'] = $this->domainScheme->asArray();
       foreach (['domains','schemes','concepts'] as $field) {
         foreach($this->$field as $id => $elt)
           $result[$field][$id] = $elt->asArray();
@@ -323,7 +324,7 @@ class Elt {
     return $result;
   }
   
-  function extract(string $ypath): array { return YamlDoc::sextract($this->asArray(), $ypath); }
+  function extract(string $ypath) { return YamlDoc::sextract($this->asArray(), $ypath); }
   
   // Affiche en HTML une représentation Yaml
   function showInYaml(): void {
@@ -521,9 +522,9 @@ class Scheme extends Elt {
     //echo "<pre>Scheme::show("; print_r($this); echo ")</pre>\n";
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
+    $this->showTexts('definition');
     foreach (['hasPart','isPartOf'] as $key)
       $this->showLinks($key, $skos);
-    $this->showTexts('definition');
     if ($this->hasTopConcept) {
       echo "<h3>",YamlSkos::keyTranslate('content'),"</h3><ul>\n";
       $children = []; // [ id => label ]
@@ -534,9 +535,10 @@ class Scheme extends Elt {
       if ($this->options && in_array('sort', $this->options))
         asort($children);
       //echo "<pre>children="; print_r($children); echo "</pre>\n";
+      $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
       foreach (array_keys($children) as $childid) {
         $child = $concepts[$childid];
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$childid'>$child</a></li>\n";
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$childid$langp'>$child</a></li>\n";
         $concepts[$childid]->showConceptTree($concepts);
       }
       echo "</ul>\n";
@@ -577,10 +579,11 @@ class Concept extends Elt {
         $children[$nid] = suppAccents($concepts[$nid]->prefLabel->__toString());
       }
       asort($children);
+      $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
       echo "<ul>\n";
       foreach (array_keys($children) as $nid) {
         $narrower = $concepts[$nid];
-        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$nid'>$narrower</a></li>\n";
+        echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$nid$langp'>$narrower</a></li>\n";
         $narrower->showConceptTree($concepts);
       }
       echo "</ul>\n";

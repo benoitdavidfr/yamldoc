@@ -4,9 +4,6 @@ name: datamodel.inc.php
 title: gestion d'un modèle de données sous la forme d'un document Yaml
 doc: |
   voir le code
-  
-  A FAIRE:
-    - vérifier l'intégrité des références internes
 
   Version ultérieure:
     - gestion:
@@ -19,7 +16,7 @@ doc: |
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
 
 journal: |
-  4-7/7/2018:
+  4-8/7/2018:
   - création
 */
 {
@@ -33,7 +30,7 @@ doc: |
     - domain liste les domaines auqxuels le type appartient (sauf pour les unknowntype),
     - prefLabel fournit le nom du type en multi-lingue ou en neutre
     - definition fournit la definition du type en multi-lingue (sauf externaltype et unkowntype)
-    - subtypeOf? liste les super-types
+    - subtypeOf? liste éventuellement les super-types
     - property? contient éventuellement 'abstracttype' ou 'associationclass'
     - source liste de ressources desquelles dérive l'élément, chaque ressource est identifié par une clé et peut
       être définie dans différentes langues, les mots-clés suivants sont utilisés:
@@ -41,7 +38,7 @@ doc: |
     - attributes liste les attributs
     - relations liste les relations
   Les attributs et relations sont identfiés par un nom et comporte les champs suivants:
-  - definition fournit la definition de l'attribut ou relation en multi-lingue
+  - definition fournit la definition multi-lingue de l'attribut ou relation
   - type sous la forme [ typedetype => nomdutype ]
     les typedetype sont 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
   - voidability vaut 'voidable' ou 'notVoidable'

@@ -10,9 +10,6 @@ $phpDocs['index.php'] = <<<EOT
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
-  version limitée:
-    - pas d'affichage des textes en markdown
-
   Le script utilise les variables de session suivantes:
     - homeCatalog : uid du dernier catalogue d'accueil traversé ou absent si aucun ne l'a été
         identifie l'utilisateur
@@ -36,7 +33,7 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
-  7/7/2018:
+  7-10/7/2018:
   - gestion multi-lingue
   29-30/6/2018:
   - gestion multi-store
@@ -88,48 +85,66 @@ use Symfony\Component\Yaml\Exception\ParseException;
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
+// retrouve le docuid à partir du referer
+function getRefererDocuid() {
+  if (!isset($_SERVER['HTTP_REFERER']))
+    return '';
+  $refererargs = substr(
+      $_SERVER['HTTP_REFERER'],
+      strlen("http://$_SERVER[HTTP_HOST]") + strlen($_SERVER['REQUEST_URI']) - strlen($_SERVER['QUERY_STRING'])
+    ).'&';
+  //echo "refererargs=$refererargs<br>\n";
+  if (!preg_match('!doc=([^&]*)!', $refererargs, $matches)) {
+    throw new Exception("erreur: no match for args dans getRefererDocuid() ligne ".__LINE__);
+  }
+  //echo "matches="; print_r($matches); echo "<br>\n";
+  return $matches[1]; // l'id de doc extrait du referer
+}
+
 // Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(string $store, array $breadcrumb) {
   // affichage du menu
   $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
   $ypatharg = $ypath ? '&amp;ypath='.urlencode($ypath): '';
+  $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
   $docuid = ($breadcrumb ? $breadcrumb[count($breadcrumb)-1] : null);
+  $docp = $docuid ? "&amp;doc=$docuid" : '';
   echo "<table border=1><tr><td><b>Menu :</b></td>\n";
   if ($docuid) {
     // showAsHtml
-    echo "<td><a href='?doc=$docuid$ypatharg'>html</a></td>\n";
+    echo "<td><a href='?doc=$docuid$ypatharg$langp'>html</a></td>\n";
     // showAsYaml
-    echo "<td><a href='?doc=$docuid$ypatharg&amp;format=yaml'>yaml</a></td>\n";
+    echo "<td><a href='?doc=$docuid$ypatharg$langp&amp;format=yaml'>yaml</a></td>\n";
     // showAsJSON
-    echo "<td><a href='?doc=$docuid$ypatharg&amp;format=json'>json</a></td>\n";
+    echo "<td><a href='?doc=$docuid$ypatharg$langp&amp;format=json'>json</a></td>\n";
     // showPhpSrc - affiche le source Php
     if ($docuid && (ydext($store, $docuid)=='php'))
-      echo "<td><a href='?action=showPhpSrc&amp;doc=$docuid'>PhpSrc</a></td>\n";
+      echo "<td><a href='?action=showPhpSrc$docp$langp'>PhpSrc</a></td>\n";
     // check
     //echo "<td><a href='?action=check&amp;doc=$docuid$ypatharg'>check</a></td>\n";
     // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
     if (ydcheckWriteAccess($store,$docuid)<>0)
-      echo "<td><a href='?action=edit&amp;doc=$docuid'>edit</a></td>\n";
+      echo "<td><a href='?action=edit&amp;doc=$docuid$langp'>edit</a></td>\n";
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
-      echo "<td><a href='?clone=$docuid&amp;doc=$catuid'>clone</a></td>\n";
+      echo "<td><a href='?clone=$docuid&amp;doc=$catuid$langp'>clone</a></td>\n";
     if (function_exists('mysqlParams'))
-      echo "<td><a href='?action=reindex&amp;doc=$docuid'>reindex</a></td>\n";
+      echo "<td><a href='?action=reindex$docp$langp'>reindex</a></td>\n";
   }
   // dump
-  echo "<td><a href='?action=dump",($docuid ? "&amp;doc=$docuid" : ''),$ypatharg,"'>dump</a></td>\n";
+  echo "<td><a href='?action=dump$docp$ypatharg$langp'>dump</a></td>\n";
   // unset
-  echo "<td><a href='?action=unset",($docuid ? "&amp;doc=$docuid" : ''),"'>unset</a></td>\n";
+  echo "<td><a href='?action=unset$docp$ypatharg$langp'>unset</a></td>\n";
   // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
   if (isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], ['benoit'])) {
-    echo "<td><a href='?action=git_pull_src",($docuid ? "&amp;doc=$docuid" : ''),"'>pull src</a></td>\n";
-    echo "<td><a href='?action=version",($docuid ? "&amp;doc=$docuid" : ''),"'>version</a></td>\n";
-    echo "<td><a href='?action=git_commit_a",($docuid ? "&amp;doc=$docuid" : ''),"'>commit</a></td>\n";
-    echo "<td><a href='?action=git_pull",($docuid ? "&amp;doc=$docuid" : ''),"'>pull</a></td>\n";
-    echo "<td><a href='?action=git_push",($docuid ? "&amp;doc=$docuid" : ''),"'>push</a></td>\n";
-    echo "<td><a href='?action=git_synchro",($docuid ? "&amp;doc=$docuid" : ''),"'>synchro</a></td>\n";
-    echo "<td><a href='?action=git_log",($docuid ? "&amp;doc=$docuid" : ''),"'>log</a></td>\n";
+    echo "<td><a href='?action=git_pull_src$docp$ypatharg$langp'>pull src</a></td>\n";
+    echo "<td><a href='?action=version$docp$ypatharg$langp'>version</a></td>\n";
+    echo "<td><a href='?action=git_commit_a$docp$ypatharg$langp'>commit</a></td>\n";
+    echo "<td><a href='?action=git_pull$docp$ypatharg$langp'>pull</a></td>\n";
+    echo "<td><a href='?action=git_push$docp$ypatharg$langp'>push</a></td>\n";
+    echo "<td><a href='?action=git_synchro$docp$ypatharg$langp'>synchro</a></td>\n";
+    echo "<td><a href='?action=git_log$docp$ypatharg$langp'>log</a></td>\n";
   }
   echo "</tr></table>\n";
 
@@ -169,29 +184,10 @@ class CallingGraph {
   
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
   static function makeBreadcrumb(): array {
-    //echo "referer ",(isset($_SERVER['HTTP_REFERER']) ? "= $_SERVER[HTTP_REFERER]" : "non défini"),"<br>\n";
-    //echo "<pre>_SERVER = "; print_r($_SERVER); echo "</pre>\n";
     if (!isset($_GET['doc']))
       return [];
-    $curl = "http://$_SERVER[HTTP_HOST]"
-            .substr($_SERVER['REQUEST_URI'],0,strlen($_SERVER['REQUEST_URI'])-strlen($_SERVER['QUERY_STRING']));
-    //echo "curl=$curl<br>\n";
-    if (!isset($_SERVER['HTTP_REFERER']) or (strncmp($_SERVER['HTTP_REFERER'], $curl, strlen($curl))<>0)) {
-      if (self::$verbose)
-        echo "referer non défini ou externe<br>\n";
-      return [ $_GET['doc'] ];
-    }
-    $refererargs = substr($_SERVER['HTTP_REFERER'], strlen($curl)).'&';
-    //echo "refererargs=$refererargs<br>\n";
-    if (!preg_match('!doc=([^&]*)!', $refererargs, $matches)) {
-      echo "erreur: no match for args<br>\n";
-      return [ $_GET['doc'] ];
-    }
-    //echo "matches="; print_r($matches); echo "<br>\n";
-    $parent = $matches[1]; // l'id de doc extrait du referer
     $doc = $_GET['doc'];
-    //echo "parent=$parent, doc=$doc<br>\n";
-    //echo "<pre>_SESSION avant = "; print_r($_SESSION); echo "</pre>\n";
+    $parent = getRefererDocuid(); // l'id de doc extrait du referer
     if ($parent == $doc) {
       if (self::$verbose)
         echo "boucle détectée<br>\n";
@@ -291,6 +287,58 @@ if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='git_')) {
   die();
 }
 
+
+// action d'affichage d'un document ou de recherche de documents
+if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
+  if (!isset($_GET['doc']))
+    die("<a href='?doc=index'>Accès au document par défaut</a>\n");
+  
+  $docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
+  //isset($_SESSION['parents'][$doc]);
+  $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+  if ($ypath && (substr($ypath,0,1)<>'/')) {
+    echo "search<br>\n";
+    $dirname = dirname($_SERVER['SCRIPT_NAME']);
+    //echo "dirname=$dirname<br>\n";
+    header("Location: http://$_SERVER[SERVER_NAME]$dirname/search.php?value=".urlencode($ypath));
+    die();
+  }
+  try {
+    $doc = new_yamlDoc($_SESSION['store'], $docuid);
+  }
+  catch (ParseException $exception) {
+    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+    echo "<pre>",ydread($_SESSION['store'], $docuid),"</pre>\n";
+    die();
+  }
+  if (!$doc) {
+    echo "<b>Erreur: le document $docuid n'existe pas</b><br>\n";
+    if ($parent = CallingGraph::parent($docuid))
+      echo "<a href='?delDoc=$docuid&amp;doc=$parent'>",
+           "L'effacer dans le catalogue $parent</a><br>\n";
+  }
+  elseif (!$doc->checkReadAccess($_SESSION['store'], $docuid))
+    die("accès interdit");
+  else {
+    if ($doc->isHomeCatalog())
+      $_SESSION['homeCatalog'] = $docuid;
+    if ($doc->language) {
+      //echo "doc multilingue: ",implode(',',$doc->language);
+      $_SESSION['language'][$docuid] = $doc->language;
+    }
+    if (!isset($_GET['format']))
+      $doc->show($ypath);
+    elseif ($_GET['format']=='yaml')
+      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->yaml($ypath)),"</pre>\n";
+    elseif ($_GET['format']=='json')
+      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->json($ypath)),"</pre>\n";
+    else
+      echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
+  }
+  die();
+}
+
+
 // évite d'avoir à tester le paramètre doc dans les actions suivantes
 if (!isset($_GET['doc'])) {
   die("<a href='?doc=index'>Accès au document par défaut</a>\n");
@@ -310,52 +358,6 @@ if (isset($_GET['clone'])) {
   $ext = ydwrite($newdocuid, ydread($_GET['clone']));
   git_add($newdocuid, $ext);
   echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
-}
-
-
-// action d'affichage d'un document ou de recherche de documents
-if (!isset($_GET['action'])) {
-  $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-  if ($ypath && (substr($ypath,0,1)<>'/')) {
-    echo "search<br>\n";
-    $dirname = dirname($_SERVER['SCRIPT_NAME']);
-    //echo "dirname=$dirname<br>\n";
-    header("Location: http://$_SERVER[SERVER_NAME]$dirname/search.php?value=".urlencode($ypath));
-    die();
-  }
-  try {
-    $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
-  }
-  catch (ParseException $exception) {
-    printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-    echo "<pre>",ydread($_SESSION['store'], $_GET['doc']),"</pre>\n";
-    die();
-  }
-  if (!$doc) {
-    echo "<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n";
-    if ($parent = CallingGraph::parent($_GET['doc']))
-      echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
-           "L'effacer dans le catalogue $parent</a><br>\n";
-  }
-  elseif (!$doc->checkReadAccess($_SESSION['store'], $_GET['doc']))
-    die("accès interdit");
-  else {
-    if ($doc->isHomeCatalog())
-      $_SESSION['homeCatalog'] = $_GET['doc'];
-    if ($doc->language) {
-      //echo "doc multilingue: ",implode(',',$doc->language);
-      $_SESSION['language'][$_GET['doc']] = $doc->language;
-    }
-    if (!isset($_GET['format']))
-      $doc->show($ypath);
-    elseif ($_GET['format']=='yaml')
-      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->yaml($ypath)),"</pre>\n";
-    elseif ($_GET['format']=='json')
-      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->json($ypath)),"</pre>\n";
-    else
-      echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
-  }
-  die();
 }
 
 
