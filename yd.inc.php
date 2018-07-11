@@ -11,6 +11,8 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  11/7/2018:
+  - les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
   29/6-2/7/2018:
   - gestion multi-store
   - modification de la signature de plusieurs fonctions
@@ -373,6 +375,8 @@ function showDoc($data, string $prefix='') {
       echo substr($data, strlen($matches[0]));
     }
     else {
+      // les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
+      $data = str_replace('(?ypath=', "(?doc=$_GET[doc]&amp;ypath=", $data);
       echo MarkdownExtra::defaultTransform($data);
     }
   }
