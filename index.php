@@ -29,7 +29,6 @@ doc: |
   - un fichier protégé et non conforme Yaml n'est pas protégé
   
   IDEES:
-  - améliorer la gestion des catalogues
   - intégrer la gestion de mot de passe
   
 journal: |
@@ -319,7 +318,8 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
   if (!isset($_GET['doc']))
     die("<a href='?doc=index'>Accès au document par défaut</a>\n");
   
-  $docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
+  //$docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
+  $docuid = $_GET['doc'];
   //isset($_SESSION['parents'][$doc]);
   $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
   if ($ypath && (substr($ypath,0,1)<>'/')) {
