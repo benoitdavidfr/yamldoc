@@ -85,7 +85,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
-// retrouve le docuid à partir du referer
+// retrouve le docuid du referer ou ''
 function getRefererDocuid() {
   if (!isset($_SERVER['HTTP_REFERER']))
     return '';
@@ -94,9 +94,8 @@ function getRefererDocuid() {
       strlen("http://$_SERVER[HTTP_HOST]") + strlen($_SERVER['REQUEST_URI']) - strlen($_SERVER['QUERY_STRING'])
     ).'&';
   //echo "refererargs=$refererargs<br>\n";
-  if (!preg_match('!doc=([^&]*)!', $refererargs, $matches)) {
-    throw new Exception("erreur: no match for args dans getRefererDocuid() ligne ".__LINE__);
-  }
+  if (!preg_match('!doc=([^&]*)!', $refererargs, $matches))
+    return '';
   //echo "matches="; print_r($matches); echo "<br>\n";
   return $matches[1]; // l'id de doc extrait du referer
 }
@@ -188,13 +187,15 @@ class CallingGraph {
       return [];
     $doc = $_GET['doc'];
     $parent = getRefererDocuid(); // l'id de doc extrait du referer
+    if (!$parent)
+      return [ $doc ];
     if ($parent == $doc) {
       if (self::$verbose)
         echo "boucle détectée<br>\n";
     }
     elseif (isset($_SESSION['parents'])
-             and in_array($doc, $_SESSION['parents'])
-             and self::isAncestor($doc, $parent)) {
+             && in_array($doc, $_SESSION['parents'])
+             && self::isAncestor($doc, $parent)) {
       if (self::$verbose)
         echo "back détecté<br>\n";
     }
