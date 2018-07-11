@@ -65,18 +65,18 @@ class YamlCatalog extends YamlDoc {
   }
   
   // clone un doc dans un catalogue
-  static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
-    $contents = Yaml::parse(ydread($catuid));
+  static function clone_in_catalog(string $store, string $newdocuid, string $olddocuid, string $catuid) {
+    $contents = Yaml::parse(ydread($store, $catuid));
     //print_r($contents);
     $title = $contents['contents'][$olddocuid]['title'];
     $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
-    ydwrite($catuid, Yaml::dump($contents, 999));
+    ydwrite($store, $catuid, Yaml::dump($contents, 999));
   }
   
-  static function delete_from_catalog(string $docuid, string $catuid) {
-    $contents = Yaml::parse(ydread($catuid));
+  static function delete_from_catalog(string $store, string $docuid, string $catuid) {
+    $contents = Yaml::parse(ydread($store, $catuid));
     unset($contents['contents'][$docuid]);
-    ydwrite($catuid, Yaml::dump($contents, 999));
+    ydwrite($store, $catuid, Yaml::dump($contents, 999));
   }
 };
 

@@ -104,7 +104,7 @@ function config() {
   return $config;
 }
 
-// écriture d'un document, prend l'uid et le texte
+// écriture d'un document, prend le store, l'uid et le texte
 // s'il s'agit d'un Php l'extension est php, sinon yaml
 function ydwrite(string $store, string $uid, string $text) {
   $ext = (strncmp($text,'<?php', 5)==0) ? 'php' : 'yaml';
@@ -116,7 +116,7 @@ function ydwrite(string $store, string $uid, string $text) {
     return $ext;
 }
 
-// lecture d'un document, prend l'uid et retourne le texte
+// lecture d'un document, prend le store, l'uid et retourne le texte
 // cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
 function ydread(string $store, string $uid) {
   //echo "ydread($uid)<br>\n";
@@ -146,7 +146,7 @@ function ydext(string $store, string $uid): string {
   return $ext;
 }
 
-// suppression d'un document, prend son uid
+// suppression d'un document, prend son store, uid
 function yddelete(string $store, string $uid) {
   return (@unlink(__DIR__."/$store/$uid.yaml") or @unlink(__DIR__."/$store/$uid.php"));
 }

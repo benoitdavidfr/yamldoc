@@ -85,21 +85,6 @@ use Symfony\Component\Yaml\Exception\ParseException;
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
-// retrouve le docuid du referer ou ''
-function getRefererDocuid() {
-  if (!isset($_SERVER['HTTP_REFERER']))
-    return '';
-  $refererargs = substr(
-      $_SERVER['HTTP_REFERER'],
-      strlen("http://$_SERVER[HTTP_HOST]") + strlen($_SERVER['REQUEST_URI']) - strlen($_SERVER['QUERY_STRING'])
-    ).'&';
-  //echo "refererargs=$refererargs<br>\n";
-  if (!preg_match('!doc=([^&]*)!', $refererargs, $matches))
-    return '';
-  //echo "matches="; print_r($matches); echo "<br>\n";
-  return $matches[1]; // l'id de doc extrait du referer
-}
-
 // Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(string $store, array $breadcrumb) {
   // affichage du menu
@@ -181,27 +166,50 @@ class CallingGraph {
   // Le graphe d'appel est géré au travers de la variable session $_SESSION['parents'] : [ {child} => {parent} ]
   static $verbose = 0; // peut être utilisé pour afficher le statut de makeBreadcrumb
   
+  // retrouve le docuid du referer ou ''
+  static function getRefererDocuid() {
+    if (!isset($_SERVER['HTTP_REFERER']))
+      return '';
+    //echo "HTTP_REFERER -> $_SERVER[HTTP_REFERER]<br>\n";
+    //echo "curl=http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]<br>\n";
+    //echo "QUERY_STRING=$_SERVER[QUERY_STRING]<br>\n";
+    // test si le referer est un URL yamldoc, si non retour ''
+    if (strncmp("http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", $_SERVER['HTTP_REFERER'],
+                strlen("http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]")-strlen($_SERVER['QUERY_STRING'])) <> 0) {
+      echo "url diff hors paramètres<br>\n";
+      return '';
+    }
+    $refererargs = substr(
+        $_SERVER['HTTP_REFERER'],
+        strlen("http://$_SERVER[HTTP_HOST]") + strlen($_SERVER['REQUEST_URI']) - strlen($_SERVER['QUERY_STRING'])
+      ).'&';
+    //echo "refererargs=$refererargs<br>\n";
+    if (!preg_match('!doc=([^&]*)!', $refererargs, $matches))
+      return '';
+    //echo "matches="; print_r($matches); echo "<br>\n";
+    return $matches[1]; // l'id de doc extrait du referer
+  }
+  
   // mise à jour du graphe d'appel et renvoi du fil d'ariane
   static function makeBreadcrumb(): array {
     if (!isset($_GET['doc']))
       return [];
     $doc = $_GET['doc'];
-    $parent = getRefererDocuid(); // l'id de doc extrait du referer
-    if (!$parent)
-      return [ $doc ];
-    if ($parent == $doc) {
-      if (self::$verbose)
-        echo "boucle détectée<br>\n";
-    }
-    elseif (isset($_SESSION['parents'])
-             && in_array($doc, $_SESSION['parents'])
-             && self::isAncestor($doc, $parent)) {
-      if (self::$verbose)
-        echo "back détecté<br>\n";
-    }
-    else {
-      $_SESSION['parents'][$doc] = $parent;
-      //echo "<pre>_SESSION après = "; print_r($_SESSION); echo "</pre>\n";
+    if ($parent = self::getRefererDocuid()) { // l'id de doc extrait du referer
+      if ($parent == $doc) {
+        if (self::$verbose)
+          echo "boucle détectée<br>\n";
+      }
+      elseif (isset($_SESSION['parents'])
+               && in_array($doc, $_SESSION['parents'])
+               && self::isAncestor($doc, $parent)) {
+        if (self::$verbose)
+          echo "back détecté<br>\n";
+      }
+      else {
+        $_SESSION['parents'][$doc] = $parent;
+        //echo "<pre>_SESSION après = "; print_r($_SESSION); echo "</pre>\n";
+      }
     }
 
     // construction du fil d'ariane
@@ -248,7 +256,7 @@ show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());
 // si un verrou a été posé alors il est levé
 ydunlockall();
 
-// les 2 premières actions ne nécessitent pas le paramètre doc
+// les premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
 if (isset($_GET['action']) && ($_GET['action']=='dump')) {
   echo "<pre>";
@@ -286,6 +294,23 @@ if (isset($_GET['action']) && ($_GET['action']=='razrw')) {
 if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='git_')) {
   $_GET['action'](isset($_GET['doc']) ? $_GET['doc'] : null);
   die();
+}
+
+
+// puis les pré-actions à l'affichage
+// pré-action delDoc - suppression d'un document dans le catalogue
+if (isset($_GET['delDoc'])) {
+  YamlCatalog::delete_from_catalog($_SESSION['store'], $_GET['delDoc'], $_GET['doc']);
+  echo "Doc $_GET[delDoc] effacé du catalogue $_GET[doc] du store $_SESSION[store]<br>\n";
+}
+
+// pré-action clone - $_GET['clone'] contient le doc à cloner et $_GET['doc'] le catalogue
+if (isset($_GET['clone'])) {
+  $newdocuid = uniqid();
+  YamlCatalog::clone_in_catalog($_SESSION['store'], $newdocuid, $_GET['clone'], $_GET['doc']);
+  $ext = ydwrite($_SESSION['store'], $newdocuid, ydread($_SESSION['store'], $_GET['clone']));
+  git_add($newdocuid, $ext);
+  echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
 }
 
 
@@ -343,22 +368,6 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
 // évite d'avoir à tester le paramètre doc dans les actions suivantes
 if (!isset($_GET['doc'])) {
   die("<a href='?doc=index'>Accès au document par défaut</a>\n");
-}
-
-
-// pré-action delDoc - suppression d'un document dans le catalogue
-if (isset($_GET['delDoc'])) {
-  YamlCatalog::delete_from_catalog($_GET['delDoc'], $_GET['doc']);
-  echo "Doc $_GET[delDoc] effacé<br>\n";
-}
-
-// pré-action clone - $_GET['clone'] contient le doc à cloner et $_GET['doc'] le catalogue
-if (isset($_GET['clone'])) {
-  $newdocuid = uniqid();
-  YamlCatalog::clone_in_catalog($newdocuid, $_GET['clone'], $_GET['doc']);
-  $ext = ydwrite($newdocuid, ydread($_GET['clone']));
-  git_add($newdocuid, $ext);
-  echo "Document $_GET[clone] cloné dans $newdocuid<br>\n";
 }
 
 
