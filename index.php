@@ -257,23 +257,41 @@ ydunlockall();
 
 // les premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
-if (isset($_GET['action']) && ($_GET['action']=='dump')) {
-  echo "<pre>";
-  echo "_SESSION = "; print_r($_SESSION);
-  echo "_SERVER = "; print_r($_SERVER);
-  if (isset($_GET['doc'])) {
-    if (!ydcheckReadAccess($_SESSION['store'], $_GET['doc']))
-      die("accès interdit");
-    $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
-    //$text = ydread($_GET['doc']);
-    echo "<h2>doc $_GET[doc]</h2>\n";
-    $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
-    if ($ypath)
-      echo "ypath=$ypath\n";
-    echo str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
-    echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
+if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='dump')) {
+  $docp = isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '';
+  switch ($_GET['action']) {
+    case 'dump':
+      echo "dump <a href='?action=dump-session$docp'>session</a>\n";
+      echo " <a href='?action=dump-server$docp'>server</a>\n";
+      echo " <a href='?action=dump-cookies$docp'>cookie</a>\n";
+      echo "<br><pre>";
+      if (isset($_GET['doc'])) {
+        if (!ydcheckReadAccess($_SESSION['store'], $_GET['doc']))
+          die("accès interdit");
+        $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+        //$text = ydread($_GET['doc']);
+        echo "<h2>doc $_GET[doc]</h2>\n";
+        $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
+        if ($ypath)
+          echo "ypath=$ypath\n";
+        echo str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
+        echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
+      }
+      echo "</pre>\n";
+      break;
+      
+      case 'dump-server':
+        echo "<pre>_SERVER = "; print_r($_SERVER);
+        break;
+      
+      case 'dump-session':
+        echo "<pre>_SESSION = "; print_r($_SESSION);
+        break;
+      
+      case 'dump-cookies':
+        echo "<pre>_COOKIE = "; print_r($_COOKIE);
+        break;
   }
-  echo "</pre>\n";
 }
 
 // action unset - effacement des variables de session
