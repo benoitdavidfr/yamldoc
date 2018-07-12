@@ -85,7 +85,7 @@ function git_synchro() {
 
 function git_log(?string $docuid) {
   if ($docuid) {
-    $ext = ydext($docuid);
+    $ext = ydext($_SESSION['store'], $docuid);
     git_cmde("git log -p $docuid.$ext");
   }
   else

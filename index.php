@@ -178,7 +178,7 @@ class CallingGraph {
     // test si le referer est un URL yamldoc, si non retour ''
     if (strncmp("http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", $_SERVER['HTTP_REFERER'],
                 strlen("http://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]")-strlen($_SERVER['QUERY_STRING'])) <> 0) {
-      echo "url diff hors paramètres<br>\n";
+      echo "referer externe<br>\n";
       return '';
     }
     $refererargs = substr(
