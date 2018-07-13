@@ -16,12 +16,12 @@ if (!isset($_GET['action'])) {
   echo "<li><a href='?action=dump'>dump</a>\n";
   die();
 }
-$pasbesoins = new_YamlDoc('satellite/pas-besoins');
+$pasbesoins = new_YamlDoc('docs','satellite/pas-besoins');
 
 if ($_GET['action']=='besoins') {
   echo "<h3>Liste des besoins</h3><ul>\n";
   foreach ($pasbesoins->php()['data']->php() as $paid => $pasaction) {
-    echo "<li><a href='index.php?doc=satellite%2Fpas-actions2018&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
+    echo "<li><a href='index.php?doc=satellite%2Fpas-besoins&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
   }
   die();
 }

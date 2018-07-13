@@ -16,7 +16,7 @@ if (!isset($_GET['action'])) {
   echo "<li><a href='?action=dump'>dump actions</a>\n";
   die();
 }
-$pas = new_YamlDoc('satellite/pas-actions2018');
+$pas = new_yamlDoc('docs', 'satellite/pas-actions2018');
 $pasactions = $pas->php()['tables']['actions']['data']->php();
 $pasorganisations = $pas->php()['tables']['organisations']['data']->php();
 
