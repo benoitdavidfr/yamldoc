@@ -273,10 +273,19 @@ function is_listOfTuples_i($list) {
 }
 
 function showString($str) {
+  // une URL est replacée par une référence avec l'URL comme label
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
     $href = $matches[1];
     $after = substr($str, strlen($matches[0]));
     echo "<a href='$href' target=_blank>$href</a>$after\n";
+  }
+  // un motif [label](?ypath={ypath}) est replacé par un lien interne avec le label
+  elseif (is_string($str) && preg_match('!^\[([^\]]*)\]\(\?ypath=([^)]+)\)!', $str, $matches)) {
+    //print_r($matches);
+    $label = $matches[1];
+    $ypath = $matches[2];
+    $after = substr($str, strlen($matches[0]));
+    echo "<a href='?doc=$_GET[doc]&amp;ypath=",urlencode($ypath),"'>$label</a>$after\n";
   }
   elseif (is_object($str) && (get_class($str)=='DateTime')) {
     echo $str->format('Y-m-d H:i:s');
