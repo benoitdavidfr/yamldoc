@@ -5,9 +5,6 @@ title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
   voir le code
 */
-/*
-modif de la branche test
-*/
 {
 $phpDocs['index.php'] = <<<EOT
 name: index.php
@@ -35,6 +32,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  14/7/2018:
+  - modif du titre de la page HTML
   7-10/7/2018:
   - gestion multi-lingue
   29-30/6/2018:
@@ -250,7 +249,13 @@ class CallingGraph {
     $_SESSION['store'] = in_array($_SERVER['SERVER_NAME'], ['georef.eu','localhost']) ? 'pub' : 'docs';
 }
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>yaml $_SESSION[store]</title></head><body>\n";
+{ // affichage du titre du document
+  if (!isset($_GET['action']) && isset($_GET['doc']))
+    $title = "$_GET[doc] ($_SESSION[store])";
+  else
+    $title = "yaml $_SESSION[store]";
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>$title</title></head><body>\n";
+}
 
 //echo getcwd() . "<br>\n";
 show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());

@@ -39,7 +39,7 @@ if (!$key && !$value)
 $where = [];
 // solution simplifiée: si je suis benoit alors je cherche dans les différents stores,
 // sinon je ne cherche que dans pub
-if ($_SESSION['homeCatalog']<>'benoit')
+if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']<>'benoit'))
   $where[] = "store='pub'";
 if ($key)
   $where[] = "fragid like \"%$key%\"";
