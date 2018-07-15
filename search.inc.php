@@ -14,6 +14,8 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal: |
+  14/7/2018:
+    - redéfinition de la tables SQL fragment pour y dissocier docid et ypath
   1/7/2018:
     - redéfinition des tables SQL pour y intégrer le multi-store
     - possibilité d'effectuer une recherche sur pub si non benoit
@@ -58,18 +60,22 @@ class Search {
   }
   
   // indexe un fragment élémentaire ($docid, $val)
-  static function indexstring(string $store, string $docid, string $val) {
+  static function indexstring(string $store, string $docid, string $ypath, string $val) {
     if (strlen($docid) > 200) {
       echo "docid \"$docid\" trop long non indexé<br>\n";
       return;
     }
+    if (strlen($ypath) > 200) {
+      echo "docid \"$ypath\" trop long non indexé<br>\n";
+      return;
+    }
     $docid = str_replace(['\\','"'],['\\\\','\"'], $docid);
     $val = str_replace(['\\','"'],['\\\\','\"'], $val);
-    self::query("replace into fragment(store,fragid,text) values('$store', \"$docid\", \"$val\")");
+    self::query("replace into fragment(store,docid,ypath,text) values('$store', \"$docid\", \"$ypath\", \"$val\")");
   }
 
   // indexe un document
-  static function indexdoc(string $store, string $docid, $doc) {
+  static function indexdoc(string $store, string $docid, string $ypath, $doc) {
     //return;
     //echo "indexdoc($store, $docid)<br>\n";
     //if (true || ($docid=='ZZorganization/misc')) { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
@@ -84,19 +90,19 @@ class Search {
     else
       die("erreur dans indexdoc() sur $docid");
     if (is_string($content)) {
-      self::indexstring($store, $docid, $content);
+      self::indexstring($store, $docid, $ypath, $content);
       return;
     }
     //if ($docid=='ZZorganization/misc') { echo "<pre>content="; print_r($content); echo "</pre>\n"; }
     foreach ($content as $key => $val) {
       //echo "key=$key<br>\n";
       if (is_string($val))
-        self::indexstring($store, "$docid/$key", $val);
+        self::indexstring($store, $docid, "$ypath/$key", $val);
       elseif (is_numeric($val) || is_bool($val) || is_null($val)) {}
       elseif (is_array($val) || is_object($val))
-        self::indexdoc($store, "$docid/$key", $val);
+        self::indexdoc($store, $docid, "$ypath/$key", $val);
       else {
-        echo "nothing done for $store $docid/$key<br>\n";
+        echo "nothing done for $store $docid $ypath/$key<br>\n";
         echo "<pre>val="; var_dump($val); echo "</pre>\n";
         die("FIN ligne ".__LINE__);
       }
@@ -108,12 +114,12 @@ class Search {
     echo "indexMainDoc($store, $docid)<br>\n";
     self::query("replace into document(store,docid,maj,readers) values('$store', \"$docid\", now(), null)");
     if (!$global)
-      self::query("delete from fragment where store='$store' and fragid like \"$docid/%\"");
+      self::query("delete from fragment where store='$store' and docid=\"$docid\"");
     try {
       $doc = new_yamlDoc($store, $docid);
       if (!$doc)
         echo "Erreur new_yamlDoc($store, $docid)<br>\n";
-      self::indexdoc($store, $docid, $doc);
+      self::indexdoc($store, $docid, '', $doc);
     }
     catch (ParseException $exception) {
       printf("<b>Analyse YAML erronée sur document %s/%s: %s</b><br>", $store, $docid, $exception->getMessage());
@@ -184,7 +190,7 @@ class Search {
     self::scanfiles(false, $store, $ssdir, $fileNamePattern);
     foreach (self::$currentDocs as $docid => $maj) {
       self::query("delete from document where store='$store' and docid=\"$docid\"");
-      self::query("delete from fragment where store='$store' and fragid like \"$docid/%\"");
+      self::query("delete from fragment where store='$store' and docid=\"$docid\"");
       echo "Suppression de $docid $maj de l'index plein texte<br>\n";
     }
   }
@@ -207,9 +213,10 @@ class Search {
         "drop table if exists fragment",
         "create table fragment (
           store varchar(20) not null comment 'store',
-          fragid varchar(200) not null comment 'id du fragment',
+          docid varchar(200) not null comment 'id du doc',
+          ypath varchar(200) not null comment 'ypath',
           text longtext comment 'texte associé',
-          primary key storefragid (store,fragid)
+          primary key storefragid (store,docid,ypath)
         ) COMMENT = 'fragment'
         DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
       ] as $sql)

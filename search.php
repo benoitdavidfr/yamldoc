@@ -25,15 +25,17 @@ if (!function_exists('mysqlParams')) {
     ."Pour le paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
 }
 
-$key = isset($_GET['key']) ? $_GET['key'] : '';
+$docid = isset($_GET['doc']) ? $_GET['doc'] : '';
+$ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
 $value = isset($_GET['value']) ? $_GET['value'] : '';
 echo "<form><table border=1>\n";
-echo "<tr><td>key:</td><td><input type='text' name='key' size=80 value=\"$key\"></td></tr>\n";
+echo "<tr><td>doc:</td><td><input type='text' name='doc' size=80 value=\"$docid\"></td></tr>\n";
+echo "<tr><td>ypath:</td><td><input type='text' name='ypath' size=80 value=\"$ypath\"></td></tr>\n";
 echo "<tr><td>value:</td><td><input type='text' name='value' size=80 value=\"$value\"></td></tr>\n";
 echo "<tr><td colspan=2><center><input type='submit' value='search'></center></td></tr>";
 echo "</table></form>\n<br>\n";
 
-if (!$key && !$value)
+if (!$docid && !$ypath && !$value)
   die();
 
 $where = [];
@@ -41,12 +43,14 @@ $where = [];
 // sinon je ne cherche que dans pub
 if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']<>'benoit'))
   $where[] = "store='pub'";
-if ($key)
-  $where[] = "fragid like \"%$key%\"";
+if ($docid)
+  $where[] = "docid like \"$docid%\"";
+if ($ypath)
+  $where[] = "ypath like \"$ypath%\"";
 if ($value)
   $where[] = "match (text) against (\"$value\" in boolean mode)";
 if ($value)
-  $sql = "select store, match (text) against (\"$value\" in boolean mode) relevance, fragid, text from fragment\n"
+  $sql = "select store, match (text) against (\"$value\" in boolean mode) relevance, docid, ypath, text from fragment\n"
     ."where ".implode(' and ', $where);
 else
   $sql = "select store, fragid, text from fragment\n"
@@ -69,9 +73,10 @@ while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
   echo "<tr>";
   if ($value)
     printf('<td>%.2f</td>', $tuple['relevance']);
-  echo "<td><a href='frag.php?store=$tuple[store]&amp;fragid=$tuple[fragid]'>$tuple[fragid]</a></td>";
+  echo "<td><a href='index.php?store=$tuple[store]&amp;doc=$tuple[docid]&amp;ypath=$tuple[ypath]'>",
+       "$tuple[docid]$tuple[ypath]</a></td>";
   echo "<td>";
-  showDoc($tuple['text']);
+  showDoc($tuple['docid'], $tuple['text']);
   echo "</td></tr>\n";
 }
 echo "</table>\n";

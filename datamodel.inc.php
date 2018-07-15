@@ -61,13 +61,16 @@ class DataModel extends YamlSkos {
   function __construct(array &$yaml) {
     echo "DataModel::__construct()<br>\n";
     parent::__construct($yaml);
+    $this->domainScheme = new DMDomainScheme($this->domainScheme->asArray(), $this->language);
     foreach ($this->domains as $domid => $domain)
       $this->domains[$domid] = new DMDomain($domain->asArray(), $this->language);
     if (!isset($yaml['objectTypes']))
       throw new Exception("Erreur: champ objectTypes absent dans la création DataModel");
     //print_r($yaml['objectTypes']);
-    foreach ($yaml['objectTypes'] as $objid => $objectType)
+    foreach ($yaml['objectTypes'] as $objid => $objectType) {
+      echo "objid=$objid<br>\n";
       $this->objectTypes[$objid] = new ObjectType($objectType, $this->language);
+    }
     unset($this->_c['objectTypes']);
     unset($yaml['objectTypes']);
     // remplit le lien domain -> objectType à partir du lien inverse
@@ -87,9 +90,9 @@ class DataModel extends YamlSkos {
     return "<b>Traduction non définie pour $key</b>";
   }
   
-  function show(string $ypath): void {
+  function show(string $docid, string $ypath): void {
     try {
-      parent::show($ypath);
+      parent::show($docid, $ypath);
     }
     catch (Exception $exception) {
       if (preg_match('!^/objectTypes/([^/]*)(/(.*))?$!', $ypath, $matches)) {
@@ -100,7 +103,7 @@ class DataModel extends YamlSkos {
         }
         else {
           $field = $matches[3];
-          showDoc($this->objectTypes[$id]->extract($field));
+          showDoc($_GET['doc'], $this->objectTypes[$id]->extract($field));
         }
       }
       else
@@ -154,10 +157,30 @@ class DataModel extends YamlSkos {
   }
 };
 
+// classe du domainScheme adaptée 
+class DMDomainScheme extends DomainScheme {
+    
+  // Affiche l'arbre des domaines avec un lien vers chaque micro-thésaurus
+  function show(array $domains, array $schemes) {
+    //echo "DMDomainScheme::showDomainTree($this)<br>\n";
+    echo "<h2>$this</h2><ul>\n";
+    //echo "<pre>domainScheme="; print_r($this); echo "</pre>\n";
+    foreach ($this->hasTopConcept as $domid) {
+      $domains[$domid]->showDomainTree($domid, $domains, $schemes);
+    }
+    echo "</ul>\n";
+  }
+};
+  
 // Domain adapté pour Data Model
 class DMDomain extends Domain {
-  function showDomainTree(array $domains, array $schemes) {
+  function showDomainTree(string $id, array $domains, array $schemes) {
     //echo "DMDomain::showDomainTree()<br>\n";
+    $langp = (isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
+    if (!$this->schemeChildren && !$this->objectTypeChildren)
+      echo "<li>$this</li>\n";
+    else
+      echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/domains/$id$langp'>$this</a></li>\n";
     if ($this->narrower) {
       $children = [];
       foreach ($this->narrower as $narrower) {
@@ -165,13 +188,8 @@ class DMDomain extends Domain {
       }
       asort($children);
       echo "<ul>\n";
-      $langp = (isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
       foreach (array_keys($children) as $narrower) {
-        if (!$domains[$narrower]->schemeChildren && !$domains[$narrower]->objectTypeChildren)
-          echo "<li>$domains[$narrower]</li>\n";
-        else
-          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/domains/$narrower$langp'>$domains[$narrower]</a></li>\n";
-        $domains[$narrower]->showDomainTree($domains, $schemes);
+        $domains[$narrower]->showDomainTree($narrower, $domains, $schemes);
       }
       echo "</ul>\n";
     }

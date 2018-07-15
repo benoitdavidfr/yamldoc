@@ -379,7 +379,7 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
       $_SESSION['language'][$docuid] = $doc->language;
     }
     if (!isset($_GET['format']))
-      $doc->show($ypath);
+      $doc->show($docuid, $ypath);
     elseif ($_GET['format']=='yaml')
       echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->yaml($ypath)),"</pre>\n";
     elseif ($_GET['format']=='json')

@@ -50,9 +50,9 @@ class MultiData extends YamlDoc {
   
   // affiche le doc ou le fragment si ypath est non vide
   // Pour cela fabrique à la volée la table par concaténation des tables des sous-documents
-  function show(string $ypath): void {
+  function show(string $docid, string $ypath): void {
     //echo "MultiData::show()<br>\n";
     $this->buildTable();
-    parent::show($ypath);
+    parent::show($docid, $ypath);
   }
 }

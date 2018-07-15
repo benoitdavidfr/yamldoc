@@ -31,7 +31,7 @@ use Symfony\Component\Yaml\Yaml;
 
 // classe des catalogues
 class YamlCatalog extends YamlDoc {
-  function show(string $ypath): void {
+  function show(string $docid, string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     if (is_dir(__DIR__."/$_SESSION[store]/$_GET[doc]")) {
       //echo "$_GET[doc] est un répertoire";
@@ -58,7 +58,7 @@ class YamlCatalog extends YamlDoc {
       }
       elseif (!in_array($key,['title','yamlClass','authorizedWriters','yamlPassword'])) {
         echo "<h3>$key</h3>\n";
-        showDoc($this->data[$key], $key);
+        showDoc($_GET['doc'], $this->data[$key], $key);
         $otherKeyShown = true;
       }
     }

@@ -156,14 +156,14 @@ class YamlSkos extends YamlDoc {
     return isset($this->$name) ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
   }
   
-  function show(string $ypath): void {
+  function show(string $docid, string $ypath): void {
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath) {
-      showDoc(array_merge($this->_c, ['language'=> '['.implode(', ', $this->language).']']));
+      showDoc($_GET['doc'], array_merge($this->_c, ['language'=> '['.implode(', ', $this->language).']']));
       $this->domainScheme->show($this->domains, $this->schemes);
     }
     elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
-      showDoc($this->_c[$matches[1]]);
+      showDoc($_GET['doc'], $this->_c[$matches[1]]);
     elseif (preg_match('!^/(schemes|concepts|domains)(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
       //print_r($matches);
       $what = $matches[1];
@@ -191,9 +191,9 @@ class YamlSkos extends YamlDoc {
           // affichage d'un fragment d'un scheme ou d'un concept particulier
           $field = $matches[5];
           if ($what=='schemes')
-            showDoc($this->schemes[$id]->extract($field));
+            showDoc($_GET['doc'], $this->schemes[$id]->extract($field));
           else
-            showDoc($this->concepts[$id]->extract($field));
+            showDoc($_GET['doc'], $this->concepts[$id]->extract($field));
         }
       }
     }
@@ -455,7 +455,7 @@ class DomainScheme extends Elt {
     //echo "<pre>domainScheme="; print_r($this); echo "</pre>\n";
     foreach ($this->hasTopConcept as $domid) {
       echo "<li>$domains[$domid]</li>\n";
-      $domains[$domid]->showDomainTree($domains, $schemes);
+      $domains[$domid]->showDomainTree($domid, $domains, $schemes);
     }
     echo "</ul>\n";
   }
@@ -463,7 +463,7 @@ class DomainScheme extends Elt {
   
 class Domain extends Elt {
   // affiche le sous-arbre correspondant au domaine avec un lien vers chaque micro-thésaurus
-  function showDomainTree(array $domains, array $schemes) {
+  function showDomainTree(string $id, array $domains, array $schemes) {
     //echo "<pre>this = "; print_r($this); echo "</pre>\n";
     if ($this->narrower) {
       $children = [];
@@ -474,7 +474,7 @@ class Domain extends Elt {
       echo "<ul>\n";
       foreach (array_keys($children) as $narrower) {
         echo "<li>$domains[$narrower]</li>\n";
-        $domains[$narrower]->showDomainTree($domains, $schemes);
+        $domains[$narrower]->showDomainTree($narrower, $domains, $schemes);
       }
       echo "</ul>\n";
     }

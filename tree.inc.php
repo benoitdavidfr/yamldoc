@@ -21,7 +21,7 @@ class Tree extends YamlDoc {
     echo "</ul>\n";
   }
   
-  function show(string $ypath): void {
+  function show(string $docid, string $ypath): void {
     echo "<h1>",$this->data['title'],"</h1>\n";
     self::showTree($this->data['children']);
   }

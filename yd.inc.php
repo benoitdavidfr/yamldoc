@@ -11,6 +11,8 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  15/7/2018:
+  - ajout du paramètre docid dans les méthodes show()
   11/7/2018:
   - les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
   29/6-2/7/2018:
@@ -272,20 +274,29 @@ function is_listOfTuples_i($list) {
   return true;
 }
 
-function showString($str) {
+function showString(string $docuid, $str) {
   // une URL est replacée par une référence avec l'URL comme label
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
     $href = $matches[1];
     $after = substr($str, strlen($matches[0]));
     echo "<a href='$href' target=_blank>$href</a>$after\n";
   }
-  // un motif [label](?ypath={ypath}) est replacé par un lien interne avec le label
-  elseif (is_string($str) && preg_match('!^\[([^\]]*)\]\(\?ypath=([^)]+)\)!', $str, $matches)) {
+  // un motif [{label}]({href}) est remplacé par un lien avec le label
+  elseif (is_string($str) && preg_match('!\[([^\]]*)\]\(([^)]+)\)!', $str, $matches)) {
     //print_r($matches);
     $label = $matches[1];
-    $ypath = $matches[2];
-    $after = substr($str, strlen($matches[0]));
-    echo "<a href='?doc=$_GET[doc]&amp;ypath=",urlencode($ypath),"'>$label</a>$after\n";
+    $href = $matches[2];
+    if (strncmp($href, '?ypath=', strlen('?ypath='))==0) {
+      // cas d'un lien interne au doc
+      $ypath = substr($href, strlen('?ypath='));
+      //echo "<br>ypath=$ypath<br>\n";
+      $href = "?doc=$_GET[doc]&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
+      $str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
+    }
+    else {
+      $str = str_replace($matches[0], "<a href='$href' target=_blank>$label</a>\n", $str);
+    }
+    echo $str;
   }
   elseif (is_object($str) && (get_class($str)=='DateTime')) {
     echo $str->format('Y-m-d H:i:s');
@@ -295,7 +306,7 @@ function showString($str) {
 }
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
-function showListOfAtoms(array $list, string $prefix, int $level=0) {
+function showListOfAtoms(string $docuid, array $list, string $prefix, int $level=0) {
   if ($level==0)
     echo "<ul style='margin:0; padding:0px; list-style-position: inside;'>\n";
   else
@@ -303,15 +314,15 @@ function showListOfAtoms(array $list, string $prefix, int $level=0) {
   foreach ($list as $i => $elt) {
     echo "<li>";
     if (is_array($elt))
-      showListOfAtoms($elt, "$prefix/$i", $level+1);
+      showListOfAtoms($docuid, $elt, "$prefix/$i", $level+1);
     else
-      showString($elt);
+      showString($docuid, $elt);
   }
   echo "</ul>\n";
 }
 
 // affichage d'une liste de tuples comme table Html
-function showListOfTuplesAsTable(array $table, string $prefix) {
+function showListOfTuplesAsTable(string $docuid, array $table, string $prefix) {
   $keys = []; // liste des clés d'au moins un tuple
   //echo "<pre>"; print_r($tab); echo "</pre>\n";
   foreach ($table as $tuple) {
@@ -335,7 +346,7 @@ function showListOfTuplesAsTable(array $table, string $prefix) {
         echo "<td align='right'>",$tuple[$key],"</td>";
       else {
         echo "<td>";
-        showDoc($tuple[$key], "$prefix/$key");
+        showDoc($docuid, $tuple[$key], "$prefix/$key");
         echo "</td>";
       }
     }
@@ -345,30 +356,30 @@ function showListOfTuplesAsTable(array $table, string $prefix) {
 }
 
 // affichage d'un array comme table Html
-function showArrayAsTable(array $data, string $prefix) {
+function showArrayAsTable(string $docuid, array $data, string $prefix) {
   echo "<table border=1>\n";
   foreach ($data as $key => $value) {
     echo "<tr><td>$key</td><td>\n";
-    showDoc($value, "$prefix/$key");
+    showDoc($docuid, $value, "$prefix/$key");
     echo "</td></tr>\n";
   }
   echo "</table>\n";
 }
 
 // aiguille l'affichage en fonction du type du paramètre
-function showDoc($data, string $prefix='') {
+function showDoc(string $docuid, $data, string $prefix='') {
   if (is_object($data)) {
     if (get_class($data)=='DateTime')
       echo $data->format('Y-m-d H:i:s');
     else
-      $data->show($prefix);
+      $data->show($docuid, $prefix);
   }
   elseif (is_listOfAtoms($data))
-    showListOfAtoms($data, $prefix);
+    showListOfAtoms($docuid, $data, $prefix);
   elseif (is_listOfTuples($data))
-    showListOfTuplesAsTable($data, $prefix);
+    showListOfTuplesAsTable($docuid, $data, $prefix);
   elseif (is_array($data))
-    showArrayAsTable($data, $prefix);
+    showArrayAsTable($docuid, $data, $prefix);
   elseif (is_null($data))
     echo 'null';
   // un texte derrière un > sera représenté comme chaine et pas comme texte 
@@ -385,12 +396,12 @@ function showDoc($data, string $prefix='') {
     }
     else {
       // les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
-      $data = str_replace('(?ypath=', "(?doc=$_GET[doc]&amp;ypath=", $data);
+      $data = str_replace('(?ypath=', "(?doc=$docuid&amp;ypath=", $data);
       echo MarkdownExtra::defaultTransform($data);
     }
   }
   else
-    showString($data);
+    showString($docuid, $data);
 }
 
 // crée un YamlDoc à partir du docuid du document
@@ -437,7 +448,7 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
 //  - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
 //  - un objet d'une classe conforme à l'interface YamlDocElement
 interface YamlDocElement {
-  public function show(string $ypath);
+  public function show(string $docid, string $ypath);
   public function extract(string $ypath);
   public function php();
 };
@@ -463,12 +474,13 @@ class YamlDoc {
   function __get(string $name) {
     return isset($this->data[$name]) ? $this->data[$name] : null;
   }
+  
   function isHomeCatalog() { return false; }
   
   // affiche le doc ou le fragment si ypath est non vide
-  function show(string $ypath): void {
+  function show(string $docuid, string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    showDoc(self::sextract($this->data, $ypath));
+    showDoc($docuid, self::sextract($this->data, $ypath));
   }
   
   function dump(string $ypath): void {
@@ -519,8 +531,9 @@ class YamlDoc {
   }
   
   static function replaceDateTimeByString($data) {
-    if (is_object($data) && (get_class($data)=='DateTime'))
+    if (is_object($data) && (get_class($data)=='DateTime')) {
       return $data->format(DateTime::ATOM);
+    }
     elseif (is_array($data)) {
       $ret = [];
       foreach ($data as $key => $value)
