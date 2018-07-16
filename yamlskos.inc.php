@@ -63,8 +63,6 @@ function suppAccents(string $str): string {
   return strtolower(str_replace(['é','É','Î'],['e','e','i'], $str));
 }
 
-function str2html($str) { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
-
 class YamlSkos extends YamlDoc {
   // traduction des champs utilisés en français et en anglais pour l'affichage
   static $keyTranslations = [
@@ -354,28 +352,24 @@ class Elt {
   }
   
   // affichage de liens comme une ligne dans une table
-  function showLinksInTable(string $key, YamlSkos $skos) {
-    if ($this->$key) {
-      $nblinks = count($this->$key);
-      echo "<tr><td>",YamlSkos::keyTranslate($key),"</td><td>";
+  // $eltField est le nom du champ dans l'élément contenant les liens
+  // $skosField est le nom du champ de $skos qui contient le tableau dans lequel les id des liens sont cherchés
+  function showLinksInTable(string $eltField, string $skosField, YamlSkos $skos) {
+    if ($this->$eltField) {
+      $nblinks = count($this->$eltField);
+      echo "<tr><td>",$skos->keyTranslate($eltField),"</td><td>";
       if ($nblinks > 1)
         echo "<ul style='margin-top:0;'>\n";
-      foreach ($this->$key as $lid) {
+      foreach ($this->$eltField as $lid) {
         //echo "lid=$lid<br>\n";
         $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
         if ($nblinks > 1)
           echo "<li>";
-        if (isset($skos->concepts[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
-               $skos->concepts[$lid],"</a>\n";
-        elseif (isset($skos->schemes[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
-               $skos->schemes[$lid],"</a>\n";
-        elseif (isset($skos->domains[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/domains/$lid$langp'>",
-               $skos->domains[$lid],"</a>\n";
+        if (isset($skos->$skosField[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/$skosField/$lid$langp'>",
+               $skos->$skosField[$lid],"</a>\n";
         else
-          echo "lien $lid trouvé ni dans concepts ni dans schemes ni dans domains\n";
+          echo "lien $lid trouvé dans $skosField\n";
       }
       if ($nblinks > 1)
         echo "</ul>";

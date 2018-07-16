@@ -234,7 +234,11 @@ function cmp(array $a, array $b) {
     return ($a[$key] < $b[$key]) ? 1 : -1;
 }
 
-
+// Teste si $data est un texte, cad ssi il contient au moins un \n en dehors de la dernière position 
+function is_text($data) {
+  return is_string($data) && (strpos($data, "\n")!==FALSE) && (strpos($data, "\n") < strlen($data)-1);
+}
+  
 // le paramètre est-il une liste ?
 // une liste est un array pour lequel les clés sont une liste des entiers s'incrémentant de 1 à partir de 0
 function is_list($list) {
@@ -277,6 +281,9 @@ function is_listOfTuples_i($list) {
   return true;
 }
 
+function str2html($str) { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
+
+// Je considère qu'une String est une chaine ne contenant pas de \n intermédiaire, sinon c'est un texte
 function showString(string $docuid, $str) {
   // une URL est replacée par une référence avec l'URL comme label
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
@@ -293,19 +300,19 @@ function showString(string $docuid, $str) {
       // cas d'un lien interne au doc
       $ypath = substr($href, strlen('?ypath='));
       //echo "<br>ypath=$ypath<br>\n";
-      $href = "?doc=$_GET[doc]&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
+      $href = "?doc=$docuid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
       $str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
     }
     else {
       $str = str_replace($matches[0], "<a href='$href' target=_blank>$label</a>\n", $str);
     }
-    echo $str;
+    echo str2html($str);
   }
-  elseif (is_object($str) && (get_class($str)=='DateTime')) {
+  /*elseif (is_object($str) && (get_class($str)=='DateTime')) {
     echo $str->format('Y-m-d H:i:s');
-  }
+  }*/
   else
-    echo "$str\n";
+    echo str2html("$str\n");
 }
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
@@ -386,7 +393,7 @@ function showDoc(string $docuid, $data, string $prefix='') {
   elseif (is_null($data))
     echo 'null';
   // un texte derrière un > sera représenté comme chaine et pas comme texte 
-  elseif (is_string($data) && (strpos($data, "\n")!==FALSE) && (strpos($data, "\n") < strlen($data)-1)) {
+  elseif (is_text($data)) {
     //echo "pos=",strpos($data, "\n"),"<br>\n";
     //echo "len=",strlen($data),"<br>\n";
     // représentation brute des textes avec \n

@@ -66,6 +66,9 @@ class MLString {
     }
     return $result;
   }
+  
+  // renvoie le contenu en array Php ss objet
+  function php(): array { return $this->get(); }
 };
 
 

@@ -222,6 +222,7 @@ class DMDomain extends Domain {
 };
 
 class ObjectType extends Elt {
+  static $strFields = ['label'];
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
     //echo "ObjectType::__contruct($this)<br>\n";
@@ -247,49 +248,16 @@ class ObjectType extends Elt {
       }
     }
   }
-  
-  // affichage de liens comme une ligne dans une table
-  function showLinksInTable(string $key, YamlSkos $skos) {
-    if ($this->$key) {
-      $nblinks = count($this->$key);
-      echo "<tr><td>",DataModel::keyTranslate($key),"</td><td>";
-      if ($nblinks > 1)
-        echo "<ul style='margin-top:0;'>\n";
-      foreach ($this->$key as $lid) {
-        //echo "lid=$lid<br>\n";
-        $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
-        if ($nblinks > 1)
-          echo "<li>";
-        if (isset($skos->concepts[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
-               $skos->concepts[$lid],"</a>\n";
-        elseif (isset($skos->schemes[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
-               $skos->schemes[$lid],"</a>\n";
-        elseif (isset($skos->domains[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/domains/$lid$langp'>",
-               $skos->domains[$lid],"</a>\n";
-        elseif (isset($skos->objectTypes[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/objectTypes/$lid$langp'>",
-               $skos->objectTypes[$lid],"</a>\n";
-        else
-          echo "lien $lid trouvé ni dans concepts, ni dans schemes, ni dans domains, ni dans objectTypes\n";
-      }
-      if ($nblinks > 1)
-        echo "</ul>";
-      echo "</td></tr>\n";
-    }
-  }
-  
+    
   function show(DataModel $datamodel) {
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
     echo "<table border=1>\n";
-    $this->showLinksInTable('subtypeOf', $datamodel);
+    $this->showLinksInTable('subtypeOf', 'objectTypes', $datamodel);
     foreach (['definition','scopeNote','historyNote','example'] as $key) {
       $this->showTextsInTable($key);
     }
-    $this->showLinksInTable('domain', $datamodel);
+    $this->showLinksInTable('domain', 'domains', $datamodel);
     echo "</table>\n";
     //$this->showInYaml();
     foreach (['attributes','relations'] as $prop) {
@@ -318,14 +286,17 @@ class ObjectType extends Elt {
   }
   
   function asArray(): array {
+    //print_r($this);
     $result = parent::asArray();
-    foreach (['attributes','relations'] as $key) {
+    /*foreach (['attributes','relations'] as $key) {
       if ($this->$key) {
         foreach ($this->$key as $name => $elt) {
-          $result[$key][$name]['definition'] = $elt['definition']->get();
+          foreach (self::$strFields as $field)
+            $result[$key][$name][$field] = $elt[$field]->get();
+          $result[$key][$name]['label'] = $elt['label']->get();
         }
       }
-    }
+    }*/
     return $result;
   }
   
