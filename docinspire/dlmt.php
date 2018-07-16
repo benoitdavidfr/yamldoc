@@ -4,6 +4,8 @@ name: dlmt.php
 title: dlmt.php - constituition des types divers de inspire-datamodel à partir de docinspire
 doc: |
 journal: |
+  16/7/2018:
+    remplacement du champ definition des attributs par label
   7/7/2018:
     création
 */
@@ -115,7 +117,7 @@ function dlmt(string $mttag) {
             while (preg_match($pattern, $turtle, $matches)) {
               $turtle = preg_replace($pattern, '', $turtle, 1);
               if (in_array($matches[2], ['fr','en']))
-                $mts[$mtid][$field][$attr]['definition'][$matches[2]] = $matches[1];
+                $mts[$mtid][$field][$attr]['label'][$matches[2]] = $matches[1];
             }
             $pattern = "!<$urimt/$mtid/$prefix$attr> skos:broader"
                 ." <$eutext/(codelist|externaltype|spatialobjecttype|datatype|unknowntype|enum|uniontype)/([^>]*)>\.!";

@@ -4,6 +4,9 @@ name: dlsot.php
 title: dlsot.php - constituition des spatialobjecttypes de inspire-datamodel à partir de docinspire
 doc: |
 journal: |
+  16/7/2018:
+    - remplacement du champ definition des attributs par label
+    - correction d'un bug
   4-7/7/2018:
     création
 */
@@ -29,7 +32,7 @@ function readConcept(string $stag, string $sid, string $prefix, string $attr) {
   while (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
     if (in_array($matches[2], ['fr','en']))
-      $concept['definition'][$matches[2]] = $matches[1];
+      $concept['label'][$matches[2]] = $matches[1];
   }
   $pattern = "!<$urisot/$sid/$prefix$attr> skos:broader"
       ." <$eutext/(codelist|externaltype|spatialobjecttype|datatype|unknowntype|enum|uniontype)/([^>]*)>\.!";
@@ -64,8 +67,6 @@ function readScheme(string $stag, string $sid): array {
   $urisot = "$eutext/$stag";
   $scheme = ['type'=> [ $stag ]];
   $turtle = readcache('http://docinspire.eu/get.php?fmt=ttl&uri='.urlencode("$urisot/$sid"));
-  if ($sid=='xxact-core:ActivityComplex')
-    echo str_replace(['<'],['&lt;'], $turtle);
   $turtle = preg_replace("!<$urisot/$sid> !", '<scheme> ', $turtle);
   //echo str_replace(['<'],['&lt;'], $turtle);
   
@@ -90,7 +91,7 @@ function readScheme(string $stag, string $sid): array {
   
   // vérification de l'extraction prefLabel|definition
   if (preg_match('!<scheme> skos:(prefLabel|definition) !', $turtle)) {
-    echo "\n<b>Erreur sur prefLabel|definition pour le $stag $sid</b>\n";
+    //echo "\n<b>Erreur sur prefLabel|definition pour le $stag $sid</b>\n";
     echo str_replace(['<'],['&lt;'], $turtle);
     die("ligne ".__LINE__);
   }
@@ -102,18 +103,19 @@ function readScheme(string $stag, string $sid): array {
       $scheme['source']['eutext'][$matches[2]] = $matches[1];
   }
   
+  //<scheme> skos:broader <http://uri.docinspire.eu/eutext/spatialobjecttype/tn:TransportLinkSequence>.
   $pattern = "!<scheme> skos:broader <$eutext/(spatialobjecttype|externaltype)/([^>]*)>\.!";
   while (preg_match($pattern, $turtle, $matches)) {
     //echo "<pre>"; print_r($matches); echo "</pre>\n";
     $turtle = preg_replace($pattern, '', $turtle, 1);
-    $schemes['subtypeOf'][] = $matches[2];
+    $scheme['subtypeOf'][] = $matches[2];
   }
     
   $pattern = "!<scheme> skos:broader <http://uri.docinspire.eu/eutextproperty/typeproperty/"
             ."(abstracttype|associationclass)>\.!";
   if (preg_match($pattern, $turtle, $matches)) {
     $turtle = preg_replace($pattern, '', $turtle, 1);
-    $schemes['property'][] = $matches[1];
+    $scheme['property'][] = $matches[1];
   }
   
   $pattern = "!skos:broader <$eutext/requirement/[^>]*>\.!";
@@ -139,7 +141,8 @@ function readScheme(string $stag, string $sid): array {
   
 // test de l'extraction d'une définition contennant de \"
 if (0) {
-  echo Yaml::dump(readScheme('spatialobjecttype', 'act-core:ActivityComplex'), 999, 2);
+  //echo Yaml::dump(readScheme('spatialobjecttype', 'act-core:ActivityComplex'), 999, 2);
+  echo Yaml::dump(readScheme('spatialobjecttype', 'tn-ro:RoadLinkSequence'), 999, 2);
   die("ligne ".__LINE__);
 }
 elseif (true || !is_file('sot.pser')) {

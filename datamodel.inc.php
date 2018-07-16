@@ -47,12 +47,13 @@ journal: |
   - création
 EOT;
 }
-        
+use Michelf\MarkdownExtra;
+
 class DataModel extends YamlSkos {
   static $keyTranslations = [
     'attributes'=> ['fr'=>"Attributs", 'en'=>"Attributes"],
     'relations'=> ['fr'=>"Relations", 'en'=>"Relations"],
-    'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
+    'subtypeOf'=> ['fr'=>"Sous-type de", 'en'=>"Subtype of"],
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
   ];
@@ -224,16 +225,14 @@ class ObjectType extends Elt {
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
     //echo "ObjectType::__contruct($this)<br>\n";
-    if ($this->attributes) {
-      foreach ($this->attributes as $name => $attr) {
-        if (isset($attr['definition']))
-          $this->_c['attributes'][$name]['definition'] = new MLString($attr['definition'], $language);
-      }
-    }
-    if ($this->relations) {
-      foreach ($this->relations as $name => $rel) {
-        if (isset($rel['definition']))
-          $this->_c['relations'][$name]['definition'] = new MLString($rel['definition'], $language);
+    foreach (['attributes','relations'] as $prop) {
+      if ($this->$prop) {
+        foreach ($this->$prop as $name => $elt) {
+          foreach (['label','definition'] as $field) {
+            if (isset($elt[$field]))
+              $this->_c[$prop][$name][$field] = new MLString($elt[$field], $language);
+          }
+        }
       }
     }
   }
@@ -249,45 +248,70 @@ class ObjectType extends Elt {
     }
   }
   
+  // affichage de liens comme une ligne dans une table
+  function showLinksInTable(string $key, YamlSkos $skos) {
+    if ($this->$key) {
+      $nblinks = count($this->$key);
+      echo "<tr><td>",DataModel::keyTranslate($key),"</td><td>";
+      if ($nblinks > 1)
+        echo "<ul style='margin-top:0;'>\n";
+      foreach ($this->$key as $lid) {
+        //echo "lid=$lid<br>\n";
+        $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
+        if ($nblinks > 1)
+          echo "<li>";
+        if (isset($skos->concepts[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
+               $skos->concepts[$lid],"</a>\n";
+        elseif (isset($skos->schemes[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
+               $skos->schemes[$lid],"</a>\n";
+        elseif (isset($skos->domains[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/domains/$lid$langp'>",
+               $skos->domains[$lid],"</a>\n";
+        elseif (isset($skos->objectTypes[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/objectTypes/$lid$langp'>",
+               $skos->objectTypes[$lid],"</a>\n";
+        else
+          echo "lien $lid trouvé ni dans concepts, ni dans schemes, ni dans domains, ni dans objectTypes\n";
+      }
+      if ($nblinks > 1)
+        echo "</ul>";
+      echo "</td></tr>\n";
+    }
+  }
+  
   function show(DataModel $datamodel) {
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
     echo "<table border=1>\n";
-    $this->showLinksInTable('domain', $datamodel);
+    $this->showLinksInTable('subtypeOf', $datamodel);
     foreach (['definition','scopeNote','historyNote','example'] as $key) {
       $this->showTextsInTable($key);
     }
+    $this->showLinksInTable('domain', $datamodel);
     echo "</table>\n";
     //$this->showInYaml();
-    if ($this->attributes) {
-      echo "<h3>",DataModel::keyTranslate('attributes'),"</h3>\n";
-      echo "<table border=1><th>name</th><th>definition</th><th>type</th><th>voidability</th>\n";
-      foreach ($this->attributes as $name => $elt) {
-        echo "<tr><td>$name</td><td>",str2html($elt['definition']->__toString()),"</td>\n";
-        $toftype = array_keys($elt['type'])[0];
-        $type = $elt['type'][$toftype];
-        $url = "?doc=$_GET[doc]&amp;ypath="
-                .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
-                .(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
-        echo "<td><a href='$url'>$type</a> ($toftype)</td>";
-        echo "<td>$elt[voidability]</td></tr>\n";
+    foreach (['attributes','relations'] as $prop) {
+      if ($this->$prop) {
+        echo "<h3>",DataModel::keyTranslate($prop),"</h3>\n";
+        echo "<table border=1><th>name</th><th>label</th><th>definition</th><th>type</th><th>multiplicity</th><th>voidability</th>\n";
+        foreach ($this->$prop as $name => $elt) {
+          echo "<tr><td>$name</td>";
+          echo "<td>",isset($elt['label']) ? str2html($elt['label']->__toString()) : '',"</td>\n";
+          echo "<td>",isset($elt['definition']) ? MarkdownExtra::defaultTransform($elt['definition']->__toString()) : '',"</td>\n";
+          $toftype = array_keys($elt['type'])[0];
+          $type = $elt['type'][$toftype];
+          $url = "?doc=$_GET[doc]&amp;ypath="
+                  .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
+                  .(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
+          echo "<td><a href='$url'>$type</a> ($toftype)</td>";
+          echo "<td>",isset($elt['multiplicity']) ? $elt['multiplicity'] : '', "</td>\n";
+          echo "<td>",isset($elt['voidability']) ? $elt['voidability'] : '', "</td>\n";
+          echo "</tr>\n";
+        }
+        echo "</table>\n";
       }
-      echo "</table>\n";
-    }
-    if ($this->relations) {
-      echo "<h3>",DataModel::keyTranslate('relations'),"</h3>\n";
-      echo "<table border=1><th>name</th><th>definition</th><th>type</th><th>voidability</th>\n";
-      foreach ($this->relations as $name => $elt) {
-        echo "<tr><td>$name</td><td>",str2html($elt['definition']->__toString()),"</td>\n";
-        $toftype = array_keys($elt['type'])[0];
-        $type = $elt['type'][$toftype];
-        $url = "?doc=$_GET[doc]&amp;ypath="
-                .urlencode(in_array($toftype,['codelist','enum']) ? '/schemes/' : '/objectTypes/').$type
-                .(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '');
-        echo "<td><a href='$url'>$type</a> ($toftype)</td>";
-        echo "<td>$elt[voidability]</td></tr>\n";
-      }
-      echo "</table>\n";
     }
     //$this->showInYaml();
     //echo "<pre>"; print_r($this); echo "</pre>\n";
