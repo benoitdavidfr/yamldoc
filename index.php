@@ -258,7 +258,9 @@ class CallingGraph {
 }
 
 //echo getcwd() . "<br>\n";
-show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());
+$options = isset($_GET['options']) ? explode(',', $_GET['options']) : [];
+if (!in_array('hideMenu', $options))
+  show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());
 
 // si un verrou a été posé alors il est levé
 ydunlockall();
