@@ -439,11 +439,11 @@ if ($_GET['action']=='store') {
     //git_commit($_GET['doc'], $ext);
     try {
       $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
-      $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
+      $doc->show($_GET['doc'], isset($_GET['ypath']) ? $_GET['ypath'] : '');
     }
     catch (ParseException $exception) {
       printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-      echo "<pre>",ydread($_GET['doc']),"</pre>\n";
+      echo "<pre>",ydread($_SESSION['store'], $_GET['doc']),"</pre>\n";
     }
   }
 }

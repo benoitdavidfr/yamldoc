@@ -11,6 +11,8 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
 journal: |
+  16/7/2018:
+  - correction de yread() pour écrire les index
   15/7/2018:
   - ajout du paramètre docid dans les méthodes show()
   11/7/2018:
@@ -112,9 +114,10 @@ function config() {
 // s'il s'agit d'un Php l'extension est php, sinon yaml
 function ydwrite(string $store, string $uid, string $text) {
   $ext = (strncmp($text,'<?php', 5)==0) ? 'php' : 'yaml';
+  $filename = is_dir(__DIR__."/$store/$uid") ? __DIR__."/$store/$uid/index" : __DIR__."/$store/$uid";
   if ($ext == 'php')
-    @unlink(__DIR__."/$store/$uid.yaml");
-  if (file_put_contents(__DIR__."/$store/$uid.$ext", $text)===FALSE)
+    @unlink("$filename.yaml");
+  if (file_put_contents("$filename.$ext", $text)===FALSE)
     return FALSE;
   else
     return $ext;
