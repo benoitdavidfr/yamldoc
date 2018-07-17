@@ -320,9 +320,10 @@ function showString(string $docuid, $str) {
     }
     echo str2html($str);
   }
-  /*elseif (is_object($str) && (get_class($str)=='DateTime')) {
+  // cas à traiter pour une liste de dates, dans par exemple le lexique topographique
+  elseif (is_object($str) && (get_class($str)=='DateTime')) {
     echo $str->format('Y-m-d H:i:s');
-  }*/
+  }
   else
     echo str2html("$str\n");
 }
@@ -495,9 +496,9 @@ interface YamlDocElement {
   public function show(string $docid, string $ypath);
   // extrait le sous-élément de l'élément défini par $ypath
   public function extract(string $ypath);
-  // décapsule l'objet et retourne ces éléments sous la forme d'un array
-  // devrait être renommée en asArray(), nom utilisé dans YamlSkos
-  public function php();
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  // est utilisé par replaceYDEltByArray()
+  public function asArray();
 };
 
 // classe YamlDoc de base
@@ -538,17 +539,17 @@ class YamlDoc {
   // améliore la sortie en supprimant les débuts de ligne
   function yaml(string $ypath): string {
     $fragment = self::sextract($this->data, $ypath);
-    return self::syaml(self::replaceYDEltByPhp($fragment));
+    return self::syaml(self::replaceYDEltByArray($fragment));
   }
   
-  // remplace dans une structure Php les YamlDocElement par leur représentation Php
-  static function replaceYDEltByPhp($data) {
+  // remplace dans une structure Php les YamlDocElement par leur représentation array Php
+  static function replaceYDEltByArray($data) {
     if (is_object($data) && (get_class($data)<>'DateTime'))
-      return $data->php();
+      return $data->asArray();
     elseif (is_array($data)) {
       $ret = [];
       foreach ($data as $key => $value)
-        $ret[$key] = self::replaceYDEltByPhp($value);
+        $ret[$key] = self::replaceYDEltByArray($value);
       return $ret;
     }
     else
@@ -572,7 +573,7 @@ class YamlDoc {
   
   function json(string $ypath): string {
     $fragment = self::sextract($this->data, $ypath);
-    $fragment = self::replaceYDEltByPhp($fragment);
+    $fragment = self::replaceYDEltByArray($fragment);
     $fragment = self::replaceDateTimeByString($fragment);
     return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
@@ -768,7 +769,6 @@ class YamlDoc {
   }
   
   // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
-  
   function checkReadAccess(string $store, string $docuid): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
     if (ydcheckReadAccess($store, $docuid))

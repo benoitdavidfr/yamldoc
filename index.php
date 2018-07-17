@@ -34,6 +34,8 @@ doc: |
 journal: |
   17/7/2018:
   - traitement des $phpDocs complexes
+  - Switched to a new branch 'repphpbyarray'
+    - remplacement des méthodes php() par asArray()
   14/7/2018:
   - modif du titre de la page HTML
   7-10/7/2018:
@@ -384,8 +386,10 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
     if ($doc->isHomeCatalog())
       $_SESSION['homeCatalog'] = $docuid;
     if ($doc->language) {
-      //echo "doc multilingue: ",implode(',',$doc->language);
-      $_SESSION['language'][$docuid] = $doc->language;
+      if (is_string($doc->language))
+        $_SESSION['language'][$docuid] = [$doc->language];
+      else
+        $_SESSION['language'][$docuid] = $doc->language;
     }
     if (!isset($_GET['format']))
       $doc->show($docuid, $ypath);

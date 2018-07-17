@@ -86,7 +86,7 @@ class YamlData extends YamlDoc {
   }
   
   // retourne une structure Php
-  function php() {
+  function asArray() {
     return $this->data;
   }
 };
@@ -255,8 +255,8 @@ class YamlDataTable implements YamlDocElement, IteratorAggregate {
     return $result;
   }
   
-  // retourne une structure Php
-  function php() {
+  // retourne un array Php
+  function asArray() {
     return $this->data;
   }
   

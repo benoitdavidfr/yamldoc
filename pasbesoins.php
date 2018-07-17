@@ -20,7 +20,7 @@ $pasbesoins = new_YamlDoc('docs','satellite/pas-besoins');
 
 if ($_GET['action']=='besoins') {
   echo "<h3>Liste des besoins</h3><ul>\n";
-  foreach ($pasbesoins->php()['data']->php() as $paid => $pasaction) {
+  foreach ($pasbesoins->data->asArray() as $paid => $pasaction) {
     echo "<li><a href='index.php?doc=satellite%2Fpas-besoins&ypath=%2Fdata%2F$paid'>$pasaction[Titre]</a>\n";
   }
   die();
@@ -47,7 +47,7 @@ function checkActeur(string $acteur, $acteurs): bool {
 
 if ($_GET['action']=='utilisateurs') {
   $utilisateurs = []; // nom => nbre
-  foreach ($pasbesoins->php()['data']->php() as $pbid => $pasbesoin) {
+  foreach ($pasbesoins->data->asArray() as $pbid => $pasbesoin) {
     //echo "<pre>pasbesoin="; print_r($pasbesoin); echo "</pre>\n";
     if (!isset($pasbesoin['utilisateurs'])) {
       echo "Pas d'utilisateurs pour $pbid<br>\n";
@@ -88,23 +88,23 @@ function accents(string $url): string {
 if ($_GET['action']=='besoinsParUtilisateur') {
   echo "<h3>$_GET[utilisateur]</h3>\n";
   $sigle = $_GET['utilisateur'];
-  if (isset($pasbesoins->php()['sigles'][$sigle])) {
-    //print_r($pasactions->php()['sigles'][$_GET['acteur']]);
-    $acteur = $pasactions->php()['sigles'][$sigle];
+  if (isset($pasbesoins->sigles[$sigle])) {
+    //print_r($pasactions->sigles[$_GET['acteur']]);
+    $acteur = $pasactions->sigles[$sigle];
     echo "<i>Nom:</i> $acteur[name]<br>\n";
     if (isset($acteur['sameAs']))
       echo "<i>Lien Wikipédia:</i> <a href='$acteur[sameAs]' target=_blank>",accents($acteur['sameAs']),"</a><br>\n";
     if (isset($acteur['parentOrganization'])) {
-      $acteur = $pasactions->php()['sigles'][$acteur['parentOrganization']];
+      $acteur = $pasactions->sigles[$acteur['parentOrganization']];
       echo "<i>Appartient à:</i> <a href='$acteur[sameAs]' target=_blank>$acteur[name]</a><br>\n";
     }
     if (isset($acteur['memberOf'])) {
-      $acteur = $pasactions->php()['sigles'][$acteur['memberOf']];
+      $acteur = $pasactions->sigles[$acteur['memberOf']];
       echo "<i>Est un(e):</i> <a href='$acteur[sameAs]' target=_blank>$acteur[name]</a><br>\n";
     }
   }
   echo "<h4>Liste des besoins</h4><ul>\n";
-  foreach ($pasbesoins->php()['data']->php() as $pbid => $pasbesoin) {
+  foreach ($pasbesoins->data->asArray() as $pbid => $pasbesoin) {
     $besoinSelectionne = false;
     if (isset($pasbesoin['utilisateurs']) && in_array($_GET['utilisateur'], $pasbesoin['utilisateurs'])) {
       $besoinSelectionne = true;
@@ -115,6 +115,6 @@ if ($_GET['action']=='besoinsParUtilisateur') {
 }
 
 if ($_GET['action']=='dump') {
-  echo "<pre>besoins="; print_r($pasbesoins->php());
+  echo "<pre>besoins="; print_r($pasbesoins->asArray());
   die();
 }

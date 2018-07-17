@@ -17,8 +17,8 @@ if (!isset($_GET['action'])) {
   die();
 }
 $pas = new_yamlDoc('docs', 'satellite/pas-actions2018');
-$pasactions = $pas->php()['tables']['actions']['data']->php();
-$pasorganisations = $pas->php()['tables']['organisations']['data']->php();
+$pasactions = $pas->tables['actions']['data']->asArray();
+$pasorganisations = $pas->tables['organisations']['data']->asArray();
 
 if ($_GET['action']=='actions') {
   echo "<h3>Liste des actions</h3><ul>\n";

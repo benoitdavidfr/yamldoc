@@ -55,7 +55,7 @@ class MLString {
     return $lang ? $this->_c[$lang] : '';
   }
   
-  // renvoie le contenu simplifié si pour une langue il n'existe qu'une seule chaine
+  // renvoie le contenu complet simplifié si pour une langue il n'existe qu'une seule chaine
   function get(): array {
     $result = [];
     foreach ($this->_c as $lang => $labels) {
@@ -68,7 +68,7 @@ class MLString {
   }
   
   // renvoie le contenu en array Php ss objet
-  function php(): array { return $this->get(); }
+  function asArray(): array { return $this->get(); }
 };
 
 

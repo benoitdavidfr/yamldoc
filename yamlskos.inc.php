@@ -265,7 +265,7 @@ class YamlSkos extends YamlDoc {
   // améliore la sortie en supprimant les débuts de ligne
   function yaml(string $ypath): string {
     $fragment = $this->extract($ypath);
-    return YamlDoc::syaml(YamlDoc::replaceYDEltByPhp($fragment));
+    return YamlDoc::syaml(YamlDoc::replaceYDEltByArray($fragment));
   }
   
   function json(string $ypath): string {
