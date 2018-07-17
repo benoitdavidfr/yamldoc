@@ -10,6 +10,16 @@ $phpDocs['yd.inc.php'] = <<<'EOT'
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |
+  Le format externe d'un document est du Yaml.
+  Le format interne dépend de chaque document et est généré lors de la création du document.
+  Typiquement un document peut créer des objets à la place de certains arrays pour simplifier la définition
+  des traitements.
+  Le format interne est stocké dans les fichiers .pser
+  
+  
+  Bugs:
+  - le mécanisme de vérouillage semble complètement inutile
+  
 journal: |
   16/7/2018:
   - correction de yread() pour écrire les index
@@ -170,6 +180,7 @@ function ydsetReadAccess(string $store, string $docuid): void {
     $_SESSION['checkedReadAccess'][] = "$store/$docuid";
 }
 
+// teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
 function ydcheckWriteAccessForPhpCode(string $store, string $docuid) {
   $ydcheckWriteAccessForPhpCode = 1;
   $authorizedWriters = require "$store/$docuid.php";
@@ -194,6 +205,7 @@ function ydcheckWriteAccess(string $store, string $docuid): int {
     : -1;
 }
 
+// !!! je ne vois pas l'intérêt de ce mécanisme de lock !!!
 function ydlock(string $store, string $docuid): bool {
   //echo "ydlock($uid)<br>\n";
   if (file_exists(__DIR__."/$store/$docuid.lock"))
@@ -281,7 +293,7 @@ function is_listOfTuples_i($list) {
   return true;
 }
 
-function str2html($str) { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
+function str2html(string $str): string { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
 
 // Je considère qu'une String est une chaine ne contenant pas de \n intermédiaire, sinon c'est un texte
 function showString(string $docuid, $str) {
@@ -377,7 +389,7 @@ function showArrayAsTable(string $docuid, array $data, string $prefix) {
 }
 
 // aiguille l'affichage en fonction du type du paramètre
-function showDoc(string $docuid, $data, string $prefix='') {
+function showDoc(string $docuid, $data, string $prefix=''): void {
   if (is_object($data)) {
     if (get_class($data)=='DateTime')
       echo $data->format('Y-m-d H:i:s');
@@ -406,7 +418,13 @@ function showDoc(string $docuid, $data, string $prefix='') {
     }
     else {
       // les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
-      $data = str_replace('(?ypath=', "(?doc=$docuid&amp;ypath=", $data);
+      // et éventuellement la langue
+      $pattern = '!\(\?(ypath=([^)]*))\)!';
+      while (preg_match($pattern, $data, $matches)) {
+        $ypath = $matches[2];
+        $replacement = "(?doc=$docuid&amp;ypath=$ypath".(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '').")";
+        $data = preg_replace($pattern, $replacement, $data, 1);
+      }
       echo MarkdownExtra::defaultTransform($data);
     }
   }
@@ -414,7 +432,9 @@ function showDoc(string $docuid, $data, string $prefix='') {
     showString($docuid, $data);
 }
 
-// crée un YamlDoc à partir du docuid du document
+// crée un YamlDoc à partir du store et du docuid du document
+// retourne null si le document n'existe pas
+// génère une exception si le doc n'est pas du Yaml
 function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
   // S'il existe un pser et qu'il est plus récent que le yaml alors renvoie la désérialisation du pser
   if (file_exists(__DIR__."/$store/$docuid.pser")
@@ -427,13 +447,24 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
     return null;
   // Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
   if (strncmp($text,'<?php', 5)==0) {
-    if (!$docuid)
-      throw new Exception("Erreur: le paramètre docuid n'est pas défini");
+    //if (!$docuid)
+      //throw new Exception("Erreur: le paramètre docuid n'est pas défini");
+    // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
     ydcheckWriteAccessForPhpCode($store, $docuid);
+    // exécute le script et renvoie son retour qui doit donc être un YamlDoc ou null
     return require "$store/$docuid.php";
   }
-  // Sinon Si le texte est du Yaml alors si le résultat du parse n'est pas un array alors renvoie un objet avec le texte
-  $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
+  // Sinon parse le texte dans $data
+  try {
+    $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
+  }
+  catch (ParseException $exception) {
+    // en cas d'erreur d'analyse Yaml le doc est marqué comme modifiable
+    ydsetWriteAccess($store, string, 1);
+    // et je relance l'exception
+    throw $exception;
+  }
+  // si le doc correspond à un texte alors création d'un YamlDoc avec le texte
   if (!is_array($data))
     $doc = new YamlDoc($text);
   // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
@@ -446,9 +477,11 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
       $doc = new YamlDoc($data);
     }
   }
-  else
+  else // si pas de YamlClass c'est un YamlDoc de base
     $doc = new YamlDoc($data);
+  // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
   ydsetWriteAccess($store, $docuid, $doc->authorizedWriter());
+  // si prévu j'écris le .pser
   $doc->writePser($store, $docuid);
   return $doc;
 }
@@ -458,8 +491,12 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
 //  - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
 //  - un objet d'une classe conforme à l'interface YamlDocElement
 interface YamlDocElement {
+  // affiche le sous-élément de l'élément défini par $ypath
   public function show(string $docid, string $ypath);
+  // extrait le sous-élément de l'élément défini par $ypath
   public function extract(string $ypath);
+  // décapsule l'objet et retourne ces éléments sous la forme d'un array
+  // devrait être renommée en asArray(), nom utilisé dans YamlSkos
   public function php();
 };
 

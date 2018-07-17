@@ -293,7 +293,7 @@ class YamlSkos extends YamlDoc {
 
 // la classe Elt est une super-classe de Domain, Scheme et Concept
 // A la construction les champs chaine sont transformés en objet MLString
-class Elt {
+class SkosElt {
   static $strFields = [
     'prefLabel','altLabel','hiddenLabel','definition',
     'note','scopeNote','editorialNote','historyNote','example',
@@ -441,7 +441,7 @@ class Elt {
 };
 
 // classe du domainScheme
-class DomainScheme extends Elt {
+class DomainScheme extends SkosElt {
     
   // Affiche l'arbre des domaines avec un lien vers chaque micro-thésaurus
   function show(array $domains, array $schemes) {
@@ -455,7 +455,7 @@ class DomainScheme extends Elt {
   }
 };
   
-class Domain extends Elt {
+class Domain extends SkosElt {
   // affiche le sous-arbre correspondant au domaine avec un lien vers chaque micro-thésaurus
   function showDomainTree(string $id, array $domains, array $schemes) {
     //echo "<pre>this = "; print_r($this); echo "</pre>\n";
@@ -485,7 +485,7 @@ class Domain extends Elt {
   function addSchemeChild(string $sid) { $this->_c['schemeChildren'][] = $sid; }
 };
 
-class Scheme extends Elt {
+class Scheme extends SkosElt {
   // remplit le lien domain -> scheme à partir du lien inverse
   static function fillSchemeChildren(array $schemes, array $domains) {
     foreach ($schemes as $sid => $scheme) {
@@ -555,7 +555,7 @@ class Scheme extends Elt {
   }
 };
 
-class Concept extends Elt {
+class Concept extends SkosElt {
   // affiche l'arbre des concepts correspondant à un thésaurus
   static function showConcepts(array $concepts) {
     echo "<ul>\n";

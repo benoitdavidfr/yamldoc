@@ -6,7 +6,7 @@ doc: |
   voir le code
 */
 {
-$phpDocs['index.php'] = <<<EOT
+$phpDocs['index.php'] = <<<'EOT'
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
@@ -32,6 +32,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  17/7/2018:
+  - traitement des $phpDocs complexes
   14/7/2018:
   - modif du titre de la page HTML
   7-10/7/2018:
@@ -263,6 +265,7 @@ if (!in_array('hideMenu', $options))
   show_menu($_SESSION['store'], CallingGraph::makeBreadcrumb());
 
 // si un verrou a été posé alors il est levé
+// !!! à vérifier le fonctionnement / je ne comprends pas !!!
 ydunlockall();
 
 // les premières actions ne nécessitent pas le paramètre doc
@@ -350,6 +353,8 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
   $docuid = $_GET['doc'];
   //isset($_SESSION['parents'][$doc]);
   $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
+  
+  // ypath ne commence pas par / alors il s'agit d'uen recherche plein texte
   if ($ypath && (substr($ypath,0,1)<>'/')) {
     echo "search<br>\n";
     $dirname = dirname($_SERVER['SCRIPT_NAME']);
@@ -357,6 +362,7 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
     header("Location: http://$_SERVER[SERVER_NAME]$dirname/search.php?value=".urlencode($ypath));
     die();
   }
+  
   try {
     $doc = new_yamlDoc($_SESSION['store'], $docuid);
   }
@@ -365,6 +371,7 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
     echo "<pre>",ydread($_SESSION['store'], $docuid),"</pre>\n";
     die();
   }
+  // 
   if (!$doc) {
     echo "<b>Erreur: le document $docuid n'existe pas</b><br>\n";
     if ($parent = CallingGraph::parent($docuid))
@@ -383,9 +390,9 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
     if (!isset($_GET['format']))
       $doc->show($docuid, $ypath);
     elseif ($_GET['format']=='yaml')
-      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->yaml($ypath)),"</pre>\n";
+      echo "<pre>",str2html($doc->yaml($ypath)),"</pre>\n";
     elseif ($_GET['format']=='json')
-      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],$doc->json($ypath)),"</pre>\n";
+      echo "<pre>",str2html($doc->json($ypath)),"</pre>\n";
     else
       echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
   }
@@ -492,7 +499,12 @@ if ($_GET['action']=='version') {
     echo "<h2>Documentation des scripts Php</h2><ul>\n";
     foreach ($phpDocs as $name => $phpDoc) {
       try {
-        $phpDoc = Yaml::parse($phpDoc);
+        if (!is_array($phpDoc)) {
+          $phpDoc = Yaml::parse($phpDoc);
+        }
+        else {
+          $phpDoc = Yaml::parse($phpDoc['file']);
+        }
         echo "<li><a href='?action=version",
              isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
              "&amp;name=$name'>$phpDoc[title]</a>\n";
@@ -503,8 +515,21 @@ if ($_GET['action']=='version') {
       }
     }
   }
+  elseif (!is_array($phpDocs[$_GET['name']])) {
+    echo "<pre>",str2html($phpDocs[$_GET['name']]),"</pre>\n";
+  }
   else {
-    echo "<pre>"; print_r($phpDocs[$_GET['name']]); echo "</pre>\n";
+    foreach ($phpDocs[$_GET['name']] as $field => $doc) {
+      echo "<h2>$field</h2>";
+      if (is_string($doc))
+        echo "<pre>",str2html($doc),"</pre>\n";
+      else {
+        foreach ($doc as $sname => $sdoc) {
+          echo "<h3>$sname</h3>";
+          echo "<pre>",str2html($sdoc),"</pre>\n";
+        }
+      }
+    }
   }
   die();
 }
