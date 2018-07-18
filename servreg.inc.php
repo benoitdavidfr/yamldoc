@@ -4,26 +4,28 @@ name: servreg.inc.php
 title: servreg.inc.php - classe du registre des serveurs
 doc: |
 journal: |
+  18/7/2018:
+  - adaptation
   12/5/2018:
   - création
 */
 
 // classe du registre des serveurs
-class Servreg extends YamlDoc {
-  function title() { return isset($this->data['phpDoc']['title']) ? $this->data['phpDoc']['title'] : null; }
+class Servreg extends BasicYamlDoc {
+  function title() { return $this->phpDoc['title']; }
   
   function show(string $docid, string $ypath): void {
     echo "<h2>",$this->title(),"</h2>\n";
     echo "<h3>phpDoc</h3>\n";
-    showDoc($this->data['phpDoc']);
-    if (isset($this->data['classification']) and $this->data['classification']) {
+    showDoc($_GET['doc'], $this->phpDoc);
+    if ($this->classification) {
       echo "<h3>Classification</h3>\n";
-      self::showClass($this->data['classification']);
+      self::showClass($this->classification);
     }
     echo "<h3>Serveurs</h3>\n",
          "<table border=1>\n",
          "<th>name</th><th>title</th><th>class</th><th>protocol</th><th>url</th>";
-    foreach ($this->data['servers'] as $name => $server) {
+    foreach ($this->servers as $name => $server) {
       if (isset($server['url'])) {
         $rs = isset($server['layers']) ? 2 : 1;
         echo "<tr><td rowspan=$rs>$name</td>",

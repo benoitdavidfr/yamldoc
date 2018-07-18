@@ -7,6 +7,8 @@ doc: |
   Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
   En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
 journal: |
+  18/7/2018:
+    - prise en compte de la nouvelle classe YamlDoc
   21/6/2018:
     - V2
   12/5/2018:
@@ -21,6 +23,8 @@ doc: |
   Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
   En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
 journal: |
+  18/7/2018:
+    - prise en compte de la nouvelle classe YamlDoc
   21/6/2018:
     - V2
   12/5/2018:
@@ -30,7 +34,8 @@ EOT;
 use Symfony\Component\Yaml\Yaml;
 
 // classe des catalogues
-class YamlCatalog extends YamlDoc {
+class YamlCatalog extends BasicYamlDoc {
+  
   function show(string $docid, string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     if (is_dir(__DIR__."/$_SESSION[store]/$_GET[doc]")) {

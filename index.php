@@ -27,6 +27,7 @@ doc: |
   A REVOIR:
   - les fichiers servreg devraient être considérés comme des catalogues
   - un fichier protégé et non conforme Yaml n'est pas protégé
+  - le mécanisme de vérouillage semble complètement inutile
   
   IDEES:
   - intégrer la gestion de mot de passe
@@ -34,8 +35,7 @@ doc: |
 journal: |
   17/7/2018:
   - traitement des $phpDocs complexes
-  - Switched to a new branch 'repphpbyarray'
-    - remplacement des méthodes php() par asArray()
+  - remplacement des méthodes php() par asArray()
   14/7/2018:
   - modif du titre de la page HTML
   7-10/7/2018:

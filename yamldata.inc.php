@@ -51,7 +51,7 @@ EOT;
 
 // class correspondant au niveau document
 // remplace dans la structure Php l'array correspondant à une table par un objet YamlDataTable
-class YamlData extends YamlDoc {
+class YamlData extends BasicYamlDoc {
   function __construct($data) {
     $this->data = $data;
     if (isset($this->data['data'])) // le document ne contient qu'une seule table

@@ -43,6 +43,8 @@ doc: |
   identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
   auxquelles elles appartiennent. Ces propriétés sont définies dans Dublin Core.
 journal: |
+  18/7/2018:
+  - adaptation à la restructuration des classes
   8/7/2018:
   - utilisation de la classe MLString pour gérer les chaines multi-lingues
   4/7/2018:
@@ -63,6 +65,7 @@ function suppAccents(string $str): string {
   return strtolower(str_replace(['é','É','Î'],['e','e','i'], $str));
 }
 
+//class YamlSkos extends YamlDoc {
 class YamlSkos extends YamlDoc {
   // traduction des champs utilisés en français et en anglais pour l'affichage
   static $keyTranslations = [
@@ -233,16 +236,21 @@ class YamlSkos extends YamlDoc {
       $this->concepts[$cid]->showInYaml($this);
   }
   
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  function asArray() {
+    $result = $this->_c;
+    $result['domainScheme'] = $this->domainScheme->asArray();
+    foreach (['domains','schemes','concepts'] as $field) {
+      foreach($this->$field as $id => $elt)
+        $result[$field][$id] = $elt->asArray();
+    }
+    return $result;
+  }
+  
   // renvoie un array récursif du fragment défini par ypath
   function extract(string $ypath) {
     if (!$ypath) {
-      $result = $this->_c;
-      $result['domainScheme'] = $this->domainScheme->asArray();
-      foreach (['domains','schemes','concepts'] as $field) {
-        foreach($this->$field as $id => $elt)
-          $result[$field][$id] = $elt->asArray();
-      }
-      return $result;
+      return $this->asArray();
     }
     elseif ($ypath == '/domainScheme')
       return $this->domainScheme->asArray();
@@ -293,7 +301,7 @@ class YamlSkos extends YamlDoc {
 
 // la classe Elt est une super-classe de Domain, Scheme et Concept
 // A la construction les champs chaine sont transformés en objet MLString
-class SkosElt {
+abstract class SkosElt implements YamlDocElement {
   static $strFields = [
     'prefLabel','altLabel','hiddenLabel','definition',
     'note','scopeNote','editorialNote','historyNote','example',

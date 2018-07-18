@@ -25,7 +25,7 @@ journal: |
 EOT;
 }
 
-class MultiData extends YamlDoc {
+class MultiData extends BasicYamlDoc {
   // fabrique à la volée la table par concaténation des tables des sous-documents
   function buildTable() {
     //echo "MultiData::show()<br>\n";

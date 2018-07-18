@@ -15,12 +15,17 @@ doc: |
   Typiquement un document peut créer des objets à la place de certains arrays pour simplifier la définition
   des traitements.
   Le format interne est stocké dans les fichiers .pser
-  
-  
-  Bugs:
-  - le mécanisme de vérouillage semble complètement inutile
-  
+    
 journal: |
+  18/7/2018:
+  - restructuration des classes
+    - la classe YamlDoc est une classe abstraite de n'importe quel document, elle porte les méthodes génériques
+    - les documents par défaut sont définis par la classe BasicYamlDoc
+  - réorganisation des fichiers
+  - l'ancien yd.inc.php est scindé en 3 fichiers
+    - yd.inc.php qui contient les fonctions
+    - yamldoc.inc.php qui contient la définition de la classe abstraite YamlDoc et de l'interface YamlDocElement
+    - basicyamldoc.inc.php qui contient la définition de la classe BasicYamlDoc
   16/7/2018:
   - correction de yread() pour écrire les index
   15/7/2018:
@@ -467,19 +472,21 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
   }
   // si le doc correspond à un texte alors création d'un YamlDoc avec le texte
   if (!is_array($data))
-    $doc = new YamlDoc($text);
+    $doc = new BasicYamlDoc($text);
   // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
-  elseif (isset($data['yamlClass'])) {
+  elseif (!isset($data['yamlClass'])) {
+    // si pas de YamlClass c'est un YamlDoc de base
+    $doc = new BasicYamlDoc($data);
+  }
+  else {
     $yamlClass = $data['yamlClass'];
     if (class_exists($yamlClass))
       $doc = new $yamlClass ($data);
     else {
       echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
-      $doc = new YamlDoc($data);
+      $doc = new BasicYamlDoc($data);
     }
   }
-  else // si pas de YamlClass c'est un YamlDoc de base
-    $doc = new YamlDoc($data);
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
   ydsetWriteAccess($store, $docuid, $doc->authorizedWriter());
   // si prévu j'écris le .pser
@@ -487,362 +494,3 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
   return $doc;
 }
 
-// Declaration de l'interface 'YamlDocElement'
-// Tout élément d'un YamlDoc doit être soit:
-//  - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
-//  - un objet d'une classe conforme à l'interface YamlDocElement
-interface YamlDocElement {
-  // affiche le sous-élément de l'élément défini par $ypath
-  public function show(string $docid, string $ypath);
-  // extrait le sous-élément de l'élément défini par $ypath
-  public function extract(string $ypath);
-  // décapsule l'objet et retourne son contenu sous la forme d'un array
-  // est utilisé par replaceYDEltByArray()
-  public function asArray();
-};
-
-// classe YamlDoc de base
-class YamlDoc {
-  protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire comme détaillé ci-dessus
-  
-  function __construct($data) { $this->data = $data; }
-  
-  // Par défaut aucun .pser n'est produit
-  function writePser(string $store, string $docuid): void { }
-  
-  // si une classe crée un .pser, appeler YamlDoc::writePserReally()
-  function writePserReally(string $store, string $docuid): void {
-    if (!is_file(__DIR__."/$store/$docuid.pser")
-     || (filemtime(__DIR__."/$store/$docuid.pser") <= filemtime(__DIR__."/$store/$docuid.yaml"))) {
-      file_put_contents(__DIR__."/$store/$docuid.pser", serialize($this));
-    }
-  }
-  
-  // permet d'accéder aux champs du document comme si c'était un champ de la classe
-  function __get(string $name) {
-    return isset($this->data[$name]) ? $this->data[$name] : null;
-  }
-  
-  function isHomeCatalog() { return false; }
-  
-  // affiche le doc ou le fragment si ypath est non vide
-  function show(string $docuid, string $ypath): void {
-    //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    showDoc($docuid, self::sextract($this->data, $ypath));
-  }
-  
-  function dump(string $ypath): void {
-    var_dump(self::sextract($this->data, $ypath));
-  }
-  
-  // génère le texte correspondant au fragment défini par ypath
-  // améliore la sortie en supprimant les débuts de ligne
-  function yaml(string $ypath): string {
-    $fragment = self::sextract($this->data, $ypath);
-    return self::syaml(self::replaceYDEltByArray($fragment));
-  }
-  
-  // remplace dans une structure Php les YamlDocElement par leur représentation array Php
-  static function replaceYDEltByArray($data) {
-    if (is_object($data) && (get_class($data)<>'DateTime'))
-      return $data->asArray();
-    elseif (is_array($data)) {
-      $ret = [];
-      foreach ($data as $key => $value)
-        $ret[$key] = self::replaceYDEltByArray($value);
-      return $ret;
-    }
-    else
-      return $data;
-  }
-  
-  // améliore la sortie de Yaml::dump()
-  static function syaml($data): string {
-    $text = Yaml::dump($data, 999, 2);
-    return $text;
-    $pattern = '!^( *-)\n +!';
-    if (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
-    }
-    $pattern = '!(\n *-)\n +!';
-    while (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
-    }
-    return $text;
-  }
-  
-  function json(string $ypath): string {
-    $fragment = self::sextract($this->data, $ypath);
-    $fragment = self::replaceYDEltByArray($fragment);
-    $fragment = self::replaceDateTimeByString($fragment);
-    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-  }
-  
-  static function replaceDateTimeByString($data) {
-    if (is_object($data) && (get_class($data)=='DateTime')) {
-      return $data->format(DateTime::ATOM);
-    }
-    elseif (is_array($data)) {
-      $ret = [];
-      foreach ($data as $key => $value)
-        $ret[$key] = self::replaceDateTimeByString($value);
-      return $ret;
-    }
-    else
-      return $data;
-  }
-    
-  // extrait le premier elt de $ypath en utilisant le séparateur $sep
-  // le séparateur n'est pas pris en compte s'il est entre ()
-  static function extract_ypath(string $sep, string $ypath): string {
-    if (substr($ypath,0,1)==$sep)
-      $ypath = substr($ypath,1);
-    $prof = 0;
-    for ($i=0; $i<strlen($ypath); $i++) {
-      $c = substr($ypath, $i, 1);
-      if (($c==$sep) and ($prof==0))
-        return substr($ypath, 0, $i);
-      elseif ($c=='(')
-        $prof++;
-      elseif ($c==')')
-        $prof--;
-    }
-    return $ypath;
-  }
-  
-  // retourne le fragment défini par path qui est une chaine
-  function extract(string $ypath) {
-    return self::sextract($this->data, $ypath);
-  }
-  
-  // retourne le fragment défini par la chaine ypath
-  static function sextract($data, string $ypath) {
-    //echo "sextract(ypath=$ypath)<br>\n";
-    if (!$ypath)
-      return $data;
-    //echo "ypath=$ypath<br>\n";
-    $elt = self::extract_ypath('/', $ypath);
-    $ypath = substr($ypath, strlen($elt)+1);
-    //echo "elt=$elt<br>\n";
-    if (strpos($elt,'=') !== false) {
-      $query = explode('=', $elt);
-      $data = self::select($data, $query[0], $query[1]);
-    }
-    elseif (isset($data[$elt]))
-      $data = $data[$elt];
-    elseif (preg_match('!^sort\(([^)]+)\)$!', $elt, $matches))
-      $data = self::sort($data, $matches[1]);
-    else
-      $data = self::project($data, $elt);
-    if (!$ypath) {
-      //print_r($data);
-      return $data;
-    }
-    if (is_array($data))
-      return self::sextract($data, $ypath);
-    elseif (is_object($data))
-      return $data->extract($ypath);
-    elseif (is_null($data))
-      return null;
-    else {
-      echo "Cas non traité ",__FILE__," ligne ",__LINE__,"<br>\n";
-      //echo "<pre>data = "; print_r($data); echo "</pre>\n";
-      return $data;
-    }
-  }
-  
-  // selection dans la liste de tuples $data sur $key=$value
-  static function select(array $data, string $key, string $value) {
-    //echo "select(data, key=$key, value=$value)<br>\n";
-    $result = [];
-    foreach ($data as $tuple)
-      if ($tuple[$key]==$value)
-        $result[] = $tuple;
-    if (count($result)==0)
-      return null;
-    elseif (count($result)==1)
-      return $result[0];
-    else
-      return $result;
-  }
-  
-  // decompose la chaine $srce en un tableau en utilisant le séparateur $sep
-  // le séparateur n'est pas pris en compte s'il est entre ()
-  static function protexplode(string $sep, string $srce) {
-    $results = [];
-    $prof = 0;
-    $j = 0;
-    for ($i=0; $i<strlen($srce); $i++) {
-      $c = substr($srce, $i, 1);
-      if (($c==$sep) and ($prof==0)) {
-        $results[] = substr($srce, $j, $i-$j);
-        $j = $i+1;
-      }
-      elseif ($c=='(')
-        $prof++;
-      elseif ($c==')')
-        $prof--;
-    }
-    $results[] = substr($srce, $j, $i);
-    return $results;
-  }
-  
-  // projection de $data sur $keys
-  static function project(array $data, string $keys) {
-    //$keys = explode(',', $keys);
-    $keys = self::protexplode(',', $keys);
-    //echo "keys="; print_r($keys); echo "<br>\n";
-    if (is_listOfTuples($data)) {
-      $result = [];
-      foreach ($data as $tuple) {
-        if (count($keys)==1) {
-          $result[] = $tuple[$keys[0]];
-        }
-        else {
-          $t = [];
-          foreach ($keys as $key) {
-            if (substr($key,0,1)=='(') {
-              $ypath = substr($key, 1, strlen($key)-2);
-              $skeys = explode('/', $ypath);
-              $skey = $skeys[count($skeys)-1];
-              $t[$skey] = self::sextract($tuple, $ypath);
-            }
-            elseif (isset($tuple[$key]))
-              $t[$key] = $tuple[$key];
-          }
-          $result[] = $t;
-        }
-      }
-      return $result;
-    }
-    elseif (count($keys)==1)
-      return isset($data[$keys[0]]) ? $data[$keys[0]] : null;
-    else {
-      $t = [];
-      foreach ($keys as $key) {
-        if (substr($key,0,1)=='(') {
-          $ypath = substr($key, 1, strlen($key)-2);
-          $skeys = explode('/', $ypath);
-          $skey = $skeys[count($skeys)-1];
-          if (in_array($skey, $keys))
-            $skey = $ypath;
-          $t[$skey] = self::sextract($data, $ypath);
-        }
-        else
-          $t[$key] = $data[$key];
-      }
-      return $t;
-    }
-  }
-  
-  // tri de $data sur $keys
-  static function sort(array $data, string $keys) {
-    global $keys_for_sort;
-    $keys_for_sort = explode(',', $keys);
-    usort($data, 'cmp');
-    return $data;
-  }
-  
-  // nest de $data sur $keys
-  static function nest(array $data, array $keys, string $nestkey) {
-    //return $data;
-    $results = [];
-    foreach($data as $tuple) {
-      //echo "tuple="; print_r($tuple); echo "<br>\n";
-      $stuple = [];
-      $stuple2 = [];
-      foreach ($tuple as $key => $value)
-        if (isset($keys[$key]))
-          $stuple[$keys[$key]] = $value;
-        else
-          $stuple2[$key] = $value;
-      $ser = serialize($stuple);
-      //echo "ser=$ser<br>\n";
-      if (!isset($results[$ser])) {
-        $results[$ser] = $stuple;
-        $results[$ser][$nestkey] = [];
-      }
-      $results[$ser][$nestkey][] = $stuple2;
-      //showDoc($results);
-    }
-    return array_values($results);
-  }
-  
-  // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
-  function checkReadAccess(string $store, string $docuid): bool {
-    // si le doc a déjà été marqué comme accessible alors retour OK
-    if (ydcheckReadAccess($store, $docuid))
-      return true;
-    // Si le document contient un mot de passe
-    if ($this->yamlPassword) {
-      //echo "checkPassword<br>\n";
-      //if (isset($_POST['password'])) echo "password=$_POST[password]<br>\n";
-      if (!isset($_POST['password'])) {
-        // Si aucun mot de passe n'a été fourni alors demande du mot de passe
-        echo "Mot de passe du document :<br>\n";
-        die("<form method='post'><input type='password' name='password'></form>\n");
-      }
-      // sinon  et si il est correct alors retour OK
-      if (password_verify($_POST['password'], $this->yamlPassword)) {
-        ydsetReadAccess($store, $docuid);
-        return true;
-      }
-      // sinon c'est qu'il est incorrect
-      else {
-        // Si non alors demande du mot de passe
-        echo "Mot de passe fourni incorrect :<br>\n";
-        die("<form method='post'><input type='password' name='password'></form>\n");
-      }
-    }
-    // Si le document ne contient pas de mot de passe
-    if ($this->authorizedReader()) {
-      ydsetReadAccess($store, $docuid);
-      return true;
-    }
-    else
-      return false;
-  }
-  
-  // test du droit en lecture indépendamment d'un éventuel mot de passe
-  function authorizedReader(): bool {
-    //print_r($this);
-    if (isset($this->data['authorizedReaders']))
-      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->data['authorizedReaders']);
-    elseif (isset($this->data['authRd']))
-      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->data['authRd']);
-    else
-      $ret = true;
-    //echo "authorizedReader=$ret<br>\n";
-    return $ret;
-  }
-  
-  // test du droit en écriture indépendamment d'un éventuel mot de passe
-  function authorizedWriter(): bool {
-    if (!$this->authorizedReader()) {
-      //echo "authorizedWriter false car !reader<br>\n";
-      return false;
-    }
-    if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']=='default'))
-      $ret = false;
-    elseif (isset($this->data['authorizedWriters']))
-      $ret = in_array($_SESSION['homeCatalog'], $this->data['authorizedWriters']);
-    elseif (isset($this->data['authWr']))
-      $ret = in_array($_SESSION['homeCatalog'], $this->data['authWr']);
-    else
-      $ret = true;
-    //echo "authorizedWriter=$ret<br>\n";
-    return $ret;
-  }
-  
-  // vérification de la conformité du document à son schéma
-  function checkSchemaConformity() {
-    echo "methode YamlDoc::checkSchemaConformity() non implémentée<br>\n";
-  }
-};
-
-if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
-
-$str = 'code,title,(json-ld/geo),(depts/code,title)';
-echo "<pre>";
-echo "$str\n";
-print_r(YamlDoc::protexplode(',', $str));

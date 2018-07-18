@@ -74,7 +74,8 @@ class Search {
     self::query("replace into fragment(store,docid,ypath,text) values('$store', \"$docid\", \"$ypath\", \"$val\")");
   }
 
-  // indexe un document
+  // indexe un document ou un fragment
+  // Utilise le fait que tout document ou élément implémente asArray()
   static function indexdoc(string $store, string $docid, string $ypath, $doc) {
     //return;
     //echo "indexdoc($store, $docid)<br>\n";
@@ -83,7 +84,7 @@ class Search {
       $content = $doc;
     elseif (is_object($doc)) {
       if (get_class($doc)<>'DateTime')
-        $content = $doc->extract('');
+        $content = $doc->asArray();
       else
         return;
     }

@@ -30,6 +30,7 @@ class MLString {
     }
   }
   
+  // retourne une langue particulière
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
   
   // renvoie la langue à afficher ou ''

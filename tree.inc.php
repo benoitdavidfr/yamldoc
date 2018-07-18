@@ -9,7 +9,7 @@ journal: |
 */
 
 // classe Tree
-class Tree extends YamlDoc {
+class Tree extends BasicYamlDoc {
   
   static function showTree(array $children): void {
     echo "<ul>\n";
