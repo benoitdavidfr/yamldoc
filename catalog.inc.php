@@ -17,7 +17,7 @@ journal: |
 {
 $phpDocs['catalog.inc.php'] = <<<'EOT'
 name: catalog.inc.php
-title: catalog.inc.php - classes des catalogues V2
+title: catalog.inc.php - classes YamlCatalog des catalogues V2
 doc: |
   Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
   Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]

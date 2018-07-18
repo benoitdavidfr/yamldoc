@@ -3,15 +3,30 @@
 name: mlstring.inc.php
 title:  mlstring.inc.php - Multi-lingual string class
 doc: |
-  Correspond à une chaine ou une liste de chaines dans différentes langues
+  voir le code
+*/
+{
+$phpDocs['mlstring.inc.php'] = <<<'EOT'
+name: mlstring.inc.php
+title:  mlstring.inc.php - class MLString définissant des chaines de caractères multi-lingues
+doc: |
+  Un objet correspond à une chaine ou une liste de chaines dans différentes langues
   Outre la liste des langues possibles, prend pour l'initialiser:
     - soit une chaine, on considère qu'elle est dans la langue 0
     - soit une liste de chaines, on considère qu'elles sont dans la langue 0
     - soit un dictionnaire langue -> chaine
     - soit un dictionnaire langue -> liste de chaines
-*/
+  Les langues sont soit les codes ISO 639-1 (sur 2 caractères), soit les codes ISO 639-2 (sur 3 caractères).
+  Ajout du code 'n' correspondant au neutre (aucune langue).
+  La conversion en string utilise s'il existe le paramètre lang, sinon l'ordre des langues défini dans la variable
+  statique $default de la classe.
+journal:
+  18/7/2018:
+  - améliorations: ajout de getStringsInLang(), renommage php() en asArray()
+EOT;
+}
 class MLString {
-  static $default = ['fr','en','n'];
+  static $default = ['fr','fre','en','eng','n'];
   protected $_c; // stockage du contenu comme [ lang => [ label ]]
 
   function __construct($labels, array $language) {
@@ -56,8 +71,19 @@ class MLString {
     return $lang ? $this->_c[$lang] : '';
   }
   
-  // renvoie le contenu complet simplifié si pour une langue il n'existe qu'une seule chaine
-  function get(): array {
+  // renvoie dans la bonne langue une chaine s'il y en a qu'une sinon la liste des chaines
+  function getStringsInLang() {
+    if (!($lang = $this->getLang()))
+      return '';
+    if (count($this->$lang)==1)
+      return $this->$lang[0];
+    else
+      return $this->$lang;
+  }
+  
+  // renvoie le contenu complet comme array Php
+  // si pour une langue il n'existe qu'une seule chaine, le résultat est simplifié
+  function asArray(): array {
     $result = [];
     foreach ($this->_c as $lang => $labels) {
       if (count($labels)==1)
@@ -67,9 +93,6 @@ class MLString {
     }
     return $result;
   }
-  
-  // renvoie le contenu en array Php ss objet
-  function asArray(): array { return $this->get(); }
 };
 
 

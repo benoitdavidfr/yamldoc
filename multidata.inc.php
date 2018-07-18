@@ -8,7 +8,7 @@ doc: doc intégrée en Php
 {
 $phpDocs['multidata.inc.php'] = <<<'EOT'
 name: multidata.inc.php
-title: multidata.inc.php - multi-data
+title: multidata.inc.php - class MultiData pour décomposer une grande table en sous-tables stockées chacune dans un sous-document
 doc: |
   Le concept MultiData permet de décomposer une grande table en sous-tables stockées chacune dans un sous-document.
   Tous les sous-documents sont stockés dans un répertoire portant comme nom celui du MultiData.

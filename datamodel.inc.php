@@ -8,10 +8,10 @@ doc: |
 {
 $phpDocs['datamodel.inc.php']['file'] = <<<EOT
 name: datamodel.inc.php
-title: gestion d'un modèle de données
+title: datamodel.inc.php - gestion d'un modèle de données comme extension d'un YamlSkos
 doc: |
   Un document modèle de données est une extension d'un document YamlSkos,
-  il contient en outre un champ objectTypes qui est un dictionnaire [ name => ObjectType ]
+  il contient en outre un champ objectTypes qui est un dictionnaire de types d'objets de la classe ObjectType
 
   Version ultérieure:
     - gestion:
@@ -208,7 +208,7 @@ $phpDocs['datamodel.inc.php']['classes']['ObjectType'] = <<<EOT
 name: class ObjectType
 title: gestion d'un ObjectType
 doc: |
-  Un objectType définit un type qui comporte les champs suivants:
+  Un ObjectType définit un type qui comporte les champs suivants:
     - type liste les natures de type qui peuvent être:
       'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
     - domain liste les domaines auxquels le type appartient (sauf pour les unknowntype),
@@ -219,16 +219,16 @@ doc: |
     - source liste de ressources desquelles dérive l'élément, chaque ressource est identifié par une clé et peut
       être définie dans différentes langues, les mots-clés suivants sont utilisés:
       - eutext pour identifier les extraits de la directive Inspire
-    - attributes est le dictionnaire des attributs
-    - relations est le dictionnaire des relations
-journal: |
-  4-8/7/2018:
-  - création
+    - attributes est le dictionnaire des attributs, objets de la classe Attribute
+    - relations est le dictionnaire des relations, objets de la classe Attribute
 EOT;
 }
 
 class ObjectType extends SkosElt {
   static $strFields = ['label'];
+  static $textFields = ['definition','scopeNote','historyNote','example'];
+  static $linkFields = ['subtypeOf' => 'objectTypes', 'domain' => 'domains'];
+  
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
     //echo "ObjectType::__contruct($this)<br>\n";
@@ -256,11 +256,12 @@ class ObjectType extends SkosElt {
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
     echo "<table border=1>\n";
-    $this->showLinksInTable('subtypeOf', 'objectTypes', $datamodel);
-    foreach (['definition','scopeNote','historyNote','example'] as $key) {
-      $this->showTextsInTable($key);
+    foreach (self::$linkFields as $linkField => $linkTarget) {
+      $this->showLinksInTable($linkField, $linkTarget, $datamodel);
     }
-    $this->showLinksInTable('domain', 'domains', $datamodel);
+    foreach (self::$textFields as $textField) {
+      $this->showTextsInTable($textField);
+    }
     echo "</table>\n";
     //$this->showInYaml();
     foreach (['attributes','relations'] as $prop) {
@@ -352,14 +353,15 @@ EOT;
 }
 
 class Attribute extends SkosElt {
-  static $strFields = ['label','definition','scopeNote'];
+  static $strFields = ['label'];
+  static $textFields = ['definition','scopeNote','historyNote','example'];
 
   function __tostring(): string { return $this->label->__toString(); }
   
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
     //echo "Attribute::__contruct($this)<br>\n";
-    foreach (self::$strFields as $field) {
+    foreach (array_merge(self::$strFields,self::$textFields) as $field) {
       if (isset($yaml[$field]))
         $this->_c[$field] = new MLString($yaml[$field], $language);
     }
@@ -398,10 +400,10 @@ class Attribute extends SkosElt {
   function show() {
     echo "<h2>$this</h2>\n";
     echo "<table border=1>\n";
-    foreach (self::$strFields as $strField) {
-      if ($this->$strField && ($strField<>'label')) {
-        echo "<tr><td>$strField</td><td>";
-        showDoc($_GET['doc'], $this->$strField->__toString());
+    foreach (self::$textFields as $textField) {
+      if ($this->$textField) {
+        echo "<tr><td>$textField</td><td>";
+        showDoc($_GET['doc'], $this->$textField->getStringsInLang());
         echo "</td></tr>\n";
       }
     }

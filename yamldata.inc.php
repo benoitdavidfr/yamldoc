@@ -8,7 +8,7 @@ doc: doc intégrée en Php
 {
 $phpDocs['yamldata.inc.php'] = <<<'EOT'
 name: yamldata.inc.php
-title: yamldata.inc.php - sous-classe de documents pour la gestion des données
+title: yamldata.inc.php - sous-classes YamlData et YamlDataTable pour la gestion des données
 doc: |
   Pour gérer efficacement des tables assez volumineuses, il est préférable d'utiliser des clés d'accès aux
   enregistrements plutôt qu'un numéro d'ordre comme prévu dans le YamlDoc de base.

@@ -6,42 +6,18 @@ doc: |
   voir le code
 */
 {
-$phpDocs['yamlskos.inc.php'] = <<<EOT
+$phpDocs['yamlskos.inc.php']['file'] = <<<EOT
 name: yamlskos.inc.php
-title: gestion d'un YamlSkos
+title: yamlskos.inc.php - définition des classes gérant un thésaurus Skos organisé en micro-thésaurus
 doc: |
-  La définition de YamlSkos est inspirée de la structure utilisée pour EuroVoc.
+  La structuration est inspirée de celle utilisée pour EuroVoc.
   Elle a été étendue pour gérer les listes de codes et énumérations du règlement interopérabilité Inspire.
   
-  Un document YamlSkos comprend:
-
-    - des champs de métadonnées DublinCore dont au moins:
-      - title: le titre du thésaurus
-      - language: la ou les langues
-    - un champ concepts qui liste les concepts ; chacun identifié par une clé et contenant au moins les champs:
-      - prefLabel qui porte une étiquette mono ou multi-lingue,
-      - inScheme qui contient les identifiants des micro-thésaurus auquel le concept appartient,
-      - soit:
-        - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
-        - broader avec les identifiants des concepts plus génériques
-    - un champ schemes qui contient les micro-thésaurus définis comme scheme Skos ; chaque scheme est identifié
-      par une clé et contient au moins les champs:
-        - prefLabel qui porte une étiquete mono ou multi-lingue,
-        - soit:
-          - domain qui contient la liste des identifiants des domaines auxquels le scheme est rattaché
-          - isPartOf qui contient la liste des identifiants des schemes auxquels il fait partie
-    - un champ domains qui liste les domaines ; chacun est défini comme concept Skos, est identifié par une clé et
-      contient au moins les champs:
-        - prefLabel qui porte une étiquette mono ou multi-lingue,
-      Les domaines qui ne sont pas de premier niveau doivent définir un champ broader définissant un concept plus
-      générique.
-    - un champ domainScheme qui est le thésaurus des domaines qui comporte le champ suivant:
-        - hasTopConcept qui liste les identifiants des domaines de premier niveau
-        
-  La notion de scheme est étendue pour gérer les listes de listes de codes.
-  Une telle liste est définie comme liste de code et comporte une propriété hasPart contenant la liste des
-  identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
-  auxquelles elles appartiennent. Ces propriétés sont définies dans Dublin Core.
+  Un YamlSkos définit un ensemble de concepts Skos organisés en micro-thésaurus, chacun défini comme ConceptScheme
+  Skos. Les micro-thésaurus sont organisés par domaines, chacun défini comme concept d'un scheme particulier.
+  Ces domaines permettent un affichage hiérarchique des micro-thésaurus.
+  
+  Outre la classe YamlSkos sont définies les classes SkosElt, DomainScheme, Domain, Scheme et Concept
 journal: |
   18/7/2018:
   - adaptation à la restructuration des classes
@@ -65,6 +41,30 @@ function suppAccents(string $str): string {
   return strtolower(str_replace(['é','É','Î'],['e','e','i'], $str));
 }
 
+{
+$phpDocs['yamlskos.inc.php']['classes']['YamlSkos'] = <<<EOT
+name: class YamlSkos
+title: définition de la classe YamlSkos gérant un thésaurus Skos organisé en micro-thésaurus
+doc: |
+  Un document YamlSkos comprend:
+    - des champs de métadonnées DublinCore dont au moins:
+      - title: le titre du thésaurus
+      - language: la ou les langues utilisées
+    - un champ domainScheme qui contient le Scheme des domaines qui est un objet de la classe DomainScheme
+      l'objet domainScheme comporte le champ suivant:
+        - hasTopConcept qui liste les identifiants des domaines de premier niveau
+    - un champ domains qui contient le dictionnaire des domaines ;
+      chaque domaine est défini comme un concept Skos, identifié par une clé
+      et objet de la classe Domain, il contient au moins les champs:
+        - prefLabel qui porte une étiquette mono ou multi-lingue,
+      Les domaines qui ne sont pas de premier niveau doivent définir un champ broader définissant un concept plus
+      générique.
+    - un champ schemes qui contient le dictionnaire des micro-thésaurus ;
+      chacun défini comme scheme Skos, identifié par une clé et objet de la classe Scheme
+    - un champ concepts qui contient le dictionnaire des concepts ;
+      chacun identifié par une clé et objet de la classe Concept
+EOT;
+}
 //class YamlSkos extends YamlDoc {
 class YamlSkos extends YamlDoc {
   // traduction des champs utilisés en français et en anglais pour l'affichage
@@ -323,7 +323,7 @@ abstract class SkosElt implements YamlDocElement {
     $result = [];
     foreach ($this->_c as $field => $value) {
       if (in_array($field, self::$strFields))
-        $result[$field] = $value->get();
+        $result[$field] = $value->asArray();
       else
         $result[$field] = $value;
     }
@@ -493,6 +493,23 @@ class Domain extends SkosElt {
   function addSchemeChild(string $sid) { $this->_c['schemeChildren'][] = $sid; }
 };
 
+{
+$phpDocs['yamlskos.inc.php']['classes']['Scheme'] = <<<EOT
+name: class Scheme
+title: définition de la classe Scheme
+doc: |
+  Chaque scheme, identifié par une clé, contient au moins les champs:
+    - prefLabel qui porte une étiquete mono ou multi-lingue,
+    - soit:
+      - domain qui contient la liste des identifiants des domaines auxquels le scheme est rattaché
+      - isPartOf qui contient la liste des identifiants des schemes auxquels il fait partie
+        
+  La notion de scheme Skos est étendue pour gérer les listes de listes de codes utilisées par Inspire.
+  Une telle liste est définie comme liste de code et comporte une propriété hasPart contenant la liste des
+  identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
+  auxquelles elles appartiennent. Ces 2 propriétés hasPart et isPartOf proviennent de Dublin Core.
+EOT;
+}
 class Scheme extends SkosElt {
   // remplit le lien domain -> scheme à partir du lien inverse
   static function fillSchemeChildren(array $schemes, array $domains) {
@@ -563,7 +580,27 @@ class Scheme extends SkosElt {
   }
 };
 
+{
+$phpDocs['yamlskos.inc.php']['classes']['Concept'] = <<<EOT
+name: class YamlSkos
+title: définition de la classe Concept
+doc: |
+  Chaque concept, identifié par une clé, contient au moins les champs:
+    - prefLabel qui porte une étiquette mono ou multi-lingue,
+    - inScheme qui contient la liste des identifiants des micro-thésaurus auquel le concept appartient,
+    - soit:
+      - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
+      - broader avec les identifiants des concepts plus génériques
+  
+  La notion Skos de concept est étendue avec la possibilité d'illustrer le concept par des images.
+  On utilise pour cela le tag depiction défini par foaf (http://xmlns.com/foaf/0.1/)
+  comme indiqué dans https://www.w3.org/2004/02/skos/core/guide/2004-11-25.html#secdepict
+EOT;
+}
+
 class Concept extends SkosElt {
+  static $strFields = ['label','definition','note','scopeNote','historyNote','example','editorialNote','changeNote'];
+  
   // affiche l'arbre des concepts correspondant à un thésaurus
   static function showConcepts(array $concepts) {
     echo "<ul>\n";
@@ -618,8 +655,9 @@ class Concept extends SkosElt {
     }
     
     //echo "<pre>this="; print_r($this); echo "</pre>\n";
-    foreach (['definition','scopeNote','historyNote','example'] as $key) {
-      $this->showTexts($key);
+    foreach (self::$strFields as $field) {
+      if ($field <> 'label')
+        $this->showTexts($key);
     }
     
     if ($this->depiction) {
