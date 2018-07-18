@@ -1,26 +1,28 @@
 <?php
 /*PhpDoc:
 name: yamlskos.inc.php
-title: gestion d'un YamlSkos
+title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   voir le code
 */
 {
 $phpDocs['yamlskos.inc.php']['file'] = <<<EOT
 name: yamlskos.inc.php
-title: yamlskos.inc.php - définition des classes gérant un thésaurus Skos organisé en micro-thésaurus
+title: yamlskos.inc.php - gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   La structuration est inspirée de celle utilisée pour EuroVoc.
   Elle a été étendue pour gérer les listes de codes et énumérations du règlement interopérabilité Inspire.
   
-  Un YamlSkos définit un ensemble de concepts Skos organisés en micro-thésaurus, chacun défini comme ConceptScheme
-  Skos. Les micro-thésaurus sont organisés par domaines, chacun défini comme concept d'un scheme particulier.
+  Un YamlSkos définit un ensemble de concepts Skos organisés en micro-thésaurus.
+  Chaque micro-thésaurus est défini comme un ConceptScheme Skos et organisé par domaines,
+  chacun défini comme concept d'un ConceptScheme particulier.
   Ces domaines permettent un affichage hiérarchique des micro-thésaurus.
   
-  Outre la classe YamlSkos sont définies les classes SkosElt, DomainScheme, Domain, Scheme et Concept
+  Ce fichier définit les classes YamlSkos, SkosElt, DomainScheme, Domain, Scheme et Concept
 journal: |
   18/7/2018:
   - adaptation à la restructuration des classes
+    la classe YamlSkos hérite de YamlDoc ; SkosElt implemente YamlDocElement
   8/7/2018:
   - utilisation de la classe MLString pour gérer les chaines multi-lingues
   4/7/2018:
@@ -46,6 +48,7 @@ $phpDocs['yamlskos.inc.php']['classes']['YamlSkos'] = <<<EOT
 name: class YamlSkos
 title: définition de la classe YamlSkos gérant un thésaurus Skos organisé en micro-thésaurus
 doc: |
+  La classe YamlSkos hérite de la classe abstraite YamlDoc.
   Un document YamlSkos comprend:
     - des champs de métadonnées DublinCore dont au moins:
       - title: le titre du thésaurus
@@ -65,7 +68,6 @@ doc: |
       chacun identifié par une clé et objet de la classe Concept
 EOT;
 }
-//class YamlSkos extends YamlDoc {
 class YamlSkos extends YamlDoc {
   // traduction des champs utilisés en français et en anglais pour l'affichage
   static $keyTranslations = [
@@ -299,20 +301,26 @@ class YamlSkos extends YamlDoc {
 };
 
 
-// la classe Elt est une super-classe de Domain, Scheme et Concept
-// A la construction les champs chaine sont transformés en objet MLString
+{
+$phpDocs['yamlskos.inc.php']['classes']['SkosElt'] = <<<'EOT'
+name: class SkosElt
+title: définition de la classe abstraite SkosElt super-classe de DomainScheme, Domain, Scheme et Concept
+doc: |
+  La classe SkosElt implémente YamlDocElement.
+  Toutes les infos sont stockées dans la propriété $_c.
+  A la construction les champs string et text sont transformés en objet MLString.
+EOT;
+}
 abstract class SkosElt implements YamlDocElement {
-  static $strFields = [
-    'prefLabel','altLabel','hiddenLabel','definition',
-    'note','scopeNote','editorialNote','historyNote','example',
-  ];
+  static $strFields = ['prefLabel','altLabel','hiddenLabel'];
+  static $txtFields = ['definition','note','scopeNote','editorialNote','historyNote','example'];
   protected $_c; // stockage du contenu comme array
   
   function __construct(array $yaml, array $language) {
     $this->_c = $yaml;
-    foreach (self::$strFields as $strField) {
+    foreach (array_merge(self::$strFields,self::$txtFields) as $field) {
       if (isset($this->_c[$strField]))
-        $this->_c[$strField] = new MLString($this->_c[$strField], $language);
+        $this->_c[$field] = new MLString($this->_c[$field], $language);
     }
   }
   
@@ -334,9 +342,10 @@ abstract class SkosElt implements YamlDocElement {
   
   // Affiche en HTML une représentation Yaml
   function showInYaml(): void {
-    echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'],Yaml::dump($this->asArray(), 999, 2)),"</pre>";
+    echo "<pre>",str2html(Yaml::dump($this->asArray(), 999, 2)),"</pre>";
   }
     
+  // le prefLabel est utilisé pour afficher un élément
   function __tostring(): string { return $this->prefLabel->__toString(); }
   
   // affichage de liens
@@ -361,8 +370,8 @@ abstract class SkosElt implements YamlDocElement {
   
   // affichage de liens comme une ligne dans une table
   // $eltField est le nom du champ dans l'élément contenant les liens
-  // $skosField est le nom du champ de $skos qui contient le tableau dans lequel les id des liens sont cherchés
-  function showLinksInTable(string $eltField, string $skosField, YamlSkos $skos) {
+  // $skosDict est le nom du champ de $skos qui contient le dictionnaire dans lequel les id des liens sont cherchés
+  function showLinksInTable(string $eltField, string $skosDict, YamlSkos $skos) {
     if ($this->$eltField) {
       $nblinks = count($this->$eltField);
       echo "<tr><td>",$skos->keyTranslate($eltField),"</td><td>";
@@ -373,11 +382,11 @@ abstract class SkosElt implements YamlDocElement {
         $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
         if ($nblinks > 1)
           echo "<li>";
-        if (isset($skos->$skosField[$lid]))
-          echo "<a href='?doc=$_GET[doc]&amp;ypath=/$skosField/$lid$langp'>",
-               $skos->$skosField[$lid],"</a>\n";
+        if (isset($skos->$skosDict[$lid]))
+          echo "<a href='?doc=$_GET[doc]&amp;ypath=/$skosDict/$lid$langp'>",
+               $skos->$skosDict[$lid],"</a>\n";
         else
-          echo "lien $lid trouvé dans $skosField\n";
+          echo "lien $lid trouvé dans $skosDict\n";
       }
       if ($nblinks > 1)
         echo "</ul>";
@@ -450,7 +459,6 @@ abstract class SkosElt implements YamlDocElement {
 
 // classe du domainScheme
 class DomainScheme extends SkosElt {
-    
   // Affiche l'arbre des domaines avec un lien vers chaque micro-thésaurus
   function show(array $domains, array $schemes) {
     echo "<h2>$this</h2><ul>\n";
@@ -496,18 +504,19 @@ class Domain extends SkosElt {
 {
 $phpDocs['yamlskos.inc.php']['classes']['Scheme'] = <<<EOT
 name: class Scheme
-title: définition de la classe Scheme
+title: définition de la classe Scheme des micro-thésaurus
 doc: |
-  Chaque scheme, identifié par une clé, contient au moins les champs:
-    - prefLabel qui porte une étiquete mono ou multi-lingue,
-    - soit:
-      - domain qui contient la liste des identifiants des domaines auxquels le scheme est rattaché
-      - isPartOf qui contient la liste des identifiants des schemes auxquels il fait partie
-        
-  La notion de scheme Skos est étendue pour gérer les listes de listes de codes utilisées par Inspire.
+  La notion Skos de scheme est étendue pour gérer les listes de listes de codes définies pour Inspire.
   Une telle liste est définie comme liste de code et comporte une propriété hasPart contenant la liste des
   identifiants des différentes listes contenues. Les sous-listes comportent une propriété isPartOf avec les listes
   auxquelles elles appartiennent. Ces 2 propriétés hasPart et isPartOf proviennent de Dublin Core.
+  
+  Chaque scheme, identifié par une clé, contient au moins les champs:
+    - prefLabel qui porte une étiquete mono ou multi-lingue,
+    - le rattachement hiérarchique qui est soit:
+      - domain qui contient la liste des identifiants des domaines auxquels le scheme est rattaché
+      - isPartOf qui contient la liste des identifiants des schemes auxquels le scheme fait partie
+        
 EOT;
 }
 class Scheme extends SkosElt {
@@ -582,19 +591,19 @@ class Scheme extends SkosElt {
 
 {
 $phpDocs['yamlskos.inc.php']['classes']['Concept'] = <<<EOT
-name: class YamlSkos
+name: class Concept
 title: définition de la classe Concept
 doc: |
-  Chaque concept, identifié par une clé, contient au moins les champs:
-    - prefLabel qui porte une étiquette mono ou multi-lingue,
-    - inScheme qui contient la liste des identifiants des micro-thésaurus auquel le concept appartient,
-    - soit:
-      - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
-      - broader avec les identifiants des concepts plus génériques
-  
   La notion Skos de concept est étendue avec la possibilité d'illustrer le concept par des images.
   On utilise pour cela le tag depiction défini par foaf (http://xmlns.com/foaf/0.1/)
   comme indiqué dans https://www.w3.org/2004/02/skos/core/guide/2004-11-25.html#secdepict
+
+  Chaque concept, identifié par une clé, contient au moins les champs:
+    - prefLabel qui porte une étiquette mono ou multi-lingue,
+    - inScheme qui contient la liste des identifiants des micro-thésaurus auquel le concept appartient,
+    - le rattachement hiérarchique qui est soit:
+      - topConceptOf qui contient les identifiants des micro-thésaurus dont le concept est concept de premier niveau
+      - broader qui contient les identifiants des concepts plus génériques
 EOT;
 }
 
