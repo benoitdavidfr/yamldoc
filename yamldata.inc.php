@@ -159,7 +159,7 @@ class YamlDataTable implements YamlDocElement, IteratorAggregate {
     //echo "<tr><td><pre>nbre=$nbre</pre></td></tr>\n";
   }
   
-  function show(string $docid, string $prefix): void {
+  function show(string $docid, string $prefix=''): void {
     //print_r($this->data);
     //showListOfTuplesAsTable2($this->data, '');
     echo "<table border=1>\n";

@@ -5,7 +5,7 @@ title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
   voir le code
 */
-{
+{ // doc 
 $phpDocs['index.php'] = <<<'EOT'
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
@@ -246,14 +246,14 @@ class CallingGraph {
   }
 }
 
-{ // gestion de la variable en env store
+{ // gestion de la variable en env store 
   if (isset($_GET['store'])) // si le paramètre store est défini alors la variable est reaffectée
     $_SESSION['store'] = $_GET['store'];
   elseif (!isset($_SESSION['store'])) // si non si la variable n'est pas affectée alors elle l'est par défaut
     $_SESSION['store'] = in_array($_SERVER['SERVER_NAME'], ['georef.eu','localhost']) ? 'pub' : 'docs';
 }
 
-{ // affichage du titre du document
+{ // affichage du titre du document 
   if (!isset($_GET['action']) && isset($_GET['doc']))
     $title = "$_GET[doc] ($_SESSION[store])";
   else
@@ -285,12 +285,8 @@ if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='dump')) {
           die("accès interdit");
         $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
         //$text = ydread($_GET['doc']);
-        echo "<h2>doc $_GET[doc]</h2>\n";
         $doc = new_yamlDoc($_SESSION['store'], $_GET['doc']);
-        if ($ypath)
-          echo "ypath=$ypath\n";
-        echo str_replace(['&','<'], ['&amp;','&lt;'], $doc->yaml($ypath));
-        echo "<h2>var_dump</h2>\n"; $doc->dump($ypath);
+        echo "<h2>var_dump $_GET[doc] $ypath</h2>\n"; $doc->dump($ypath);
       }
       echo "</pre>\n";
       break;
@@ -348,7 +344,7 @@ if (isset($_GET['clone'])) {
 
 // action d'affichage d'un document ou de recherche de documents
 if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
-  if (!isset($_GET['doc']))
+  if (!isset($_GET['doc']) || !$_GET['doc'])
     die("<a href='?doc=index'>Accès au document par défaut</a>\n");
   
   //$docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
@@ -487,7 +483,7 @@ if ($_GET['action']=='reindex') {
     die("reindex impossible, fonction mysqlParams() non définie<br>\n");
 }
 
-// action showPhpSrc - affiche le source Php
+// action showPhpSrc - affiche le source Php d''une requête
 if ($_GET['action']=='showPhpSrc') {
   if (ydext($_SESSION['store'], $_GET['doc'])<>'php')
     die("Le document $_GET[doc] n'est pas une requête<br>\n");

@@ -18,11 +18,11 @@ journal: |
 EOT;
 }
 
-// classe YamlDoc de base
+// classe YamlDoc de base et par défaut
 class BasicYamlDoc extends YamlDoc {
   protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire
   
-  function __construct($data) { $this->data = $data; }
+  function __construct(&$data) { $this->data = $data; }
   
   // permet d'accéder aux champs du document comme si c'était un champ de la classe
   function __get(string $name) {
@@ -41,24 +41,6 @@ class BasicYamlDoc extends YamlDoc {
   function show(string $docuid, string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     showDoc($docuid, self::sextract($this->data, $ypath));
-  }
-  
-  function dump(string $ypath): void {
-    var_dump(self::sextract($this->data, $ypath));
-  }
-  
-  // génère le texte correspondant au fragment défini par ypath
-  // améliore la sortie en supprimant les débuts de ligne
-  function yaml(string $ypath): string {
-    $fragment = self::sextract($this->data, $ypath);
-    return YamlDoc::syaml(self::replaceYDEltByArray($fragment));
-  }
-  
-  function json(string $ypath): string {
-    $fragment = self::sextract($this->data, $ypath);
-    $fragment = self::replaceYDEltByArray($fragment);
-    $fragment = self::replaceDateTimeByString($fragment);
-    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
   
   // vérification de la conformité du document à son schéma

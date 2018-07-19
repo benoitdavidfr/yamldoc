@@ -5,7 +5,7 @@ title: gestion d'un modèle de données sous la forme d'un document Yaml
 doc: |
   voir le code
 */
-{
+{ // doc 
 $phpDocs['datamodel.inc.php']['file'] = <<<EOT
 name: datamodel.inc.php
 title: datamodel.inc.php - gestion d'un modèle de données comme extension d'un YamlSkos
@@ -71,12 +71,19 @@ class DataModel extends YamlSkos {
     return "<b>Traduction non définie pour $key</b>";
   }
   
+  // affiche le document ou un de ses fragments
   function show(string $docid, string $ypath): void {
     try {
       parent::show($docid, $ypath);
     }
     catch (Exception $exception) {
-      if (preg_match('!^/objectTypes/([^/]*)$!', $ypath, $matches)) {
+      if (preg_match('!^/objectTypes$!', $ypath, $matches)) {
+        echo "<h1>Liste des types d'objets</h1>\n";
+        foreach ($this->objectTypes as $id => $objectType) {
+          $objectType->show($this);
+        }
+      }
+      elseif (preg_match('!^/objectTypes/([^/]*)$!', $ypath, $matches)) {
         $id = $matches[1];
         //echo "<pre>objectType $id: "; print_r($this->objectTypes[$id]); echo "</pre>\n";
         $this->objectTypes[$id]->show($this);
@@ -91,10 +98,10 @@ class DataModel extends YamlSkos {
         echo $exception->getMessage(),"<br>\n";
     }
   }
-  
+
   // renvoie un array récursif du fragment défini par ypath
   function extract(string $ypath) {
-    echo "extract($ypath)\n";
+    //echo "DataModel::extract($ypath)\n";
     if (!$ypath) {
       $result = $this->_c;
       foreach (['domains','schemes','concepts','objectTypes'] as $field) {
@@ -130,6 +137,23 @@ class DataModel extends YamlSkos {
     }
   }
   
+  // dump le document ou un de ses fragments
+  function dump(string $ypath): void {
+    try {
+      parent::dump($ypath);
+    }
+    catch (Exception $exception) {
+      if (preg_match('!^/objectTypes$!', $ypath))
+        var_dump($this->objectTypes);
+      elseif (preg_match('!^/objectTypes/([^/]*)$!', $ypath, $matches))
+        var_dump($this->objectTypes[$matches[1]]);
+      elseif (preg_match('!^/objectTypes/([^/]*)(/.*)$!', $ypath, $matches))
+        $this->objectTypes[$matches[1]]->dump($matches[2]);
+      else
+        echo $exception->getMessage(),"<br>\n";
+    }
+  }
+
   // vérification de l'intégrité du document
   function checkIntegrity() {
     parent::checkIntegrity();
@@ -139,9 +163,8 @@ class DataModel extends YamlSkos {
   }
 };
 
-// classe du domainScheme adaptée 
+// classe du domainScheme adaptée pour DataModel
 class DMDomainScheme extends DomainScheme {
-    
   // Affiche l'arbre des domaines avec un lien vers chaque scheme
   function show(array $domains, array $schemes) {
     //echo "DMDomainScheme::showDomainTree($this)<br>\n";
@@ -154,7 +177,7 @@ class DMDomainScheme extends DomainScheme {
   }
 };
   
-// Domain adapté pour Data Model
+// Domain adapté pour DataModel
 class DMDomain extends Domain {
   function showDomainTree(string $id, array $domains, array $schemes) {
     //echo "DMDomain::showDomainTree()<br>\n";
@@ -203,7 +226,7 @@ class DMDomain extends Domain {
   }
 };
 
-{
+{ // doc 
 $phpDocs['datamodel.inc.php']['classes']['ObjectType'] = <<<EOT
 name: class ObjectType
 title: gestion d'un ObjectType
@@ -227,7 +250,7 @@ EOT;
 class ObjectType extends SkosElt {
   static $strFields = ['label'];
   static $textFields = ['definition','scopeNote','historyNote','example'];
-  static $linkFields = ['subtypeOf' => 'objectTypes', 'domain' => 'domains'];
+  static $linkFields = ['subtypeOf'=> 'objectTypes', 'domain'=> 'domains'];
   
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
@@ -280,18 +303,31 @@ class ObjectType extends SkosElt {
     //echo "<pre>"; print_r($this); echo "</pre>\n";
   }
   
+  // dump un fragment d'un ObjectType
+  function dump(string $ypath): void {
+    if (preg_match('!^/(attributes|relations)$!', $ypath, $matches)) {
+      $prop = $matches[1];
+      var_dump($this->$prop);
+    }
+    elseif (preg_match('!^/(attributes|relations)/([^/]*)$!', $ypath, $matches)) {
+      $prop = $matches[1];
+      $name = $matches[2];
+      var_dump($this->$prop[$name]);
+    }
+    else
+      echo "Erreur dans ObjectType::dump($ypath): ypath non reconnu<br>\n";
+  }
+
   function asArray(): array {
     //print_r($this);
     $result = parent::asArray();
-    /*foreach (['attributes','relations'] as $key) {
-      if ($this->$key) {
-        foreach ($this->$key as $name => $elt) {
-          foreach (self::$strFields as $field)
-            $result[$key][$name][$field] = $elt[$field]->get();
-          $result[$key][$name]['label'] = $elt['label']->get();
+    foreach (['attributes','relations'] as $prop) {
+      if ($this->$prop) {
+        foreach ($this->$prop as $name => $elt) {
+          $result[$prop][$name] = $elt->asArray();
         }
       }
-    }*/
+    }
     return $result;
   }
   
@@ -333,7 +369,7 @@ class ObjectType extends SkosElt {
   }
 };
 
-{
+{ // doc
 $phpDocs['datamodel.inc.php']['classes']['Attribute'] = <<<EOT
 name: class Attribute
 title: gestion d'un attribut ou relation d'un ObjectType
@@ -355,8 +391,6 @@ EOT;
 class Attribute extends SkosElt {
   static $strFields = ['label'];
   static $textFields = ['definition','scopeNote','historyNote','example'];
-
-  function __tostring(): string { return $this->label->__toString(); }
   
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);
@@ -366,6 +400,8 @@ class Attribute extends SkosElt {
         $this->_c[$field] = new MLString($yaml[$field], $language);
     }
   }
+
+  function __tostring(): string { return $this->label->__toString(); }
   
   // affiche l'attribut ou la relation comme une ligne d'une table
   // ayant comme headers: ['name','label','definition','n','type','multiplicity','voidability']

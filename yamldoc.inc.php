@@ -11,10 +11,17 @@ name: yamldoc.inc.php
 title: yamldoc.inc.php - classe abstraite YamlDoc et interface YamlDocElement
 doc: |
   La classe abstraite YamlDoc définit:
-    - 2 fonctions abstraites que chaque sous-classe doit définir
+    - 4 méthodes abstraites que chaque sous-classe doit définir
     - des fonctions génériques utiles aux sous-classes
     - des méthodes statiques s'appliquant à des fragments structurés comme array Php
+  En plus de définir les 4 méthodes abstraites, une classe héritant de YamlDoc doit aussi
+  soit définir la méthode __get(), soit définir les 6 propriétés suivantes:
+    - $authorizedReaders, $authRd, $authorizedWriters, $authWr
+    - $yamlPassword  
+    - $language  
 journal: |
+  19/7/2018:
+  - améliorations
   18/7/2018:
   - première version par fork de yd.inc.php
 EOT;
@@ -22,14 +29,25 @@ EOT;
 
 use Symfony\Component\Yaml\Yaml;
 
-// classe abstraite YamlDoc des documents
-// Les méthodes utilisent les propriétés abstraites authorizedReader, authRd, authorizedWriters et authWr
 abstract class YamlDoc {
+  // Les méthodes abstraites
+  
+  // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml, cela peut aussi être du texte
+  abstract function __construct(&$yaml);
+
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  abstract function asArray();
+
   // extrait le sous-élément de l'élément défini par $ypath
   abstract function extract(string $ypath);
   
-  // décapsule l'objet et retourne son contenu sous la forme d'un array
-  abstract function asArray();
+  // affiche le sous-élément de l'élément défini par $ypath
+  abstract function show(string $docuid, string $ypath): void;
+   
+  // Les méthodes concrètes
+  
+  // fonction dump par défaut, dump le document et non le fragment
+  function dump(string $ypath): void { var_dump($this); }
   
   // par défaut un document n'est pas un homeCatalog
   function isHomeCatalog() { return false; }
@@ -78,14 +96,14 @@ abstract class YamlDoc {
   // améliore la sortie de Yaml::dump()
   static public function syaml($data): string {
     $text = Yaml::dump($data, 999, 2);
-    return $text;
+    //return $text;
     $pattern = '!^( *-)\n +!';
     if (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
+      $text = preg_replace($pattern, $matches[1].' ', $text, 1);
     }
     $pattern = '!(\n *-)\n +!';
     while (preg_match($pattern, $text, $matches)) {
-      $text = preg_replace($pattern, $matches[1].'   ', $text, 1);
+      $text = preg_replace($pattern, $matches[1].' ', $text, 1);
     }
     return $text;
   }
@@ -260,7 +278,23 @@ abstract class YamlDoc {
     }
     return array_values($results);
   }
- 
+  
+  // génère le texte correspondant au fragment défini par ypath
+  // améliore la sortie en supprimant les débuts de ligne
+  function yaml(string $ypath): string {
+    $fragment = $this->extract($ypath);
+    $fragment = self::replaceYDEltByArray($fragment);
+    return YamlDoc::syaml(self::replaceYDEltByArray($fragment));
+  }
+  
+  // génère le texte JSON à partir de self::extract()
+  function json(string $ypath): string {
+    $fragment = $this->extract($ypath);
+    $fragment = self::replaceYDEltByArray($fragment);
+    $fragment = self::replaceDateTimeByString($fragment);
+    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  }
+
   // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
   function checkReadAccess(string $store, string $docuid): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
@@ -301,9 +335,11 @@ abstract class YamlDoc {
   function authorizedReader(): bool {
     //print_r($this);
     if ($this->authorizedReaders)
-      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->authorizedReaders);
+      $ret = isset($_SESSION['homeCatalog']) && is_array($this->authorizedReaders)
+             && in_array($_SESSION['homeCatalog'], $this->authorizedReaders);
     elseif ($this->authRd)
-      $ret = isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], $this->authRd);
+      $ret = isset($_SESSION['homeCatalog']) && is_array($this->authRd)
+             && in_array($_SESSION['homeCatalog'], $this->authRd);
     else
       $ret = true;
     //echo "authorizedReader=$ret<br>\n";
@@ -341,6 +377,11 @@ interface YamlDocElement {
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // permet de parcourir tout objet sans savoir a priori ce que l'on cherche
-  // est utilisé par replaceYDEltByArray()
+  // est utilisé par YamlDoc::replaceYDEltByArray()
   public function asArray();
+  
+  // affiche un élément en Html
+  // est utilisé par showDoc()
+  // pas implémenté avec la même signature par tous !!!
+  //public function show(string $docuid, string $prefix='');
 };

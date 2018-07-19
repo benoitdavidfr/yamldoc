@@ -1,6 +1,7 @@
 <?php
 // liste des classes de YamlDoc
 require_once __DIR__.'/yamldoc.inc.php';
+require_once __DIR__.'/dumbdoc.inc.php';
 require_once __DIR__.'/basicyamldoc.inc.php';
 require_once __DIR__.'/catalog.inc.php';
 require_once __DIR__.'/servreg.inc.php';

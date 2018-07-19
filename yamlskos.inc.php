@@ -14,8 +14,8 @@ doc: |
   Elle a été étendue pour gérer les listes de codes et énumérations du règlement interopérabilité Inspire.
   
   Un YamlSkos définit un ensemble de concepts Skos organisés en micro-thésaurus.
-  Chaque micro-thésaurus est défini comme un ConceptScheme Skos et organisé par domaines,
-  chacun défini comme concept d'un ConceptScheme particulier.
+  Chaque micro-thésaurus est défini comme un ConceptScheme Skos et organisé par domaines.
+  Chaque domaine est défini comme concept d'un ConceptScheme particulier.
   Ces domaines permettent un affichage hiérarchique des micro-thésaurus.
   
   Ce fichier définit les classes YamlSkos, SkosElt, DomainScheme, Domain, Scheme et Concept
@@ -99,7 +99,9 @@ class YamlSkos extends YamlDoc {
   protected $schemes; // dictionnaire des micro-thésaurus
   protected $concepts; // dictionnaire des concepts
   
-  function __construct(array &$yaml) {
+  function __construct(&$yaml) {
+    if (!is_array($yaml))
+      throw new Exception("Erreur dans YamlSkos::__construct() : le paramètre doit être un array");
     unset($yaml['yamlClass']);
     if (!isset($yaml['title']))
       throw new Exception("Erreur: champ title absent dans la création YamlSkos");
@@ -140,6 +142,7 @@ class YamlSkos extends YamlDoc {
     Concept::fillNarrowers($this->concepts);
   }
   
+  // un .pser est généré automatiquement à chaque mise à jour du .yaml
   function writePser(string $store, string $docuid): void { YamlDoc::writePserReally($store, $docuid); }
   
   // traduction dans la bonne langue des noms des champs
@@ -159,6 +162,7 @@ class YamlSkos extends YamlDoc {
     return isset($this->$name) ? $this->$name : (isset($this->_c[$name]) ? $this->_c[$name] : null);
   }
   
+  // affichage du thésaurus ou d'un de ses fragments
   function show(string $docid, string $ypath): void {
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath) {
@@ -173,7 +177,8 @@ class YamlSkos extends YamlDoc {
       // affichage de tous les schemes ou tous les concepts
       if (!isset($matches[3])) {
         if ($what=='schemes')
-          $this->domainScheme->show($this->domains, $this->schemes);
+          //$this->domainScheme->show($this->domains, $this->schemes);
+          Scheme::showSchemes($this->schemes);
         elseif ($what=='concepts')
           Concept::showConcepts($this->concepts);
         elseif ($what=='domains')
@@ -238,6 +243,38 @@ class YamlSkos extends YamlDoc {
       $this->concepts[$cid]->showInYaml($this);
   }
   
+  // méthode dump
+  function dump(string $ypath): void {
+    if (!$ypath) {
+      var_dump($this);
+    }
+    elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
+      var_dump($this->_c[$matches[1]]);
+    elseif (preg_match('!^/(schemes|concepts|domains)(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
+      //print_r($matches);
+      $what = $matches[1];
+      // affichage de tous les schemes ou tous les concepts
+      if (!isset($matches[3])) {
+        var_dump($this->$what);
+      }
+      else {
+        $id = $matches[3];
+        // affichage d'un scheme, un concept ou un domaine particulier
+        if (!isset($matches[5])) {
+          var_dump($this->$what[$id]);
+        }
+        else {
+          // affichage d'un fragment d'un scheme ou d'un concept particulier
+          $field = $matches[5];
+          $this->$what[$id]->dump($field);
+        }
+      }
+    }
+    else {
+      throw new Exception("ypath=$ypath non reconnu");
+    }
+  }
+
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   function asArray() {
     $result = $this->_c;
@@ -269,18 +306,6 @@ class YamlSkos extends YamlDoc {
       return $this->_c[$matches[1]];
     else
       throw new Exception("Erreur YamlSkos::extract(ypath=$ypath)");
-  }
-  
-  // génère le texte correspondant au fragment défini par ypath
-  // améliore la sortie en supprimant les débuts de ligne
-  function yaml(string $ypath): string {
-    $fragment = $this->extract($ypath);
-    return YamlDoc::syaml(YamlDoc::replaceYDEltByArray($fragment));
-  }
-  
-  function json(string $ypath): string {
-    $fragment = $this->extract($ypath);
-    return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
   
   // vérification de l'intégrité du document
@@ -318,14 +343,16 @@ abstract class SkosElt implements YamlDocElement {
   
   function __construct(array $yaml, array $language) {
     $this->_c = $yaml;
+    // remplace les champs string et text par des MLString
     foreach (array_merge(self::$strFields,self::$txtFields) as $field) {
-      if (isset($this->_c[$strField]))
-        $this->_c[$field] = new MLString($this->_c[$field], $language);
+      if ($this->$field)
+        $this->_c[$field] = new MLString($this->$field, $language);
     }
   }
   
-  function addNarrower(string $nid): void { $this->_c['narrower'][] = $nid; }
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
+  
+  function addNarrower(string $nid): void { $this->_c['narrower'][] = $nid; }
   
   function asArray(): array {
     $result = [];
@@ -340,29 +367,21 @@ abstract class SkosElt implements YamlDocElement {
   
   function extract(string $ypath) { return YamlDoc::sextract($this->asArray(), $ypath); }
   
-  // Affiche en HTML une représentation Yaml
-  function showInYaml(): void {
-    echo "<pre>",str2html(Yaml::dump($this->asArray(), 999, 2)),"</pre>";
-  }
-    
   // le prefLabel est utilisé pour afficher un élément
   function __tostring(): string { return $this->prefLabel->__toString(); }
   
   // affichage de liens
-  function showLinks(string $key, YamlSkos $skos) {
-    if ($this->$key) {
-      echo "<b>",YamlSkos::keyTranslate($key),":</b><ul style='margin-top:0;'>\n";
-      foreach ($this->$key as $lid) {
+  function showLinks(string $eltField, string $skosDict, YamlSkos $skos) {
+    if ($this->$eltField) {
+      echo "<b>",YamlSkos::keyTranslate($eltField),":</b><ul style='margin-top:0;'>\n";
+      $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
+      foreach ($this->$eltField as $lid) {
         //echo "lid=$lid<br>\n";
-        $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
-        if (isset($skos->concepts[$lid]))
-          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/concepts/$lid$langp'>",
-               $skos->concepts[$lid],"</a>\n";
-        elseif (isset($skos->schemes[$lid]))
-          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$lid$langp'>",
-               $skos->schemes[$lid],"</a>\n";
+        if (isset($skos->$skosDict[$lid]))
+          echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/$skosDict/$lid$langp'>",
+               $skos->$skosDict[$lid],"</a>\n";
         else
-          echo "<li>lien $lid trouvé ni dans concepts ni dans schemes\n";
+          echo "<li>lien $lid trouvé dans $skosDict\n";
       }
       echo "</ul>\n";
     }
@@ -535,24 +554,34 @@ class Scheme extends SkosElt {
   static function fillTopConcepts(YamlSkos $skos) {
     foreach ($skos->schemes as $sid => $scheme) {
       if (!$scheme->hasTopConcept) {
-        //echo "fillTopConcepts pour $sid<br>\n";
-        $scheme->hasTopConcept = [];
+        echo "fillTopConcepts pour $sid<br>\n";
+        $scheme->_c['hasTopConcept'] = [];
         foreach ($skos->concepts as $cid => $concept) {
           if ($concept->topConceptOf && in_array($sid, $concept->topConceptOf))
-            $scheme->hasTopConcept[] = $cid;
+            $scheme->_c['hasTopConcept'][] = $cid;
         }
       }
     }
   }
   
+  // affiche la liste des schemes
+  static function showSchemes(array $schemes) {
+    echo "<h2>Liste des micro-thésaurus</h2><ul>\n";
+    $langp = isset($_GET['lang']) ? "&amp;lang=$_GET[lang]" : '';
+    foreach ($schemes as $id => $scheme) {
+      echo "<li><a href='?doc=$_GET[doc]&amp;ypath=/schemes/$id$langp'>$scheme</a></li>\n";
+    }
+    echo "</ul>\n";
+  }
+
   // affiche un micro-thesaurus avec l'arbre des termes correspondant
   function show(array $concepts, YamlSkos $skos) {
     //echo "<pre>Scheme::show("; print_r($this); echo ")</pre>\n";
     $type = $this->type ? ' ('.implode(',',$this->type).')' : '';
     echo "<h2>$this$type</h2>\n";
     $this->showTexts('definition');
-    foreach (['hasPart','isPartOf'] as $key)
-      $this->showLinks($key, $skos);
+    foreach (['hasPart'=> 'schemes','isPartOf'=> 'schemes'] as $linkField => $skosDict)
+      $this->showLinks($linkField, $skosDict, $skos);
     if ($this->hasTopConcept) {
       echo "<h3>",YamlSkos::keyTranslate('content'),"</h3><ul>\n";
       $children = []; // [ id => label ]
@@ -589,7 +618,7 @@ class Scheme extends SkosElt {
   }
 };
 
-{
+{ // doc 
 $phpDocs['yamlskos.inc.php']['classes']['Concept'] = <<<EOT
 name: class Concept
 title: définition de la classe Concept
@@ -608,7 +637,14 @@ EOT;
 }
 
 class Concept extends SkosElt {
-  static $strFields = ['label','definition','note','scopeNote','historyNote','example','editorialNote','changeNote'];
+  static $txtFields = ['definition','note','scopeNote','historyNote','example','editorialNote','changeNote'];
+  static $linkFields = [ // sous la forme tag => dictionnaire arrivée
+    'inScheme'=> 'schemes',
+    'topConceptOf'=> 'schemes',
+    'broader'=> 'concepts',
+    'narrower'=> 'concepts',
+    'related'=> 'concepts',
+  ];
   
   // affiche l'arbre des concepts correspondant à un thésaurus
   static function showConcepts(array $concepts) {
@@ -659,15 +695,12 @@ class Concept extends SkosElt {
     echo "<h3>$this</h3>\n";
     $this->showStrings('altLabel');
     
-    foreach (['inScheme','topConceptOf','broader','narrower','related','hasTopConcept'] as $key) {
-      $this->showLinks($key, $skos);
-    }
+    foreach (self::$linkFields as $linkField => $skosDict)
+      $this->showLinks($linkField, $skosDict, $skos);
     
     //echo "<pre>this="; print_r($this); echo "</pre>\n";
-    foreach (self::$strFields as $field) {
-      if ($field <> 'label')
-        $this->showTexts($key);
-    }
+    foreach (self::$txtFields as $field)
+      $this->showTexts($field);
     
     if ($this->depiction) {
       echo "<b>depiction:</b><br>";

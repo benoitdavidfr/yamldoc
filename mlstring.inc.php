@@ -25,7 +25,7 @@ journal:
   - améliorations: ajout de getStringsInLang(), renommage php() en asArray()
 EOT;
 }
-class MLString {
+class MLString implements YamlDocElement {
   static $default = ['fr','fre','en','eng','n'];
   protected $_c; // stockage du contenu comme [ lang => [ label ]]
 
@@ -92,6 +92,19 @@ class MLString {
         $result[$lang] = $labels;
     }
     return $result;
+  }
+  
+  // renvoie le contenu pour une langue donnée
+  function extract(string $ypath) {
+    if (preg_match('!^/(.*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
+      return $this->_c[$matches[1]];
+    else
+      return null;
+  }
+  
+  // affiche dans la bonne langue la ou les chaines correspondantes 
+  function show(string $docuid, string $prefix='') {
+    showDoc($docuid, $this->getStringsInLang(), $prefix);
   }
 };
 
