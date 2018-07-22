@@ -17,6 +17,8 @@ doc: |
   Le format interne est stocké dans les fichiers .pser
     
 journal: |
+  21/7/2018:
+  - correction d'un bug dans showString() pour afficher les liens
   18/7/2018:
   - restructuration des classes
     - la classe YamlDoc est une classe abstraite de n'importe quel document, elle porte les méthodes génériques
@@ -318,12 +320,18 @@ function showString(string $docuid, $str) {
       $ypath = substr($href, strlen('?ypath='));
       //echo "<br>ypath=$ypath<br>\n";
       $href = "?doc=$docuid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
-      $str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
+      //$str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
+      $link = "<a href='$href'>$label</a>";
     }
     else {
-      $str = str_replace($matches[0], "<a href='$href' target=_blank>$label</a>\n", $str);
+      // cas d'un lien externe au doc
+      //$str = str_replace($matches[0], "<a href='$href' target=_blank>$label</a>\n", $str);
+      $link = "<a href='$href' target=_blank>$label</a>";
     }
-    echo str2html($str);
+    $pos = strpos($str, $matches[0]);
+    $before = substr($str, 0, $pos);
+    $after = substr($str, $pos+strlen($matches[0]));
+    echo str2html($before),$link,str2html($after);
   }
   // cas à traiter pour une liste de dates, dans par exemple le lexique topographique
   elseif (is_object($str) && (get_class($str)=='DateTime')) {
