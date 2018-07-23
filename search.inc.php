@@ -3,7 +3,7 @@
 name: search.inc.php
 title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
 doc: |
-  voir le code
+  <a href='/yamldoc/?action=version&name=search.inc.php'>voir le code</a>
 */
 {
 $phpDocs['search.inc.php'] = <<<'EOT'

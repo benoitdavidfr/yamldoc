@@ -1,5 +1,9 @@
 <?php
-// Affiche une image
+/*PhpDoc:
+name: image.php
+title: image.php - Affiche une image
+doc: |
+*/
 //echo "<pre>_SERVER="; print_r($_SERVER);
 //[REQUEST_URI] => /yamldoc/image.php/topovoc/image01.gif
 //[SCRIPT_NAME] => /yamldoc/image.php

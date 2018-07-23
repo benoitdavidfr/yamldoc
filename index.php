@@ -3,7 +3,7 @@
 name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
-  voir le code
+  <a href='/yamldoc/?action=version&name=index.php'>voir le code</a>
 */
 { // doc 
 $phpDocs['index.php'] = <<<'EOT'
@@ -270,6 +270,47 @@ if (!in_array('hideMenu', $options))
 // !!! à vérifier le fonctionnement / je ne comprends pas !!!
 ydunlockall();
 
+// action version - affichage Phpdoc
+if (isset($_GET['action']) && ($_GET['action']=='version')) {
+  if (!isset($_GET['name'])) {
+    echo "<h2>Documentation des scripts Php</h2><ul>\n";
+    foreach ($phpDocs as $name => $phpDoc) {
+      try {
+        if (!is_array($phpDoc)) {
+          $phpDoc = Yaml::parse($phpDoc);
+        }
+        else {
+          $phpDoc = Yaml::parse($phpDoc['file']);
+        }
+        echo "<li><a href='?action=version",
+             isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
+             "&amp;name=$name'>$phpDoc[title]</a>\n";
+      }
+      catch (ParseException $exception) {
+        printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
+        echo "<pre>",$phpDoc,"</pre>\n";
+      }
+    }
+  }
+  elseif (!is_array($phpDocs[$_GET['name']])) {
+    echo "<pre>",str2html($phpDocs[$_GET['name']]),"</pre>\n";
+  }
+  else {
+    foreach ($phpDocs[$_GET['name']] as $field => $doc) {
+      echo "<h2>$field</h2>";
+      if (is_string($doc))
+        echo "<pre>",str2html($doc),"</pre>\n";
+      else {
+        foreach ($doc as $sname => $sdoc) {
+          echo "<h3>$sname</h3>";
+          echo "<pre>",str2html($sdoc),"</pre>\n";
+        }
+      }
+    }
+  }
+  die();
+}
+
 // les premières actions ne nécessitent pas le paramètre doc
 // action dump - affichage des variables de session et s'il existe du document courant
 if (isset($_GET['action']) && (substr($_GET['action'], 0, 4)=='dump')) {
@@ -490,46 +531,4 @@ if ($_GET['action']=='showPhpSrc') {
   echo "<b>Code source Php de $_GET[doc]</b>\n";
   echo "<pre>",str_replace(['<'],['&lt;'],ydread($_SESSION['store'], $_GET['doc'])),"</pre>\n";
   die("<br>\n");
-}
-
-
-// action version - affichage Phpdoc
-if ($_GET['action']=='version') {
-  if (!isset($_GET['name'])) {
-    echo "<h2>Documentation des scripts Php</h2><ul>\n";
-    foreach ($phpDocs as $name => $phpDoc) {
-      try {
-        if (!is_array($phpDoc)) {
-          $phpDoc = Yaml::parse($phpDoc);
-        }
-        else {
-          $phpDoc = Yaml::parse($phpDoc['file']);
-        }
-        echo "<li><a href='?action=version",
-             isset($_GET['doc']) ? "&amp;doc=$_GET[doc]" : '',
-             "&amp;name=$name'>$phpDoc[title]</a>\n";
-      }
-      catch (ParseException $exception) {
-        printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-        echo "<pre>",$phpDoc,"</pre>\n";
-      }
-    }
-  }
-  elseif (!is_array($phpDocs[$_GET['name']])) {
-    echo "<pre>",str2html($phpDocs[$_GET['name']]),"</pre>\n";
-  }
-  else {
-    foreach ($phpDocs[$_GET['name']] as $field => $doc) {
-      echo "<h2>$field</h2>";
-      if (is_string($doc))
-        echo "<pre>",str2html($doc),"</pre>\n";
-      else {
-        foreach ($doc as $sname => $sdoc) {
-          echo "<h3>$sname</h3>";
-          echo "<pre>",str2html($sdoc),"</pre>\n";
-        }
-      }
-    }
-  }
-  die();
 }

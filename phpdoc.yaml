@@ -78,19 +78,43 @@ journal: |
   - première version
 submodules:
   - /yamldoc/docinspire
+sqlFiles:
+  - /yamldoc/yamldoc.sql
+sqlDBs:
+  - name: yamldoc
+    title: base de données yamldoc
+    doc: |
+      base MySql utilisée pour l'indexation fulltext
+      voir mysqlparams.inc.php
 phpScripts:
   - /yamldoc/index.php
   - /yamldoc/admin.php
   - /yamldoc/indexdoc.php
   - /yamldoc/search.php
   - /yamldoc/frag.php
+  - /yamldoc/crypt.php
+  - /yamldoc/image.php
+  - /yamldoc/latest.php
+  - /yamldoc/password.php
+  - /yamldoc/tpassword.php
+  - /yamldoc/pasactions.php
+  - /yamldoc/pasbesoins.php
+  - /yamldoc/params.php
+  - /yamldoc/testcrypt.php
 phpIncludes:
   - /yamldoc/yd.inc.php
   - /yamldoc/git.inc.php
+  - /yamldoc/mlstring.inc.php
+  - /yamldoc/ydclasses.inc.php
+  - /yamldoc/yamldoc.inc.php
+  - /yamldoc/dumbdoc.inc.php
+  - /yamldoc/basicyamldoc.inc.php
   - /yamldoc/catalog.inc.php
   - /yamldoc/tree.inc.php
   - /yamldoc/yamldata.inc.php
   - /yamldoc/multidata.inc.php
+  - /yamldoc/yamlskos.inc.php
+  - /yamldoc/datamodel.inc.php
   - /yamldoc/servreg.inc.php
   - /yamldoc/search.inc.php
   - /yamldoc/mysqlparams.inc.php

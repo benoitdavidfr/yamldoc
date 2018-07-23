@@ -93,6 +93,8 @@ class YamlSkos extends YamlDoc {
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
   ];
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
+  protected $title; // titre comme MLString
+  protected $alternative=null; // titre alternatif comme MLString
   protected $language; // liste des langues
   protected $domainScheme; // thésaurus des domaines
   protected $domains; // dictionnaire des domaines décrits comme concepts Skos
@@ -103,12 +105,18 @@ class YamlSkos extends YamlDoc {
     if (!is_array($yaml))
       throw new Exception("Erreur dans YamlSkos::__construct() : le paramètre doit être un array");
     unset($yaml['yamlClass']);
-    if (!isset($yaml['title']))
-      throw new Exception("Erreur: champ title absent dans la création YamlSkos");
     if (!isset($yaml['language']))
       throw new Exception("Erreur: champ language absent dans la création YamlSkos");
     $this->language = is_string($yaml['language']) ? [ $yaml['language'] ] : $yaml['language'];
     //unset($yaml['language']);
+    if (!isset($yaml['title']))
+      throw new Exception("Erreur: champ title absent dans la création YamlSkos");
+    $this->title = new MLString($yaml['title'], $this->language);
+    unset($yaml['title']);
+    if (isset($yaml['alternative'])) {
+      $this->alternative = new MLString($yaml['alternative'], $this->language);
+      unset($yaml['alternative']);
+    }
     if (!isset($yaml['domainScheme']))
       throw new Exception("Erreur: champ domainScheme absent dans la création YamlSkos");
     $this->domainScheme = new DomainScheme($yaml['domainScheme'], $this->language);

@@ -3,7 +3,7 @@
 name: git.inc.php
 title: git.inc.php - commandes Git
 doc: |
-  voir le code
+  <a href='/yamldoc/?action=version&name=git.inc.php'>voir le code</a>
 */
 {
 $phpDocs['git.inc.php'] = <<<EOT

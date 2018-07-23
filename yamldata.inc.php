@@ -3,7 +3,7 @@
 name: yamldata.inc.php
 title: yamldata.inc.php - sous-classe de documents pour la gestion des données
 functions:
-doc: doc intégrée en Php
+doc: <a href='/yamldoc/?action=version&name=yamldata.inc.php'>doc intégrée en Php</a>
 */
 {
 $phpDocs['yamldata.inc.php'] = <<<'EOT'

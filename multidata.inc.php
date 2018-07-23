@@ -3,7 +3,7 @@
 name: multidata.inc.php
 title: multidata.inc.php - multi-data
 functions:
-doc: doc intégrée en Php
+doc: <a href='/yamldoc/?action=version&name=multidata.inc.php'>doc intégrée en Php</a>
 */
 {
 $phpDocs['multidata.inc.php'] = <<<'EOT'

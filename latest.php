@@ -1,5 +1,9 @@
 <?php
-// docs triés par date de mise à jour
+/*PhpDoc:
+name: latest.php
+title: latest.php - docs triés par date de mise à jour
+doc: |
+*/
 foreach (['docs','pub'] as $store) {
   echo "<h2>$store</h2>\n";
   $docs = glob("$store/*.yaml");

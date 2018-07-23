@@ -4,7 +4,7 @@ name: admin.php
 title: admin.php - permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
 doc: |
   permet de visualiser l'ensemble des docs en affichant la hiérarchie des catalogues
-journal:
+journal: |
   1-2/7/2018:
     adaptation multi-store
   21/5/2018:

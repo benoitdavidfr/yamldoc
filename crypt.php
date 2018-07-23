@@ -1,5 +1,9 @@
 <?php
-// encrypte tous les docs
+/*PhpDoc:
+name: crypt.php
+title: crypt.php - encrypte tous les docs - test non finalisé
+doc: |
+*/
 require_once __DIR__.'/yd.inc.php';
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>crypt</title></head><body>\n";
