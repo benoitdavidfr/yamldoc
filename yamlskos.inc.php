@@ -108,7 +108,7 @@ class YamlSkos extends YamlDoc {
     if (!isset($yaml['language']))
       throw new Exception("Erreur: champ language absent dans la création YamlSkos");
     $this->language = is_string($yaml['language']) ? [ $yaml['language'] ] : $yaml['language'];
-    //unset($yaml['language']);
+    unset($yaml['language']);
     if (!isset($yaml['title']))
       throw new Exception("Erreur: champ title absent dans la création YamlSkos");
     $this->title = new MLString($yaml['title'], $this->language);
@@ -285,7 +285,13 @@ class YamlSkos extends YamlDoc {
 
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   function asArray() {
-    $result = $this->_c;
+    $result = [
+      'title'=> $this->title->asArray(),
+    ];
+    if ($this->alternative)
+      $result['alternative'] = $this->alternative;
+    $result['language'] = $this->language;
+    $result = array_merge($result, $this->_c);
     $result['domainScheme'] = $this->domainScheme->asArray();
     foreach (['domains','schemes','concepts'] as $field) {
       foreach($this->$field as $id => $elt)
