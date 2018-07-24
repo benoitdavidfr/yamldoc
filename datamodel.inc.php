@@ -237,7 +237,10 @@ doc: |
     - domain liste les domaines auxquels le type appartient (sauf pour les unknowntype),
     - prefLabel fournit l'étiquette du type en multi-lingue ou en neutre
     - definition fournit la definition du type en multi-lingue (sauf externaltype et unkowntype)
-    - subtypeOf? liste éventuellement les super-types
+    - note, scopeNote, editorialNote, changeNote, historyNote et example peuvent être utilisées
+    - subtypeOf? liste éventuellement les super-types:
+      - soit comme identifiant d'un type
+      - soit comme URI définissant un type
     - property? contient éventuellement 'abstracttype' ou 'associationclass'
     - source liste de ressources desquelles dérive l'élément, chaque ressource est identifié par une clé et peut
       être définie dans différentes langues, les mots-clés suivants sont utilisés:
@@ -249,7 +252,7 @@ EOT;
 
 class ObjectType extends SkosElt {
   static $strFields = ['label'];
-  static $textFields = ['definition','scopeNote','historyNote','example'];
+  static $textFields = ['definition','note','scopeNote','editorialNote','changeNote','historyNote','example'];
   static $linkFields = ['subtypeOf'=> 'objectTypes', 'domain'=> 'domains'];
   
   function __construct(array $yaml, array $language) {
@@ -377,7 +380,7 @@ doc: |
   Un attribut ou une relation comporte les champs suivants:
   - label fournit l'étiquette multi-lingue de l'attribut ou relation
   - definition fournit la definition multi-lingue de l'attribut ou relation
-  - scopeNote fournit une ou plusieurs notes d'application multi-lingue de l'attribut ou relation
+  - note, scopeNote, editorialNote, changeNote, historyNote et example peuvent être utilisées
   - type sous la forme [ typedetype => nomdutype ]
     les typedetype sont 'spatialobjecttype', 'datatype', 'uniontype', 'externaltype', 'unknowntype'
   - multiplicity peut valoir 1, '0..*', '1..*' ou ne pas être défini
@@ -390,7 +393,7 @@ EOT;
 
 class Attribute extends SkosElt {
   static $strFields = ['label'];
-  static $textFields = ['definition','scopeNote','historyNote','example'];
+  static $textFields = ['definition','note','scopeNote','editorialNote','changeNote','historyNote','example'];
   
   function __construct(array $yaml, array $language) {
     parent::__construct($yaml, $language);

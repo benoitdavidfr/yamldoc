@@ -412,6 +412,8 @@ abstract class SkosElt implements YamlDocElement {
         if (isset($skos->$skosDict[$lid]))
           echo "<a href='?doc=$_GET[doc]&amp;ypath=/$skosDict/$lid$langp'>",
                $skos->$skosDict[$lid],"</a>\n";
+        elseif (preg_match('!^https?://!', $lid))
+          echo "<a href='$lid' target=_blank>$lid</a>\n";
         else
           echo "lien $lid trouvé dans $skosDict\n";
       }
