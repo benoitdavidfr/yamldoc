@@ -49,7 +49,7 @@ abstract class YamlDoc {
   // extrait le fragment défini par $ypath
   // utilisé pour générer un retour à partir d'un URI
   // Par défaut effectue un extract
-  function extractByUri(string $docuri, string $ypath): array {
+  function extractByUri(string $docuri, string $ypath) {
     $fragment = $this->extract($ypath);
     $fragment = self::replaceYDEltByArray($fragment);
     return $fragment;
@@ -120,7 +120,7 @@ abstract class YamlDoc {
   // retourne le fragment défini par la chaine ypath
   static public function sextract($data, string $ypath) {
     //echo "sextract(ypath=$ypath)<br>\n";
-    if (!$ypath)
+    if (!$ypath || ($ypath=='/'))
       return $data;
     //echo "ypath=$ypath<br>\n";
     $elt = self::extract_ypath('/', $ypath);

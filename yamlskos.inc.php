@@ -173,7 +173,7 @@ class YamlSkos extends YamlDoc {
   // affichage du thésaurus ou d'un de ses fragments
   function show(string $docid, string $ypath): void {
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
-    if (!$ypath) {
+    if (!$ypath || ($ypath == '/')) {
       showDoc($_GET['doc'], $this->_c);
       $this->domainScheme->show($this->domains, $this->schemes);
     }
@@ -302,7 +302,7 @@ class YamlSkos extends YamlDoc {
   
   // renvoie un array récursif du fragment défini par ypath
   function extract(string $ypath) {
-    if (!$ypath) {
+    if (!$ypath  || ($ypath == '/')) {
       return $this->asArray();
     }
     elseif ($ypath == '/domainScheme')
