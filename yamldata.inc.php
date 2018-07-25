@@ -187,7 +187,7 @@ class YamlDataTable implements YamlDocElement, IteratorAggregate {
   // retourne le fragment défini par path qui est une chaine
   function extract(string $ypath) {
     //echo "appel de YamlDataTable::extract($ypath)<br>\n";
-    if (!$ypath)
+    if (!$ypath || ($ypath=='/'))
       return $this->data;
     $elt = YamlDoc::extract_ypath('/', $ypath);
     if (strpos($elt,'=') !== false) {
