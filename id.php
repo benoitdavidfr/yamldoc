@@ -3,12 +3,14 @@
 name: id.php
 title: id.php - gestionnaire d'URI de YamlDoc
 doc: |
+  Exemples:
+    http://id.georef.eu/iso639/concepts/fre
+    -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
+  Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
 journal: |
   25/7/2018:
     première version minimum
 */
-// http://id.georef.eu/iso639/concepts/fre
-// -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 
