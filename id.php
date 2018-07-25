@@ -10,6 +10,7 @@ doc: |
 journal: |
   25/7/2018:
     première version minimum
+test
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
