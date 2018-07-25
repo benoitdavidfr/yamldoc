@@ -1,7 +1,7 @@
 <?php
 /*PhpDoc:
 name: id.php
-title: id.php - gestionnaire d'URI de YamlDoc
+title: id.php - resolveur d'URI de YamlDoc
 doc: |
   Exemples:
     http://id.georef.eu/iso639/concepts/fre
