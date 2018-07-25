@@ -20,6 +20,8 @@ doc: |
     - $yamlPassword  
     - $language  
 journal: |
+  25/7/2018:
+  - ajout fabrication pser pour document php
   19/7/2018:
   - améliorations
   18/7/2018:
@@ -66,9 +68,11 @@ abstract class YamlDoc {
   
   // si une classe crée un .pser, elle doit appeler YamlDoc::writePserReally()
   protected function writePserReally(string $store, string $docuid): void {
-    if (!is_file(__DIR__."/$store/$docuid.pser")
-     || (filemtime(__DIR__."/$store/$docuid.pser") <= filemtime(__DIR__."/$store/$docuid.yaml"))) {
-      file_put_contents(__DIR__."/$store/$docuid.pser", serialize($this));
+    $filename = __DIR__."/$store/$docuid";
+    if (!is_file("$filename.pser")
+        || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
+        || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))) {
+      file_put_contents("$filename.pser", serialize($this));
     }
   }
   

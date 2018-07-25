@@ -17,6 +17,8 @@ doc: |
   Le format interne est stocké dans les fichiers .pser
     
 journal: |
+  25/7/2018:
+  - ajout fabrication pser pour document php
   21/7/2018:
   - correction d'un bug dans showString() pour afficher les liens
   18/7/2018:
@@ -450,9 +452,11 @@ function showDoc(string $docuid, $data, string $prefix=''): void {
 // retourne null si le document n'existe pas
 // génère une exception si le doc n'est pas du Yaml
 function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
-  // S'il existe un pser et qu'il est plus récent que le yaml alors renvoie la désérialisation du pser
-  if (file_exists(__DIR__."/$store/$docuid.pser")
-    && (filemtime(__DIR__."/$store/$docuid.pser") > filemtime(__DIR__."/$store/$docuid.yaml"))) {
+  // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
+  $filename = __DIR__."/$store/$docuid";
+  if (file_exists("$filename.pser")
+      && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
+          || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php"))))) {
       //echo "unserialize()<br>\n";
       return unserialize(@file_get_contents(__DIR__."/$store/$docuid.pser"));
   }
@@ -466,7 +470,9 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
     // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
     ydcheckWriteAccessForPhpCode($store, $docuid);
     // exécute le script et renvoie son retour qui doit donc être un YamlDoc ou null
-    return require "$store/$docuid.php";
+    $doc = require "$store/$docuid.php";
+    $doc->writePser($store, $docuid);
+    return $doc;
   }
   // Sinon parse le texte dans $data
   try {
