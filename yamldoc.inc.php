@@ -38,13 +38,22 @@ abstract class YamlDoc {
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   abstract function asArray();
 
-  // extrait le sous-élément de l'élément défini par $ypath
+  // extrait le fragment du document défini par $ypath
   abstract function extract(string $ypath);
   
   // affiche le sous-élément de l'élément défini par $ypath
   abstract function show(string $docuid, string $ypath): void;
    
   // Les méthodes concrètes
+  
+  // extrait le fragment défini par $ypath
+  // utilisé pour générer un retour à partir d'un URI
+  // Par défaut effectue un extract
+  function extractByUri(string $docuri, string $ypath): array {
+    $fragment = $this->extract($ypath);
+    $fragment = self::replaceYDEltByArray($fragment);
+    return $fragment;
+  }
   
   // fonction dump par défaut, dump le document et non le fragment
   function dump(string $ypath): void { var_dump($this); }

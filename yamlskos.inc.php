@@ -174,7 +174,7 @@ class YamlSkos extends YamlDoc {
   function show(string $docid, string $ypath): void {
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath) {
-      showDoc($_GET['doc'], array_merge($this->_c, ['language'=> '['.implode(', ', $this->language).']']));
+      showDoc($_GET['doc'], $this->_c);
       $this->domainScheme->show($this->domains, $this->schemes);
     }
     elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
