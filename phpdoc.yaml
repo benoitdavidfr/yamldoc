@@ -34,6 +34,9 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  26/7/2018:
+    - correction d'un bug dans YamlDoc::replaceYDEltByArray()
+    - correction des méthodes extract() et asArray() de YamlSkos, LegalDoc et DataModel
   29/6-1/7/2018:
     - gestion multi-store
     - modification de la signature de plusieurs fonctions de yd.inc.php

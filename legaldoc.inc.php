@@ -179,9 +179,39 @@ class LegalDoc extends YamlSkos {
         parent::show($docid, $ypath);
       }
       catch (Exception $exception) {
-        echo "ypath=$ypath inconnu ligne ",__LINE__,"<br>\n";
+        echo "ypath=$ypath inconnu fichier ",__FILE__,", ligne ",__LINE__,"<br>\n";
       }
     }
+  }
+  
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  function asArray() {
+    $result = parent::asArray();
+    foreach (['visa','recitals','body','signature','notes','annexes'] as $field)
+      $result[$field] = $this->$field;
+    return $result;
+  }
+  
+  // renvoie un array du fragment défini par ypath
+  function extract(string $ypath) {
+    //echo "LegalDoc::extract($ypath)<br>\n";
+    try {
+      return parent::extract($ypath);
+    }
+    catch (Exception $exception) {
+    }
+    if (preg_match('!^/(visa|recitals|body|signature|notes|annexes)$!', $ypath, $matches)) {
+      return $this->{$matches[1]};
+    }
+    elseif (preg_match('!^/(recitals|body|notes|annexes)/([^/]*)$!', $ypath, $matches)) {
+      return $this->{$matches[1]}[$matches[2]];
+    }
+    elseif (preg_match('!^/(recitals|body|notes|annexes)/([^/]*)/!', $ypath, $matches)) {
+      $spath = substr($ypath, strlen($matches[0])-1);
+      return $this->{$matches[1]}[$matches[2]]->extract($spath);
+    }
+    else
+      throw new Exception("Erreur LegalDoc::extract(ypath=$ypath), ypath non reconnu");
   }
   
   function dump(string $ypath): void {

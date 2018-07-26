@@ -77,19 +77,19 @@ class YamlSkos extends YamlDoc {
     'content'=> ['fr'=>"Contenu", 'en'=>"Content"],
     'inScheme'=> ['fr'=>"Schéma de l'élément", 'en'=>"In scheme"],
     'hasTopConcept'=> ['fr'=>"Elements de premier niveau", 'en'=>"Top concepts"],
-    'topConceptOf'=> ['fr'=>"Elément de premier niveau du schéma", 'en'=>"Top concept of"],
+    'topConceptOf'=> ['fr'=>"Elément de premier niveau de", 'en'=>"Top concept of"],
     'prefLabel'=> ['fr'=>"Forme lexicale préférentielle", 'en'=>"Prefered label"],
-    'altLabel'=> ['fr'=> "Forme lexicale alternative", 'en'=>"Alternative label"],
-    'hiddenLabel'=> ['fr'=>"Forme cachée", 'en'=>"Hidden label"],
+    'altLabel'=> ['fr'=> "Formes lexicales alternatives", 'en'=>"Alternative labels"],
+    'hiddenLabel'=> ['fr'=>"Formes cachées", 'en'=>"Hidden labels"],
     'definition'=> ['fr'=>"Définition", 'en'=> "Definition"],
     'note'=> ['fr'=>"Note", 'en'=>"Note"],
     'scopeNote'=> ['fr'=>"Note d'application ", 'en'=>"Scope note"],
     'historyNote'=> ['fr'=>"Note historique", 'en'=>"History note"],
     'editorialNote'=> ['fr'=>"Note éditoriale", 'en'=>"Editorial note"], 
     'example'=> ['fr'=>"Exemple", 'en'=>"Example"],
-    'broader'=> ['fr'=>"Concept générique", 'en'=>"Broader"],
-    'narrower'=> ['fr'=>"Concept spécifique", 'en'=>"Narrower"],
-    'related'=> ['fr'=>"Concept associé", 'en'=>"Related"],
+    'broader'=> ['fr'=>"Concepts génériques", 'en'=>"Broader"],
+    'narrower'=> ['fr'=>"Concepts spécifiques", 'en'=>"Narrower"],
+    'related'=> ['fr'=>"Concepts associés", 'en'=>"Related"],
     'xxx'=> ['fr'=>"xxx", 'en'=>"yyy"],
   ];
   protected $_c; // contient les champs qui n'ont pas été transférés dans les champs ci-dessous
@@ -284,42 +284,39 @@ class YamlSkos extends YamlDoc {
   }
 
   // décapsule l'objet et retourne son contenu sous la forme d'un array
+  // L'objet principal est de définir l'ordre des champs
   function asArray() {
     $result = [
-      'title'=> $this->title->asArray(),
+      'title'=> $this->title,
     ];
     if ($this->alternative)
       $result['alternative'] = $this->alternative;
     $result['language'] = $this->language;
     $result = array_merge($result, $this->_c);
-    $result['domainScheme'] = $this->domainScheme->asArray();
-    foreach (['domains','schemes','concepts'] as $field) {
-      foreach($this->$field as $id => $elt)
-        $result[$field][$id] = $elt->asArray();
-    }
+    foreach (['domainScheme','domains','schemes','concepts'] as $field)
+      $result[$field] = $this->$field;
     return $result;
   }
   
-  // renvoie un array récursif du fragment défini par ypath
+  // extrait le fragment du document défini par $ypath ; Renvoie un array ou un objet
   function extract(string $ypath) {
-    if (!$ypath  || ($ypath == '/')) {
-      return $this->asArray();
+    //echo "YamlSkos::extract($ypath)<br>\n";
+    if (!$ypath  || ($ypath == '/'))
+      return $this;
+    elseif (preg_match('!^/(domainScheme|domains|schemes|concepts)$!', $ypath, $matches)) {
+      return $this->{$matches[1]};
     }
-    elseif ($ypath == '/domainScheme')
-      return $this->domainScheme->asArray();
-    elseif (preg_match('!^/(domains|schemes|concepts)(/([^/]*))?$!', $ypath, $matches)) {
-      if (!isset($matches[2])) {
-        foreach($this->{$matches[1]} as $id => $elt)
-          $result[$id] = $elt->asArray();
-        return $result;
-      }
-      else
-        return $this->{$matches[1]}[$matches[3]]->asArray();
+    elseif (preg_match('!^/(domains|schemes|concepts)/([^/]*)$!', $ypath, $matches)) {
+      return $this->{$matches[1]}[$matches[2]];
+    }
+    elseif (preg_match('!^/(domains|schemes|concepts)/([^/]*)/!', $ypath, $matches)) {
+      $spath = substr($ypath, strlen($matches[0])-1);
+      return $this->{$matches[1]}[$matches[2]]->extract($spath);
     }
     elseif (preg_match('!^/([^/]*)$!', $ypath, $matches) && isset($this->_c[$matches[1]]))
       return $this->_c[$matches[1]];
     else
-      throw new Exception("Erreur YamlSkos::extract(ypath=$ypath)");
+      throw new Exception("Erreur YamlSkos::extract(ypath=$ypath), ypath non reconnu");
   }
   
   // vérification de l'intégrité du document

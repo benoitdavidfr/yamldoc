@@ -20,6 +20,8 @@ doc: |
     - $yamlPassword  
     - $language  
 journal: |
+  26/7/2018:
+  - correction d'un bug dans YamlDoc::replaceYDEltByArray()
   25/7/2018:
   - ajout fabrication pser pour document php
   19/7/2018:
@@ -34,13 +36,19 @@ use Symfony\Component\Yaml\Yaml;
 abstract class YamlDoc {
   // Les méthodes abstraites
   
-  // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml, cela peut aussi être du texte
+  // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
+  // $yaml est généralement un array mais peut aussi être du texte
   abstract function __construct(&$yaml);
 
   // décapsule l'objet et retourne son contenu sous la forme d'un array
+  // ce décapsulage ne s'effectue qu'à un seul niveau
+  // Permet de maitriser l'ordre des champs
   abstract function asArray();
 
   // extrait le fragment du document défini par $ypath
+  // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
+  // Utilisé par YamlDoc::yaml() et YamlDoc::json()
+  // Evite de construire une structure intermédiaire volumineuse avec asArray()
   abstract function extract(string $ypath);
   
   // affiche le sous-élément de l'élément défini par $ypath
@@ -51,6 +59,7 @@ abstract class YamlDoc {
   // extrait le fragment défini par $ypath
   // utilisé pour générer un retour à partir d'un URI
   // Par défaut effectue un extract
+  // Doit être remplacé par le traitement adapté à chaque classe de documents
   function extractByUri(string $docuri, string $ypath) {
     $fragment = $this->extract($ypath);
     $fragment = self::replaceYDEltByArray($fragment);
@@ -77,15 +86,16 @@ abstract class YamlDoc {
   }
   
   // remplace dans une structure Php les YamlDocElement par leur représentation array Php
-  // Utilise YamlDocElement::asArray()
+  // Utilise YamlDoc::asArray() et YamlDocElement::asArray()
+  // La valeur retournée est soit un atome Php non objet, soit un objet DateTime, soit un array de ca
   static protected function replaceYDEltByArray($data) {
     if (is_object($data) && (get_class($data)<>'DateTime'))
-      return $data->asArray();
-    elseif (is_array($data)) {
-      $ret = [];
+      $data = $data->asArray();
+    if (is_array($data)) {
+      $result = [];
       foreach ($data as $key => $value)
-        $ret[$key] = self::replaceYDEltByArray($value);
-      return $ret;
+        $result[$key] = self::replaceYDEltByArray($value);
+      return $result;
     }
     else
       return $data;
@@ -292,11 +302,10 @@ abstract class YamlDoc {
     return array_values($results);
   }
   
-  // génère le texte correspondant au fragment défini par ypath
+  // génère le texte Yaml correspondant au fragment défini par ypath
   // améliore la sortie en supprimant les débuts de ligne
   function yaml(string $ypath): string {
     $fragment = $this->extract($ypath);
-    $fragment = self::replaceYDEltByArray($fragment);
     return YamlDoc::syaml(self::replaceYDEltByArray($fragment));
   }
   

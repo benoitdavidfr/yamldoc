@@ -98,41 +98,34 @@ class DataModel extends YamlSkos {
         echo $exception->getMessage(),"<br>\n";
     }
   }
+  
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  function asArray() {
+    $result = parent::asArray();
+    $result['objectTypes'] = $this->objectTypes;
+    return $result;
+  }
 
   // renvoie un array récursif du fragment défini par ypath
   function extract(string $ypath) {
     //echo "DataModel::extract($ypath)\n";
-    if (!$ypath) {
-      $result = parent::extract('');
-      foreach($this->objectTypes as $id => $elt)
-        $result['objectTypes'][$id] = $elt->asArray();
-      return $result;
+    try {
+      return parent::extract($ypath);
     }
-    else {
-      try {
-        return parent::extract($ypath);
-      }
-      catch (Exception $exception) {
-        if (preg_match('!^/objectTypes(/([^/]*))?(/(.*))?$!', $ypath, $matches)) {
-          if (!isset($matches[2])) {
-            foreach ($this->objectTypes as $id => $elt) {
-              $result[$id] = $elt->asArray();
-            return $result;
-            }
-          }
-          elseif (!isset($matches[4])) {
-            return $this->objectTypes[$matches[2]]->asArray();
-          }
-          else {
-            $id = $matches[2];
-            $field = $matches[4];
-            return $this->objectTypes[$id]->extract($field);
-          }
-        }
-        else
-          echo $exception->getMessage(),"<br>\n";
-      }
+    catch (Exception $exception) {
     }
+    if (preg_match('!^/(objectTypes)$!', $ypath, $matches)) {
+      return $this->{$matches[1]};
+    }
+    elseif (preg_match('!^/(objectTypes)/([^/]*)$!', $ypath, $matches)) {
+      return $this->{$matches[1]}[$matches[2]];
+    }
+    elseif (preg_match('!^/(objectTypes)/([^/]*)/!', $ypath, $matches)) {
+      $spath = substr($ypath, strlen($matches[0])-1);
+      return $this->{$matches[1]}[$matches[2]]->extract($spath);
+    }
+    else
+      throw new Exception("Erreur LegalDoc::extract(ypath=$ypath), ypath non reconnu");
   }
   
   // dump le document ou un de ses fragments
@@ -148,7 +141,7 @@ class DataModel extends YamlSkos {
       elseif (preg_match('!^/objectTypes/([^/]*)(/.*)$!', $ypath, $matches))
         $this->objectTypes[$matches[1]]->dump($matches[2]);
       else
-        echo $exception->getMessage(),"<br>\n";
+        throw new Exception("Erreur LegalDoc::dump(ypath=$ypath), ypath non reconnu");
     }
   }
 
