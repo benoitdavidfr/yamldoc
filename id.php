@@ -15,6 +15,8 @@ doc: |
     -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
   Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
 journal: |
+  28/7/2018:
+    ajout possibilité de sortie json
   25/7/2018:
     première version minimum
 */
@@ -54,6 +56,14 @@ if (isset($_GET['action']) && ($_GET['action']=='tests')) {
   ] as $uri => $title)
     echo "<li><a href='?uri=",urlencode($uri),"'>$title : $uri</a>\n";
   echo "</ul>\n";
+
+  echo "<h2>Tests avec paramètre format=</h2><ul>\n";
+  foreach ([
+    '/skos'=> "document simple",
+  ] as $uri => $title)
+    echo "<li><a href='$_SERVER[SCRIPT_NAME]$uri?format=json'>$title : $uri</a>\n";
+  echo "</ul>\n";
+
   echo "<pre>_GET="; print_r($_GET); echo "</pre>\n";
   echo "<pre>_SERVER = "; print_r($_SERVER);
   die("Fin des tests");
@@ -75,11 +85,15 @@ function notFound(string $store, string $docid, string $ypath='') {
   die();
 }
 
+//echo "<pre>_SERVER = "; print_r($_SERVER);
 $store = in_array($_SERVER['HTTP_HOST'], ['127.0.0.1','bdavid.alwaysdata.net']) ? 'docs' : 'pub';
-if ($_SERVER['QUERY_STRING']=='')
-  $uri = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
-elseif (isset($_GET['uri']))
+if (isset($_GET['uri']))
   $uri = substr($_GET['uri'], strlen('http://id.georef.eu'));
+else {
+  $uri = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
+  if ($_SERVER['QUERY_STRING'])
+    $uri = substr($uri, 0, strlen($uri)-strlen($_SERVER['QUERY_STRING'])-1);
+}
 //echo "uri=$uri<br>\n";
 //echo "<pre>_SERVER = "; print_r($_SERVER);
 if (in_array($uri,['','/'])) {
@@ -139,5 +153,9 @@ if (!$fragment) {
     notFound($store, $index['docid'], $index['ypath']);
 }
 header('Content-type: text/plain');
-echo YamlDoc::syaml($fragment);
+if (isset($_GET['format']) && ($_GET['format']=='json')) {
+  echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+}
+else
+  echo YamlDoc::syaml($fragment);
 die();
