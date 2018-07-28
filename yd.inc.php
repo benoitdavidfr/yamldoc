@@ -146,34 +146,32 @@ function ydwrite(string $store, string $uid, string $text) {
 // cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
 function ydread(string $store, string $uid) {
   //echo "ydread($uid)<br>\n";
-  if (($text = @file_get_contents(__DIR__."/$store/$uid.yaml")) === false)
-    if (($text = @file_get_contents(__DIR__."/$store/$uid.php")) === false)
-      if (is_dir(__DIR__."/$store/$uid")) {
-        //echo "$uid est un répertoire<br>\n";
-        if (($text = @file_get_contents(__DIR__."/$store/$uid/index.yaml")) === false)
-          if (($text = @file_get_contents(__DIR__."/$store/$uid/index.php")) === false)
-            return false;
-      }
-  return $text;
+  if (($text = @file_get_contents(__DIR__."/$store/$uid.yaml")) !== false)
+    return $text;
+  if (($text = @file_get_contents(__DIR__."/$store/$uid.php")) !== false)
+    return $text;
+  if (is_dir(__DIR__."/$store/$uid")) {
+    //echo "$uid est un répertoire<br>\n";
+    if (($text = @file_get_contents(__DIR__."/$store/$uid/index.yaml")) !== false)
+      return $text;
+    if (($text = @file_get_contents(__DIR__."/$store/$uid/index.php")) !== false)
+      return $text;
+  }
+  return false;
 }
 
 // retourne l'extension d'un document
 function ydext(string $store, string $uid): string {
   //echo "ydext(string $uid)";
-  if (is_file(__DIR__."/$store/$uid.pser"))
-    $ext = 'pser';
-  elseif (is_file(__DIR__."/$store/$uid.yaml"))
-    $ext = 'yaml';
-  elseif (is_file(__DIR__."/$store/$uid.php"))
-    $ext = 'php';
-  else
-    $ext = '';
-  //echo " -> $ext<br>\n";
-  return $ext;
+  foreach (['pser','yaml','php'] as $ext)
+    if (is_file(__DIR__."/$store/$uid.pser"))
+      return $ext;
+  return '';
 }
 
 // suppression d'un document, prend son store, uid
 function yddelete(string $store, string $uid) {
+  @unlink(__DIR__."/$store/$uid.pser");
   return (@unlink(__DIR__."/$store/$uid.yaml") or @unlink(__DIR__."/$store/$uid.php"));
 }
 
@@ -448,12 +446,13 @@ function showDoc(string $docuid, $data, string $prefix=''): void {
     showString($docuid, $data);
 }
 
-// crée un YamlDoc à partir du store et du docuid du document
+// crée un Doc à partir du store et du docuid du document
 // retourne null si le document n'existe pas
 // génère une exception si le doc n'est pas du Yaml
-function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
+function new_doc(string $store, string $docuid): ?Doc {
   // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
   $filename = __DIR__."/$store/$docuid";
+  //echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php"))))) {
@@ -461,8 +460,16 @@ function new_yamlDoc(string $store, string $docuid): ?YamlDoc {
       return unserialize(@file_get_contents(__DIR__."/$store/$docuid.pser"));
   }
   // Sinon Si le fichier n'existe pas renvoie null
-  if (($text = ydread($store, $docuid)) === FALSE)
+  if (($text = ydread($store, $docuid)) === FALSE) {
+    foreach (['odt'=> 'OdtDoc', 'pdf'=> 'PdfDoc'] as $ext => $class) {
+      if (file_exists("$filename.$ext")) {
+        $filename = "$filename.$ext";
+        //echo "filename=$filename<br>\n";
+        return new $class($filename);
+      }
+    }
     return null;
+  }
   // Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
   if (strncmp($text,'<?php', 5)==0) {
     //if (!$docuid)

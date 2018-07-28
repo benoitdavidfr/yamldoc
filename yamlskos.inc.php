@@ -718,7 +718,7 @@ class Concept extends SkosElt {
     if ($this->depiction) {
       echo "<b>depiction:</b><br>";
       foreach ($this->depiction as $imagepath)
-        echo  "<img src='image.php/$imagepath' alt='image $imagepath'>\n";
+        echo  "<img src='file.php/$imagepath' alt='image $imagepath'>\n";
     }
   }
 };

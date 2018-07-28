@@ -6,20 +6,16 @@ functions:
 doc: doc intégrée en Php
 */
 {
-$phpDocs['yamldoc.inc.php'] = <<<'EOT'
+$phpDocs['yamldoc.inc.php']['file'] = <<<'EOT'
 name: yamldoc.inc.php
-title: yamldoc.inc.php - classe abstraite YamlDoc et interface YamlDocElement
+title: yamldoc.inc.php - classes abstraites Doc et YamlDoc et interface YamlDocElement
 doc: |
-  La classe abstraite YamlDoc définit:
-    - 4 méthodes abstraites que chaque sous-classe doit définir
-    - des fonctions génériques utiles aux sous-classes
-    - des méthodes statiques s'appliquant à des fragments structurés comme array Php
-  En plus de définir les 4 méthodes abstraites, une classe héritant de YamlDoc doit aussi
-  soit définir la méthode __get(), soit définir les 6 propriétés suivantes:
-    - $authorizedReaders, $authRd, $authorizedWriters, $authWr
-    - $yamlPassword  
-    - $language  
+  La classe abstraite Doc correspondant à un document affichable.
+  La classe abstraite YamlDoc correspond à un document Yaml.
+  L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal: |
+  28/7/2018:
+  - ajout de la classe abstraite Doc
   26/7/2018:
   - correction d'un bug dans YamlDoc::replaceYDEltByArray()
   25/7/2018:
@@ -33,12 +29,55 @@ EOT;
 
 use Symfony\Component\Yaml\Yaml;
 
-abstract class YamlDoc {
+{
+$phpDocs['yamldoc.inc.php']['classes']['Doc'] = <<<'EOT'
+title: classe abstraite Doc correspondant à un document affichable
+doc: |
+  La classe abstraite YamlDoc définit:
+    - 2 méthodes abstraites que chaque sous-classe doit définir
+    - des fonctions génériques utiles aux sous-classes
+  En plus de définir les 2 méthodes abstraites, une classe héritant de Doc doit aussi
+  soit définir la méthode __get(), soit définir les 6 propriétés suivantes:
+    - $authorizedReaders, $authRd, $authorizedWriters, $authWr
+    - $yamlPassword  
+    - $language  
+EOT;
+}
+
+abstract class Doc {
   // Les méthodes abstraites
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
   abstract function __construct(&$yaml);
+
+  // affiche le sous-élément de l'élément défini par $ypath
+  abstract function show(string $docuid, string $ypath): void;
+  
+  // fonction dump par défaut, dump le document et non le fragment
+  function dump(string $ypath): void { var_dump($this); }
+  
+  // par défaut un document n'est pas un homeCatalog
+  function isHomeCatalog() { return false; }
+};
+
+{
+$phpDocs['yamldoc.inc.php']['classes']['YamlDoc'] = <<<'EOT'
+title: classe abstraite YamlDoc correspond à un document Yaml
+doc: |
+  La classe abstraite YamlDoc définit:
+    - 4 méthodes abstraites que chaque sous-classe doit définir
+    - des fonctions génériques utiles aux sous-classes
+    - des méthodes statiques s'appliquant à des fragments structurés comme array Php
+  En plus de définir les 4 méthodes abstraites, une classe héritant de YamlDoc doit aussi
+  soit définir la méthode __get(), soit définir les 6 propriétés suivantes:
+    - $authorizedReaders, $authRd, $authorizedWriters, $authWr
+    - $yamlPassword  
+    - $language  
+EOT;
+}
+abstract class YamlDoc extends Doc {
+  // Les méthodes abstraites
 
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
@@ -51,9 +90,6 @@ abstract class YamlDoc {
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   abstract function extract(string $ypath);
   
-  // affiche le sous-élément de l'élément défini par $ypath
-  abstract function show(string $docuid, string $ypath): void;
-   
   // Les méthodes concrètes
   
   // extrait le fragment défini par $ypath
@@ -65,12 +101,6 @@ abstract class YamlDoc {
     $fragment = self::replaceYDEltByArray($fragment);
     return $fragment;
   }
-  
-  // fonction dump par défaut, dump le document et non le fragment
-  function dump(string $ypath): void { var_dump($this); }
-  
-  // par défaut un document n'est pas un homeCatalog
-  function isHomeCatalog() { return false; }
   
   // Par défaut aucun .pser n'est produit
   public function writePser(string $store, string $docuid): void { }
@@ -388,10 +418,18 @@ abstract class YamlDoc {
   }
 };
 
-// Declaration de l'interface 'YamlDocElement'
-// Tout élément d'un YamlDoc doit être soit:
-//  - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
-//  - un objet d'une classe conforme à l'interface YamlDocElement
+{
+$phpDocs['yamldoc.inc.php']['classes']['YamlDocElement'] = <<<'EOT'
+title: Declaration de l'interface 'YamlDocElement'
+doc: |
+  Tout élément d'un YamlDoc doit être soit:
+    - un type Php généré par l'analyseur Yaml y compris des objets de type DateTime
+    - un objet d'une classe conforme à l'interface YamlDocElement
+  Un YamlDocElement possède les méthodes:
+  - extract(string $ypath) // extrait le sous-élément de l'élément défini par $ypath
+  - asArray() // décapsule l'objet et retourne son contenu sous la forme d'un array
+EOT;
+}
 interface YamlDocElement {
   // extrait le sous-élément de l'élément défini par $ypath
   // permet de traverser les objets quand on connait son chemin

@@ -96,7 +96,7 @@ phpScripts:
   - /yamldoc/search.php
   - /yamldoc/frag.php
   - /yamldoc/crypt.php
-  - /yamldoc/image.php
+  - /yamldoc/file.php
   - /yamldoc/latest.php
   - /yamldoc/password.php
   - /yamldoc/tpassword.php

@@ -404,7 +404,7 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
   }
   
   try {
-    $doc = new_yamlDoc($_SESSION['store'], $docuid);
+    $doc = new_doc($_SESSION['store'], $docuid);
   }
   catch (ParseException $exception) {
     printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
