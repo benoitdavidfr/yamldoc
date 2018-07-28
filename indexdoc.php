@@ -7,6 +7,8 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale il faut aussi vérifier que tous les docs indexés existent encore.
 journal: |
+  28/7/2018:
+    - ajout possibilité d'utiliser en CLI
   1-2/7/2018:
     - adaptation au multi-store
     - lecture de la liste des stores dans le fichier de configuration
@@ -27,22 +29,32 @@ ini_set('max_execution_time', 600);
 // lecture de la liste des stores dans le fichier de configuration
 $stores = array_keys(config()['stores']);
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
+if (php_sapi_name()<>'cli')
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
 
 if (!function_exists('mysqlParams')) {
   die("L'indexation n'est pas disponible car l'utilisation de MySQL n'a pas été paramétrée.<br>\n"
     ."Pour le paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
 }
 
-if (!isset($_GET['action'])) {
+if ((php_sapi_name()=='cli') && ($argc==1)) {
+  echo "usage: $argv[0] <action>\n";
+  echo "valeurs possibles pour <action>\n";
+  echo "  - global : réindexation globale\n";
+  echo "  - incremental : réindexation incrémentale\n";
+  die();
+}
+elseif ((php_sapi_name()<>'cli') && !isset($_GET['action'])) {
   echo "<ul>",
        "<li><a href='?action=global'>réindexation globale\n",
        "<li><a href='?action=incremental'>réindexation incrémentale\n",
        "</ul>\n";
   die();
 }
+//echo "argc=$argc\n";
+//print_r($argv);
 
-if ($_GET['action']=='global')
+if (php_sapi_name()=='cli' ? $argv[1]=='global' : $_GET['action']=='global')
   Search::globalIndex($stores);
 else
   foreach ($stores as $store)
