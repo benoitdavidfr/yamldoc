@@ -155,6 +155,7 @@ if (!$fragment) {
 }
 if (isset($_GET['format']) && ($_GET['format']=='json')) {
   header('Content-type: application/json');
+  header('Access-Control-Allow-Origin: *');
   echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 }
 else {
