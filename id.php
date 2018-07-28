@@ -152,10 +152,12 @@ if (!$fragment) {
   else
     notFound($store, $index['docid'], $index['ypath']);
 }
-header('Content-type: text/plain');
 if (isset($_GET['format']) && ($_GET['format']=='json')) {
+  header('Content-type: application/json');
   echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 }
-else
+else {
+  header('Content-type: text/plain');
   echo YamlDoc::syaml($fragment);
+}
 die();
