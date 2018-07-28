@@ -16,7 +16,8 @@ doc: |
   Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
 journal: |
   28/7/2018:
-    ajout possibilité de sortie json
+    - ajout possibilité de sortie json
+    - ajout log
   25/7/2018:
     première version minimum
 */
@@ -26,6 +27,10 @@ require_once __DIR__.'/ydclasses.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
+//$verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
+
+// URL de tests
 if (isset($_GET['action']) && ($_GET['action']=='tests')) {
   echo "<h2>Cas de tests directs</h2><ul>\n";
   foreach ([
@@ -75,13 +80,36 @@ function is_doc(string $store, string $docid): bool {
   return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php"));
 }
 
-function notFound(string $store, string $docid, string $ypath='') {
-  header('HTTP/1.1 404 Not Found');
+function error(int $code, string $store, string $docid, string $ypath='') {
+  static $codeErrorLabels = [
+    404 => 'Not Found',
+    500 => 'Internal Server Error',
+  ];
+  if (!isset($codeErrorLabels[$code])) {
+    header('Content-type: text/plain');
+    echo "code d'erreur $code inconnu sur $store/$docid/$ypath\n";
+    die();
+  }
+  header("HTTP/1.1 $code $codeErrorLabels[$code]");
   header('Content-type: text/plain');
-  if ($ypath)
+  if ($code == 500)
+    echo "Erreur: le document $docid du store $store a généré une erreur d'analyse Yaml\n";
+  elseif ($ypath)
     echo "Erreur: le fragment $ypath du document $docid n'existe pas dans le store $store\n";
   else
     echo "Erreur: le document $docid n'existe pas dans $store\n";
+  file_put_contents(
+    'id.log.yaml',
+    YamlDoc::syaml(['error'=> [
+      'date'=> date(DateTime::ATOM),
+      'code'=> $code,
+      'codeErrorLabels'=> isset($codeErrorLabels[$code]) ? $codeErrorLabels[$code] : 'unknown',
+      'store'=> $store,
+      'docid'=> $docid,
+      'ypath'=> $ypath,
+      '_SERVER'=> $_SERVER,
+    ]]),
+    FILE_APPEND);
   die();
 }
 
@@ -96,7 +124,15 @@ else {
 }
 //echo "uri=$uri<br>\n";
 //echo "<pre>_SERVER = "; print_r($_SERVER);
-file_put_contents('id.log.yaml', YamlDoc::syaml(['_SERVER'=>$_SERVER]));
+if ($verbose) {
+  file_put_contents('id.log.yaml', YamlDoc::syaml([
+    'date'=> date(DateTime::ATOM),
+    'uri'=> $uri,
+    '_SERVER'=> $_SERVER,
+    '_GET'=> $_GET,
+  ]));
+}
+
 if (in_array($uri,['','/'])) {
   $docid = 'index';
   $ypath = '';
@@ -122,7 +158,7 @@ else {
   $index = [];
   if (!is_doc($store, $docid)) {
     if (!is_doc($store, $dirpath.'index')) {
-      notFound($store, "$dirpath$docid");
+      error(404, $store, "$dirpath$docid");
     }
     else {
       $index = ['docid'=>$docid, 'ypath'=>$ypath]; // mémorisation
@@ -138,20 +174,17 @@ try {
   $doc = new_yamlDoc($store, $docid);
 }
 catch (ParseException $exception) {
-  header('HTTP/1.1 500 Internal Server Error');
-  header('Content-type: text/plain');
-  echo "Erreur: le document $docid du store $store a généré une erreur d'analyse Yaml\n";
-  die();
+  error(500, $store, $docid);
 }
 
 $fragment = $doc->extractByUri($docid, $ypath);
 if (!$fragment) {
   if (!$index)
-    notFound($store, $docid, $ypath);
+    error(404, $store, $docid, $ypath);
   elseif (in_array($index['ypath'],['','/']))
-    notFound($store, $index['docid']);
+    error(404, $store, $index['docid']);
   else
-    notFound($store, $index['docid'], $index['ypath']);
+    error(404, $store, $index['docid'], $index['ypath']);
 }
 if (isset($_GET['format']) && ($_GET['format']=='json')) {
   header('Content-type: application/json');
