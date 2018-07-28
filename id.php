@@ -96,6 +96,7 @@ else {
 }
 //echo "uri=$uri<br>\n";
 //echo "<pre>_SERVER = "; print_r($_SERVER);
+file_put_contents('id.log.yaml', YamlDoc::syaml(['_SERVER'=>$_SERVER]));
 if (in_array($uri,['','/'])) {
   $docid = 'index';
   $ypath = '';
