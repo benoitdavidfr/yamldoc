@@ -34,6 +34,8 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  29/7/2018:
+    - chgt de logique pour la gestion multi-store, touche pratiquement tout le code
   26/7/2018:
     - correction d'un bug dans YamlDoc::replaceYDEltByArray()
     - correction des méthodes extract() et asArray() de YamlSkos, LegalDoc et DataModel
@@ -91,6 +93,7 @@ sqlDBs:
       voir mysqlparams.inc.php
 phpScripts:
   - /yamldoc/index.php
+  - /yamldoc/id.php
   - /yamldoc/admin.php
   - /yamldoc/indexdoc.php
   - /yamldoc/search.php
@@ -104,10 +107,16 @@ phpScripts:
   - /yamldoc/pasbesoins.php
   - /yamldoc/params.php
   - /yamldoc/testcrypt.php
+  - /yamldoc/tlocation.php
 phpIncludes:
+  - /yamldoc/store.inc.php
   - /yamldoc/yd.inc.php
   - /yamldoc/git.inc.php
   - /yamldoc/mlstring.inc.php
+  - /yamldoc/search.inc.php
+  - /yamldoc/mysqlparams.inc.php
+  - /yamldoc/srvr_name.inc.php
+  - /yamldoc/place.inc.php
   - /yamldoc/ydclasses.inc.php
   - /yamldoc/yamldoc.inc.php
   - /yamldoc/dumbdoc.inc.php
@@ -118,6 +127,7 @@ phpIncludes:
   - /yamldoc/multidata.inc.php
   - /yamldoc/yamlskos.inc.php
   - /yamldoc/datamodel.inc.php
+  - /yamldoc/legaldoc.inc.php
+  - /yamldoc/odtdoc.inc.php
+  - /yamldoc/pdfdoc.inc.php
   - /yamldoc/servreg.inc.php
-  - /yamldoc/search.inc.php
-  - /yamldoc/mysqlparams.inc.php

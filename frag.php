@@ -1,10 +1,11 @@
 <?php
 /*PhpDoc:
 name: frag.php
-title: frag.php - transforme un appel avec un fragid en un appel d'index.php avec doc et ypath
+title: frag.php - transforme un appel avec un fragid en un appel d'index.php avec doc et ypath (périmé)
 doc: |
   utilise header('Location: url') pour effectuer la transformation
 */
+die("script périmé");
 
 $store = $_GET['store'];
 $fragid = explode('/', $_GET['fragid']);

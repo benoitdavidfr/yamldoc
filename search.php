@@ -7,7 +7,6 @@ journal: |
   29/7/2018:
     adaptation à Store
 */
-
 session_start();
 require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/yd.inc.php';
@@ -15,6 +14,7 @@ require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
 if (file_exists(__DIR__.'/mysqlparams.inc.php'))
   require_once __DIR__.'/mysqlparams.inc.php';
+
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
