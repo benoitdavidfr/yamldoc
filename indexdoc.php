@@ -17,6 +17,7 @@ journal: |
   17-18/6/2018:
     - création
 */
+require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
@@ -26,8 +27,8 @@ if (file_exists(__DIR__.'/mysqlparams.inc.php'))
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);
 
-// lecture de la liste des stores dans le fichier de configuration
-$stores = array_keys(config()['stores']);
+// lecture de la liste des stores dans le fichier des stores
+$storeids = array_keys(Store::$definition);
 
 if (php_sapi_name()<>'cli')
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
@@ -55,8 +56,11 @@ elseif ((php_sapi_name()<>'cli') && !isset($_GET['action'])) {
 //print_r($argv);
 
 if (php_sapi_name()=='cli' ? $argv[1]=='global' : $_GET['action']=='global')
-  Search::globalIndex($stores);
-else
-  foreach ($stores as $store)
-    Search::incrIndex($store);
+  Search::globalIndex($storeids);
+else {
+  foreach ($storeids as $storeid) {
+    Store::setStoreid($storeid);
+    Search::incrIndex();
+  }
+}
 die("FIN OK<br>\n");

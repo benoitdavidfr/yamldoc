@@ -3,9 +3,13 @@
 name: search.php
 title: search.php - script de recherche
 doc: |
+journal: |
+  29/7/2018:
+    adaptation à Store
 */
 
 session_start();
+require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 require_once __DIR__.'/search.inc.php';
@@ -73,7 +77,8 @@ while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
   echo "<tr>";
   if ($value)
     printf('<td>%.2f</td>', $tuple['relevance']);
-  echo "<td><a href='index.php?store=$tuple[store]&amp;doc=$tuple[docid]&amp;ypath=$tuple[ypath]'>",
+  $viewerUrl = Store::viewerUrl($tuple['store']);
+  echo "<td><a href='$viewerUrl?doc=$tuple[docid]&amp;ypath=$tuple[ypath]'>",
        "$tuple[docid]$tuple[ypath]</a></td>";
   echo "<td>";
   showDoc($tuple['docid'], $tuple['text']);

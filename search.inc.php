@@ -60,7 +60,7 @@ class Search {
   }
   
   // indexe un fragment élémentaire ($docid, $val)
-  static function indexstring(string $store, string $docid, string $ypath, string $val) {
+  static function indexstring(string $docid, string $ypath, string $val) {
     if (strlen($docid) > 200) {
       echo "docid \"$docid\" trop long non indexé<br>\n";
       return;
@@ -69,14 +69,15 @@ class Search {
       echo "docid \"$ypath\" trop long non indexé<br>\n";
       return;
     }
+    $storeid = Store::id();
     $docid = str_replace(['\\','"'],['\\\\','\"'], $docid);
     $val = str_replace(['\\','"'],['\\\\','\"'], $val);
-    self::query("replace into fragment(store,docid,ypath,text) values('$store', \"$docid\", \"$ypath\", \"$val\")");
+    self::query("replace into fragment(store,docid,ypath,text) values('$storeid', \"$docid\", \"$ypath\", \"$val\")");
   }
 
   // indexe un document ou un fragment
   // Utilise le fait que tout document ou élément implémente asArray()
-  static function indexdoc(string $store, string $docid, string $ypath, $doc) {
+  static function indexdoc(string $docid, string $ypath, $doc) {
     //return;
     //echo "indexdoc($store, $docid)<br>\n";
     //if (true || ($docid=='ZZorganization/misc')) { echo "<pre>doc="; print_r($doc); echo "</pre>\n"; }
@@ -91,19 +92,20 @@ class Search {
     else
       die("erreur dans indexdoc() sur $docid");
     if (is_string($content)) {
-      self::indexstring($store, $docid, $ypath, $content);
+      self::indexstring($docid, $ypath, $content);
       return;
     }
     //if ($docid=='ZZorganization/misc') { echo "<pre>content="; print_r($content); echo "</pre>\n"; }
     foreach ($content as $key => $val) {
       //echo "key=$key<br>\n";
       if (is_string($val))
-        self::indexstring($store, $docid, "$ypath/$key", $val);
+        self::indexstring($docid, "$ypath/$key", $val);
       elseif (is_numeric($val) || is_bool($val) || is_null($val)) {}
       elseif (is_array($val) || is_object($val))
-        self::indexdoc($store, $docid, "$ypath/$key", $val);
+        self::indexdoc($docid, "$ypath/$key", $val);
       else {
-        echo "nothing done for $store $docid $ypath/$key<br>\n";
+        $storeid = Store::id();
+        echo "nothing done for $storeid $docid $ypath/$key<br>\n";
         echo "<pre>val="; var_dump($val); echo "</pre>\n";
         die("FIN ligne ".__LINE__);
       }
@@ -111,19 +113,20 @@ class Search {
   }
 
   // indexe un doc principal cad correspondant à un fichier
-  static function indexMainDoc(bool $global, string $store, string $docid) {
-    echo "indexMainDoc($store, $docid)<br>\n";
-    self::query("replace into document(store,docid,maj,readers) values('$store', \"$docid\", now(), null)");
+  static function indexMainDoc(bool $global, string $docid) {
+    echo "indexMainDoc($docid)<br>\n";
+    $storeid = Store::id();
+    self::query("replace into document(store,docid,maj,readers) values('$storeid', \"$docid\", now(), null)");
     if (!$global)
-      self::query("delete from fragment where store='$store' and docid=\"$docid\"");
+      self::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
     try {
-      $doc = new_yamlDoc($store, $docid);
+      $doc = new_doc($docid);
       if (!$doc)
-        echo "Erreur new_yamlDoc($store, $docid)<br>\n";
-      self::indexdoc($store, $docid, '', $doc);
+        echo "Erreur new_doc($docid)<br>\n";
+      self::indexdoc($docid, '', $doc);
     }
     catch (ParseException $exception) {
-      printf("<b>Analyse YAML erronée sur document %s/%s: %s</b><br>", $store, $docid, $exception->getMessage());
+      printf("<b>Analyse YAML erronée sur document %s/%s: %s</b><br>", $storeid, $docid, $exception->getMessage());
     }
   }
 
@@ -152,8 +155,10 @@ class Search {
   // $$store est le nom du store
   // $ssdir est le chemin relatif d'un répertoire
   // $fileNamePattern est un éventuel motif de nom de fichier
-  static function scanfiles(bool $global, string $store, string $ssdir, string $fileNamePattern) {
-    $dirpath = __DIR__.'/'.$store.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
+  static function scanfiles(bool $global, string $ssdir, string $fileNamePattern) {
+    echo "scanfiles(global=",$global?'true':'false',", ssdir=$ssdir, pattern=$fileNamePattern)<br>\n";
+    $storepath = Store::storepath();
+    $dirpath = __DIR__.'/'.$storepath.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
     if (($wd = opendir($dirpath))===FALSE) {
       echo "Erreur ouverture de $dirpath<br>\n";
       return;
@@ -162,8 +167,8 @@ class Search {
       //echo "$entry a traiter<br>\n";
       if (in_array($entry, ['.','..','.git','.gitignore','.htaccess','.DS_Store']))
         continue;
-      elseif (is_dir("$store/$entry"))
-        self::scanfiles($global, $store, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
+      elseif (is_dir("$storepath/$entry"))
+        self::scanfiles($global, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
       elseif (preg_match('!^(.*)\.(php|pser)$!', $entry))
         continue;
       elseif ($fileNamePattern && !preg_match("!$fileNamePattern!", $entry))
@@ -171,7 +176,7 @@ class Search {
       elseif (preg_match('!^(.*)\.yaml$!', $entry, $matches)) {
         $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
         if ($global || self::isFileNewer("$dirpath/$entry", $docid))
-          self::indexMainDoc($global, $store, $docid);
+          self::indexMainDoc($global, $docid);
       }
       else
         echo "$entry non traite<br>\n";
@@ -180,24 +185,25 @@ class Search {
   }
 
   // indexe de manière incrémentale un store
-  static function incrIndex(string $store, string $ssdir='', string $fileNamePattern='') {
+  static function incrIndex(string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
     self::$currentDocs = [];
-    $result = self::query("select docid, maj from document where store='$store'");
+    $storeid = Store::id();
+    $result = self::query("select docid, maj from document where store='$storeid'");
     while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
       //print_r($tuple); echo "<br>\n";
       self::$currentDocs[$tuple['docid']] = $tuple['maj'];
     }
-    self::scanfiles(false, $store, $ssdir, $fileNamePattern);
+    self::scanfiles(false, $ssdir, $fileNamePattern);
     foreach (self::$currentDocs as $docid => $maj) {
-      self::query("delete from document where store='$store' and docid=\"$docid\"");
-      self::query("delete from fragment where store='$store' and docid=\"$docid\"");
+      self::query("delete from document where store='$storeid' and docid=\"$docid\"");
+      self::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
       echo "Suppression de $docid $maj de l'index plein texte<br>\n";
     }
   }
 
   // indexe tous les documents globalement une liste de store
-  static function globalIndex(array $stores, string $ssdir='', string $fileNamePattern='') {
+  static function globalIndex(array $storeids, string $ssdir='', string $fileNamePattern='') {
     self::openMySQL(mysqlParams());
     foreach (
       [
@@ -222,8 +228,10 @@ class Search {
         DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
       ] as $sql)
         self::query($sql);
-    foreach ($stores as $store)
-      self::scanfiles(true, $store, $ssdir, $fileNamePattern);
+    foreach ($storeids as $storeid) {
+      Store::setStoreid($storeid);
+      self::scanfiles(true, $ssdir, $fileNamePattern);
+    }
     self::query("create fulltext index fragment_fulltext on fragment(text)");
   }
 }

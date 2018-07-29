@@ -22,6 +22,7 @@ journal: |
     première version minimum
 */
 require_once __DIR__.'/yd.inc.php';
+require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
@@ -75,16 +76,18 @@ if (isset($_GET['action']) && ($_GET['action']=='tests')) {
 }
 
 // $docid est-il un doc du store ?
-function is_doc(string $store, string $docid): bool {
-  $filename = __DIR__."/$store/$docid";
+function is_doc(string $docid): bool {
+  $storepath = Store::storepath();
+  $filename = __DIR__."/$storepath/$docid";
   return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php"));
 }
 
-function error(int $code, string $store, string $docid, string $ypath='') {
+function error(int $code, string $docid, string $ypath='') {
   static $codeErrorLabels = [
     404 => 'Not Found',
     500 => 'Internal Server Error',
   ];
+  $storeid = Store::id();
   if (!isset($codeErrorLabels[$code])) {
     header('Content-type: text/plain');
     echo "code d'erreur $code inconnu sur $store/$docid/$ypath\n";
@@ -93,18 +96,18 @@ function error(int $code, string $store, string $docid, string $ypath='') {
   header("HTTP/1.1 $code $codeErrorLabels[$code]");
   header('Content-type: text/plain');
   if ($code == 500)
-    echo "Erreur: le document $docid du store $store a généré une erreur d'analyse Yaml\n";
+    echo "Erreur: le document $docid du store $storeid a généré une erreur d'analyse Yaml\n";
   elseif ($ypath)
-    echo "Erreur: le fragment $ypath du document $docid n'existe pas dans le store $store\n";
+    echo "Erreur: le fragment $ypath du document $docid n'existe pas dans le store $storeid\n";
   else
-    echo "Erreur: le document $docid n'existe pas dans $store\n";
+    echo "Erreur: le document $docid n'existe pas dans $storeid\n";
   file_put_contents(
     'id.log.yaml',
     YamlDoc::syaml(['error'=> [
       'date'=> date(DateTime::ATOM),
       'code'=> $code,
       'codeErrorLabels'=> isset($codeErrorLabels[$code]) ? $codeErrorLabels[$code] : 'unknown',
-      'store'=> $store,
+      'store'=> $storeid,
       'docid'=> $docid,
       'ypath'=> $ypath,
       '_SERVER'=> $_SERVER,
@@ -156,9 +159,9 @@ else {
   $ypath = '/'.implode('/', $ids);
   //echo "docid avant test=$docid<br>\n";
   $index = [];
-  if (!is_doc($store, $docid)) {
-    if (!is_doc($store, $dirpath.'index')) {
-      error(404, $store, "$dirpath$docid");
+  if (!is_doc($docid)) {
+    if (!is_doc($dirpath.'index')) {
+      error(404, "$dirpath$docid");
     }
     else {
       $index = ['docid'=>$docid, 'ypath'=>$ypath]; // mémorisation
@@ -171,20 +174,20 @@ else {
 //echo "docid=$docid<br>\n";
 //echo "ypath=$ypath<br>\n";
 try {
-  $doc = new_yamlDoc($store, $docid);
+  $doc = new_doc($docid);
 }
 catch (ParseException $exception) {
-  error(500, $store, $docid);
+  error(500, $docid);
 }
 
 $fragment = $doc->extractByUri($docid, $ypath);
 if (!$fragment) {
   if (!$index)
-    error(404, $store, $docid, $ypath);
+    error(404, $docid, $ypath);
   elseif (in_array($index['ypath'],['','/']))
-    error(404, $store, $index['docid']);
+    error(404, $index['docid']);
   else
-    error(404, $store, $index['docid'], $index['ypath']);
+    error(404, $index['docid'], $index['ypath']);
 }
 if (isset($_GET['format']) && ($_GET['format']=='json')) {
   header('Content-type: application/json');

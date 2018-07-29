@@ -38,11 +38,12 @@ class YamlCatalog extends BasicYamlDoc {
   
   function show(string $docid, string $ypath): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    if (is_dir(__DIR__."/$_SESSION[store]/$_GET[doc]")) {
+    $storepath = Store::storepath();
+    if (is_dir(__DIR__."/$storepath/$docid")) {
       //echo "$_GET[doc] est un répertoire";
-      $dirname = "$_GET[doc]/";
+      $dirname = "$docid/";
     }
-    elseif (($dirname = dirname($_GET['doc'])) == '.')
+    elseif (($dirname = dirname($docid)) == '.')
       $dirname = '';
     else
       $dirname .= '/';
@@ -70,18 +71,18 @@ class YamlCatalog extends BasicYamlDoc {
   }
   
   // clone un doc dans un catalogue
-  static function clone_in_catalog(string $store, string $newdocuid, string $olddocuid, string $catuid) {
-    $contents = Yaml::parse(ydread($store, $catuid));
+  static function clone_in_catalog(string $newdocuid, string $olddocuid, string $catuid) {
+    $contents = Yaml::parse(ydread($catuid));
     //print_r($contents);
     $title = $contents['contents'][$olddocuid]['title'];
     $contents['contents'][$newdocuid] = ['title'=> "$title cloné $newdocuid" ];
-    ydwrite($store, $catuid, Yaml::dump($contents, 999));
+    ydwrite($catuid, Yaml::dump($contents, 999));
   }
   
-  static function delete_from_catalog(string $store, string $docuid, string $catuid) {
-    $contents = Yaml::parse(ydread($store, $catuid));
+  static function delete_from_catalog(string $docuid, string $catuid) {
+    $contents = Yaml::parse(ydread($catuid));
     unset($contents['contents'][$docuid]);
-    ydwrite($store, $catuid, Yaml::dump($contents, 999));
+    ydwrite($catuid, Yaml::dump($contents, 999));
   }
 };
 

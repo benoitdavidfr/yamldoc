@@ -31,7 +31,7 @@ function git_cmde(string $cmde, array $options=[]): int {
   //echo "getcwd=",getcwd(),"<br>\n";
   $okReturnCodes = isset($options['okReturnCodes']) ? $options['okReturnCodes'] : [0];
   if (!isset($options['src']))  
-    chdir($_SESSION['store']);
+    chdir(Store::storepath());
   exec($cmde, $output, $ret);
   if (!isset($options['src']))
     chdir('..'); // permet d'enchainer plusieurs cmdes
@@ -85,7 +85,7 @@ function git_synchro() {
 
 function git_log(?string $docuid) {
   if ($docuid) {
-    $ext = ydext($_SESSION['store'], $docuid);
+    $ext = ydext($docuid);
     git_cmde("git log -p $docuid.$ext");
   }
   else

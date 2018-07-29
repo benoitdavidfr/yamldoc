@@ -103,11 +103,12 @@ abstract class YamlDoc extends Doc {
   }
   
   // Par défaut aucun .pser n'est produit
-  public function writePser(string $store, string $docuid): void { }
+  public function writePser(string $docuid): void { }
   
   // si une classe crée un .pser, elle doit appeler YamlDoc::writePserReally()
-  protected function writePserReally(string $store, string $docuid): void {
-    $filename = __DIR__."/$store/$docuid";
+  protected function writePserReally(string $docuid): void {
+    $storepath = Store::storepath();
+    $filename = __DIR__."/$storepath/$docuid";
     if (!is_file("$filename.pser")
         || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
         || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))) {
@@ -308,7 +309,7 @@ abstract class YamlDoc extends Doc {
   }
   
   // nest de $data sur $keys
-  static private function nest(array $data, array $keys, string $nestkey) {
+  static function nest(array $data, array $keys, string $nestkey) {
     //return $data;
     $results = [];
     foreach($data as $tuple) {
@@ -348,9 +349,9 @@ abstract class YamlDoc extends Doc {
   }
 
   // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
-  function checkReadAccess(string $store, string $docuid): bool {
+  function checkReadAccess(string $docuid): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
-    if (ydcheckReadAccess($store, $docuid))
+    if (ydcheckReadAccess($docuid))
       return true;
     // Si le document contient un mot de passe
     if ($this->yamlPassword) {
@@ -363,7 +364,7 @@ abstract class YamlDoc extends Doc {
       }
       // sinon  et si il est correct alors retour OK
       if (password_verify($_POST['password'], $this->yamlPassword)) {
-        ydsetReadAccess($store, $docuid);
+        ydsetReadAccess($docuid);
         return true;
       }
       // sinon c'est qu'il est incorrect
@@ -375,7 +376,7 @@ abstract class YamlDoc extends Doc {
     }
     // Si le document ne contient pas de mot de passe
     if ($this->authorizedReader()) {
-      ydsetReadAccess($store, $docuid);
+      ydsetReadAccess($docuid);
       return true;
     }
     else

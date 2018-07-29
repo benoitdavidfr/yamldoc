@@ -17,6 +17,8 @@ doc: |
   Le format interne est stocké dans les fichiers .pser
     
 journal: |
+  28/7/2018:
+  - utilisation de la classe Store pour déterminer le store
   25/7/2018:
   - ajout fabrication pser pour document php
   21/7/2018:
@@ -113,27 +115,12 @@ function dump($string) {
   }
 }
 
-// lecture du fichier de configuration
-function config() {
-  static $config = null;
-  if (!$config) {
-    try {
-      $config = Yaml::parse(@file_get_contents(__DIR__.'/config.yaml'), Yaml::PARSE_DATETIME);
-    }
-    catch (ParseException $exception) {
-      printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());
-      echo "<pre>",file_get_contents(__DIR__.'/config.yaml'),"</pre>\n";
-      die();
-    }
-  }
-  return $config;
-}
-
 // écriture d'un document, prend le store, l'uid et le texte
 // s'il s'agit d'un Php l'extension est php, sinon yaml
-function ydwrite(string $store, string $uid, string $text) {
+function ydwrite(string $uid, string $text) {
+  $storepath = Store::storepath();
   $ext = (strncmp($text,'<?php', 5)==0) ? 'php' : 'yaml';
-  $filename = is_dir(__DIR__."/$store/$uid") ? __DIR__."/$store/$uid/index" : __DIR__."/$store/$uid";
+  $filename = is_dir(__DIR__."/$storepath/$uid") ? __DIR__."/$storepath/$uid/index" : __DIR__."/$storepath/$uid";
   if ($ext == 'php')
     @unlink("$filename.yaml");
   if (file_put_contents("$filename.$ext", $text)===FALSE)
@@ -144,81 +131,90 @@ function ydwrite(string $store, string $uid, string $text) {
 
 // lecture d'un document, prend le store, l'uid et retourne le texte
 // cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
-function ydread(string $store, string $uid) {
+function ydread(string $uid) {
   //echo "ydread($uid)<br>\n";
-  if (($text = @file_get_contents(__DIR__."/$store/$uid.yaml")) !== false)
+  $storepath = Store::storepath();
+  if (($text = @file_get_contents(__DIR__."/$storepath/$uid.yaml")) !== false)
     return $text;
-  if (($text = @file_get_contents(__DIR__."/$store/$uid.php")) !== false)
+  if (($text = @file_get_contents(__DIR__."/$storepath/$uid.php")) !== false)
     return $text;
-  if (is_dir(__DIR__."/$store/$uid")) {
+  if (is_dir(__DIR__."/$storepath/$uid")) {
     //echo "$uid est un répertoire<br>\n";
-    if (($text = @file_get_contents(__DIR__."/$store/$uid/index.yaml")) !== false)
+    if (($text = @file_get_contents(__DIR__."/$storepath/$uid/index.yaml")) !== false)
       return $text;
-    if (($text = @file_get_contents(__DIR__."/$store/$uid/index.php")) !== false)
+    if (($text = @file_get_contents(__DIR__."/$storepath/$uid/index.php")) !== false)
       return $text;
   }
   return false;
 }
 
 // retourne l'extension d'un document
-function ydext(string $store, string $uid): string {
+function ydext(string $uid): string {
   //echo "ydext(string $uid)";
+  $storepath = Store::storepath();
   foreach (['pser','yaml','php'] as $ext)
-    if (is_file(__DIR__."/$store/$uid.pser"))
+    if (is_file(__DIR__."/$storepath/$uid.pser"))
       return $ext;
   return '';
 }
 
 // suppression d'un document, prend son store, uid
-function yddelete(string $store, string $uid) {
-  @unlink(__DIR__."/$store/$uid.pser");
-  return (@unlink(__DIR__."/$store/$uid.yaml") or @unlink(__DIR__."/$store/$uid.php"));
+function yddelete(string $uid) {
+  $storepath = Store::storepath();
+  @unlink(__DIR__."/$storepath/$uid.pser");
+  return (@unlink(__DIR__."/$storepath/$uid.yaml") or @unlink(__DIR__."/$storepath/$uid.php"));
 }
 
 // teste si le docuid a été marqué comme accessible en lecture par ydsetReadAccess()
-function ydcheckReadAccess(string $store, string $docuid): bool {
-  return (isset($_SESSION['checkedReadAccess']) && in_array("$store/$docuid", $_SESSION['checkedReadAccess']));
+function ydcheckReadAccess(string $docuid): bool {
+  $storepath = Store::storepath();
+  return (isset($_SESSION['checkedReadAccess']) && in_array("$storepath/$docuid", $_SESSION['checkedReadAccess']));
 }
 
 // marque le docuid comme accessible en lecture
-function ydsetReadAccess(string $store, string $docuid): void {
+function ydsetReadAccess(string $docuid): void {
   //echo "ydsetReadAccess($docuid)<br>\n";
-  if (!ydcheckReadAccess($store, $docuid))
-    $_SESSION['checkedReadAccess'][] = "$store/$docuid";
+  $storepath = Store::storepath();
+  if (!ydcheckReadAccess($storepath, $docuid))
+    $_SESSION['checkedReadAccess'][] = Store::id()."/$docuid";
 }
 
 // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
-function ydcheckWriteAccessForPhpCode(string $store, string $docuid) {
+function ydcheckWriteAccessForPhpCode(string $docuid) {
+  $storepath = Store::storepath();
+  //echo "storepath=$storepath<br>\n";
   $ydcheckWriteAccessForPhpCode = 1;
-  $authorizedWriters = require "$store/$docuid.php";
+  $authorizedWriters = require "$storepath/$docuid.php";
   //echo "authorizedWriters="; print_r($authorizedWriters);
   $right = (isset($_SESSION['homeCatalog'])
             && is_array($authorizedWriters)
             && in_array($_SESSION['homeCatalog'], $authorizedWriters));
-  ydsetWriteAccess($store, $docuid, $right);
+  ydsetWriteAccess($docuid, $right);
 };
 
 // marque le docuid comme accessible ou non en écriture
-function ydsetWriteAccess(string $store, string $docuid, bool $right): void {
+function ydsetWriteAccess(string $docuid, bool $right): void {
   //echo "ydsetWriteAccess($docuid, ",($right ? 1 : 0),")<br>\n";
-  $_SESSION['checkedWriteAccess']["$store/$docuid"] = ($right ? 1 : 0);
+  $_SESSION['checkedWriteAccess'][Store::id()."/$docuid"] = ($right ? 1 : 0);
 }
 
 // teste si le docuid a été marqué comme accessible en écriture
 // renvoie 1 pour autorisé, 0 pour interdit et -1 pour indéfini
-function ydcheckWriteAccess(string $store, string $docuid): int {
-  return isset($_SESSION['checkedWriteAccess']["$store/$docuid"]) ?
-    $_SESSION['checkedWriteAccess']["$store/$docuid"]
+function ydcheckWriteAccess(string $docuid): int {
+  $storeid = Store::id();
+  return isset($_SESSION['checkedWriteAccess']["$storeid/$docuid"]) ?
+    $_SESSION['checkedWriteAccess']["$storeid/$docuid"]
     : -1;
 }
 
 // !!! je ne vois pas l'intérêt de ce mécanisme de lock !!!
-function ydlock(string $store, string $docuid): bool {
+function ydlock(string $docuid): bool {
   //echo "ydlock($uid)<br>\n";
-  if (file_exists(__DIR__."/$store/$docuid.lock"))
+  $storepath = Store::storepath();
+  if (file_exists(__DIR__."/$storepath/$docuid.lock"))
     return false;
-  file_put_contents(__DIR__."/$store/$docuid.lock", 'lock');
-  $_SESSION['locks'][] = "$store/$docuid";
+  file_put_contents(__DIR__."/$storepath/$docuid.lock", 'lock');
+  $_SESSION['locks'][] = Store::id()."/$docuid";
   return true;
 }
 
@@ -449,18 +445,19 @@ function showDoc(string $docuid, $data, string $prefix=''): void {
 // crée un Doc à partir du store et du docuid du document
 // retourne null si le document n'existe pas
 // génère une exception si le doc n'est pas du Yaml
-function new_doc(string $store, string $docuid): ?Doc {
+function new_doc(string $docuid): ?Doc {
   // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
-  $filename = __DIR__."/$store/$docuid";
+  $storepath = Store::storepath();
+  $filename = __DIR__."/$storepath/$docuid";
   //echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php"))))) {
       //echo "unserialize()<br>\n";
-      return unserialize(@file_get_contents(__DIR__."/$store/$docuid.pser"));
+      return unserialize(@file_get_contents(__DIR__."/$storepath/$docuid.pser"));
   }
   // Sinon Si le fichier n'existe pas renvoie null
-  if (($text = ydread($store, $docuid)) === FALSE) {
+  if (($text = ydread($docuid)) === FALSE) {
     foreach (['odt'=> 'OdtDoc', 'pdf'=> 'PdfDoc'] as $ext => $class) {
       if (file_exists("$filename.$ext")) {
         $filename = "$filename.$ext";
@@ -475,10 +472,11 @@ function new_doc(string $store, string $docuid): ?Doc {
     //if (!$docuid)
       //throw new Exception("Erreur: le paramètre docuid n'est pas défini");
     // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
-    ydcheckWriteAccessForPhpCode($store, $docuid);
+    ydcheckWriteAccessForPhpCode($docuid);
     // exécute le script et renvoie son retour qui doit donc être un YamlDoc ou null
-    $doc = require "$store/$docuid.php";
-    $doc->writePser($store, $docuid);
+    $storepath = Store::storepath();
+    $doc = require "$storepath/$docuid.php";
+    $doc->writePser($docuid);
     return $doc;
   }
   // Sinon parse le texte dans $data
@@ -487,7 +485,7 @@ function new_doc(string $store, string $docuid): ?Doc {
   }
   catch (ParseException $exception) {
     // en cas d'erreur d'analyse Yaml le doc est marqué comme modifiable
-    ydsetWriteAccess($store, string, 1);
+    ydsetWriteAccess($store, $docuid, 1);
     // et je relance l'exception
     throw $exception;
   }
@@ -509,9 +507,9 @@ function new_doc(string $store, string $docuid): ?Doc {
     }
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
-  ydsetWriteAccess($store, $docuid, $doc->authorizedWriter());
+  ydsetWriteAccess($docuid, $doc->authorizedWriter());
   // si prévu j'écris le .pser
-  $doc->writePser($store, $docuid);
+  $doc->writePser($docuid);
   return $doc;
 }
 

@@ -15,6 +15,7 @@ journal: |
     refonte
 */
 require_once __DIR__.'/yd.inc.php';
+require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -28,7 +29,7 @@ if (!isset($_GET['store'])) {
   // affichage du menu
   // lecture de la liste des stores dans le fichier de configuration
   echo "choix du store :<ul>\n";
-  foreach (config()['stores'] as $storeid => $store)
+  foreach (Store::definition() as $storeid => $store)
     echo "<li><a href='?store=$storeid'>$store[title]\n";
   die("</ul>\n");
 }
@@ -38,22 +39,24 @@ $docs = [];
 
 // $docpath est le chemin Unix de la racine des documents
 // $ssdir est le chemin relatif d'un répertoire
-function scan(string $store, string $ssdir='') {
+function scan(string $ssdir='') {
   global $docs;
-  $dirpath = $store.($ssdir ? '/'.$ssdir : '');
+  $storepath = Store::storepath();
+  echo "storepath=$storepath<br>\n";
+  $dirpath = $storepath.($ssdir ? '/'.$ssdir : '');
   $wd = opendir($dirpath);
   while (false !== ($entry = readdir($wd))) {
     //echo "$entry a traiter<br>\n";
     if (in_array($entry, ['.','..','.git','.gitignore','.htaccess']))
       continue;
-    elseif (is_dir($store.($ssdir ? "/$ssdir" : '')."/$entry"))
-      scan($store, $ssdir ? "$ssdir/$entry" : $entry);
+    elseif (is_dir($storepath.($ssdir ? "/$ssdir" : '')."/$entry"))
+      scan($ssdir ? "$ssdir/$entry" : $entry);
     elseif (preg_match('!^(.*)\.(yaml|php)$!', $entry, $matches)) {
       $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
       try {
-        $doc = new_yamlDoc($store, $docid);
+        $doc = new_doc($docid);
         if (!$doc)
-          echo "Erreur new_yamlDoc($store, $docid) ligne ",__LINE__,"<br>\n";
+          echo "Erreur new_doc($docid) ligne ",__LINE__,"<br>\n";
         elseif (get_class($doc)=='YamlData')
           $doc->shrink();
         $docs[$docid]['doc'] = $doc;
@@ -61,11 +64,11 @@ function scan(string $store, string $ssdir='') {
       catch (ParseException $exception) {
         $docs[$docid]['doc'] = null;
         printf("<b>Analyse YAML erronée sur document %s: %s</b><br>", $docid, $exception->getMessage());
-        $docs[$docid]['txt'] = ydread($store, $docid);
+        $docs[$docid]['txt'] = ydread($docid);
       }
       $docs[$docid]['ssdir'] = $ssdir;
       $docs[$docid]['ext'] = $matches[2];
-      $docs[$docid]['size'] = filesize($store.'/'.($ssdir ? "$ssdir/" : '').$entry);
+      $docs[$docid]['size'] = filesize($storepath.'/'.($ssdir ? "$ssdir/" : '').$entry);
     }
     elseif (!preg_match('!^(.*)\.(pser)$!', $entry))
       echo "$entry non traite<br>\n";
@@ -73,24 +76,26 @@ function scan(string $store, string $ssdir='') {
   closedir($wd);
 }
 
-scan($_GET['store']);
+Store::setStoreid($_GET['store']);
+scan();
 
 // enregistrement pour chaque document des catalogues dans lesquels il est référencé
 foreach ($docs as $docid => $doc) {
   if ($doc['doc'] && in_array(get_class($doc['doc']),['YamlCatalog','YamlHomeCatalog'])) {
-    //echo "Catalogue $docid<br>\n";
+    echo "Catalogue $docid<br>\n";
     $ssdir = ($doc['ssdir'] ? $doc['ssdir'].'/' : '');
-    foreach ($doc['doc']->contents as $childId => $d) {
-      //echo "ssdir=$ssdir, childId=$childId<br>\n";
-      if (isset($docs[$ssdir.$childId])) {
-        //echo "le document $ssdir$childId existe bien<br>\n";
-        if (isset($docs[$ssdir.$childId]['catalogs']))
-          $docs[$ssdir.$childId]['catalogs'][] = $docid;
-        else
-          $docs[$ssdir.$childId]['catalogs'] = [ $docid ];
+    if ($doc['doc']->contents)
+      foreach ($doc['doc']->contents as $childId => $d) {
+        //echo "ssdir=$ssdir, childId=$childId<br>\n";
+        if (isset($docs[$ssdir.$childId])) {
+          //echo "le document $ssdir$childId existe bien<br>\n";
+          if (isset($docs[$ssdir.$childId]['catalogs']))
+            $docs[$ssdir.$childId]['catalogs'][] = $docid;
+          else
+            $docs[$ssdir.$childId]['catalogs'] = [ $docid ];
+        }
+        //else echo "le document $ssdir$childId n'existe PAS<br>\n";
       }
-      //else echo "le document $ssdir$childId n'existe PAS<br>\n";
-    }
   }
 }
 //echo "<pre>docs="; print_r($docs);

@@ -38,7 +38,7 @@ class MultiData extends BasicYamlDoc {
     foreach(array_keys($this->data['multi']) as $docid) {
       //echo "<li>$parent_doc/$docid\n";
       $_GET['doc'] = "$parent_doc/$docid";
-      $doc = new_yamldoc($_SESSION['store'], "$parent_doc/$docid");
+      $doc = new_yamldoc("$parent_doc/$docid");
       //$doc->show($ypath);
       $table = $doc->appendTable($table);
     }
