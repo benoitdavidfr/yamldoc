@@ -17,3 +17,4 @@ require_once __DIR__.'/legaldoc.inc.php';
 require_once __DIR__.'/odtdoc.inc.php';
 require_once __DIR__.'/pdfdoc.inc.php';
 require_once __DIR__.'/ydata.inc.php';
+require_once __DIR__.'/geodata.inc.php';

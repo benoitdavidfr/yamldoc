@@ -27,11 +27,13 @@ doc: |
           data: enregistrements contenus dans la table
   Une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
+  Implémente pour URI un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
+  
 journal: |
   29/7/2018:
-  - création dans une branche ydata
   - mécanismes d'accès de base
-  - manque proejction, sélection
+  - manque projection, sélection
+  - manque json-schema
 EOT;
 }
 
@@ -134,7 +136,7 @@ class YData extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  //function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
 };
 
 // contenu d'une table

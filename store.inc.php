@@ -6,7 +6,7 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=store.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['yd.inc.php'] = <<<'EOT'
+$phpDocs['store.inc.php'] = <<<'EOT'
 name: store.inc.php
 title: gestion des store
 doc: |
@@ -24,7 +24,7 @@ doc: |
     3) obtenir de l'URL de l'appli pour un storeid donné et pour l'instance déduite du nom du serveur
        à la différence avec le cas 2, il n'y a pas d'initialisation
   
-  Le cas 1 ne fonctionne en sapi<>'cli' car en cli le nom du serveur n'est pas défini.
+  Le cas 1 fonctionne en sapi<>'cli' car en cli le nom du serveur n'est pas défini.
   Les cas 2 et 3 fonctionnent en sapi=='cli' mais nécessite alors le fichier place.inc.php
   qui définit le lieu d'éxécution.
   

@@ -88,6 +88,7 @@ journal: |
   - première version
 EOT;
 }
+require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__."/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 
