@@ -22,7 +22,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>search</title></head><body>\n";
 //echo "<pre>_SESSION = "; print_r($_SESSION); echo "<pre>";
 
-if (!MySql::available()) {
+if (!file_exists(__DIR__.'/mysqlparams.inc.php')) {
   die("La recherche n'est pas disponible car l'utilisation de MySQL n'a pas été paramétrée.<br>\n"
     ."Pour le paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
 }
@@ -68,6 +68,7 @@ BY Relevance DESC
   
 echo "<pre>sql=$sql</pre>\n";
 echo "<table border=1>\n";
+MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
 foreach (MySql::query($sql) as $tuple) {
   //print_r($tuple); echo "<br>\n";
   echo "<tr>";

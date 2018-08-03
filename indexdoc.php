@@ -31,7 +31,7 @@ $storeids = array_keys(Store::$definition);
 if (php_sapi_name()<>'cli')
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>indexdoc</title></head><body>\n";
 
-if (!MySql::available()) {
+if (!file_exists(__DIR__.'/mysqlparams.inc.php')) {
   die("L'indexation n'est pas disponible car l'utilisation de MySQL n'a pas été paramétrée.<br>\n"
     ."Pour la paramétrer voir le fichier <b>mysqlparams.inc.php.model</b><br>\n");
 }

@@ -48,7 +48,7 @@ journal: |
 EOT;
 }
 require_once __DIR__.'/../ogr2php/feature.inc.php';
-require_once __DIR__.'/mysql.inc.php';
+require_once __DIR__.'/../phplib/mysql.inc.php';
 
 class GeoData extends YamlDoc {
   protected $_c; // contient les champs
@@ -125,6 +125,7 @@ class GeoData extends YamlDoc {
       'features'=> [],
     ];
     $features = [];    
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     foreach(MySql::query($sql) as $tuple) {
       //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
       $feature = new Feature(['properties'=>[], 'geometry'=> Geometry::fromWkt($tuple['geom'])]);

@@ -31,7 +31,7 @@ journal: |
     - création
 EOT;
 }
-require_once __DIR__.'/mysql.inc.php';
+require_once __DIR__.'/../phplib/mysql.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -166,6 +166,7 @@ class Search {
 
   // indexe de manière incrémentale un store
   static function incrIndex(string $ssdir='', string $fileNamePattern='') {
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     self::$currentDocs = [];
     $storeid = Store::id();
     $result = MySql::query("select docid, maj from document where store='$storeid'");
@@ -183,6 +184,7 @@ class Search {
 
   // indexe tous les documents globalement une liste de store
   static function globalIndex(array $storeids, string $ssdir='', string $fileNamePattern='') {
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     foreach (
       [
         "drop table if exists document",

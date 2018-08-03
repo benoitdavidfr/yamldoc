@@ -33,6 +33,8 @@ doc: |
   - intégrer la gestion de mot de passe
   
 journal: |
+  3/8/2018:
+  - modif utilisation MySql
   17/7/2018:
   - traitement des $phpDocs complexes
   - remplacement des méthodes php() par asArray()
@@ -117,7 +119,7 @@ function show_menu(string $store, array $breadcrumb) {
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid$langp'>clone</a></td>\n";
-    if (MySql::available())
+    if (file_exists(__DIR__.'/mysqlparams.inc.php'))
       echo "<td><a href='?action=reindex$docp$langp'>reindex</a></td>\n";
   }
   // dump
@@ -516,12 +518,10 @@ if ($_GET['action']=='checkIntegrity') {
 
 // action reindex - re-indexation incrémentale de tous les fichiers du store courant
 if ($_GET['action']=='reindex') {
-  if (MySql::available()) {
-    Search::incrIndex();
-    die("reindex OK<br>\n");
-  }
-  else
+  if (!file_exists(__DIR__.'/mysqlparams.inc.php'))
     die("reindex impossible, MySql non disponible<br>\n");
+  Search::incrIndex();
+  die("reindex OK<br>\n");
 }
 
 // action showPhpSrc - affiche le source Php d''une requête
