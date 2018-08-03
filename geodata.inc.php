@@ -87,7 +87,17 @@ class GeoData extends YamlDoc {
   function extract(string $ypath) {
     return YamlDoc::sextract($this->_c, $ypath);
   }
-    
+  
+  // retourne le nom de la base MySql dans laquelle les données sont stockées
+  function dbname() {
+    if (!$this->mysql_database)
+      throw new Exception("Erreur dans GeoData::dbname() : champ mysql_database non défini");
+    $mysqlServer = MySql::server();
+    if (!isset($this->mysql_database[$mysqlServer])) 
+      throw new Exception("Erreur dans GeoData::dbname() : champ mysql_database non défini pour $mysqlServer");
+    return $this->mysql_database[$mysqlServer];
+  }
+  
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
     //echo "GeoData::extractByUri($docuri, $ypath)<br>\n";
@@ -119,13 +129,10 @@ class GeoData extends YamlDoc {
     //POLYGON((-3.5667 48.19,-3.566 48.1902,-3.565 48.1899,-3.5667 48.19))
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
-    $sql = "select ST_AsText(geom) geom from route500.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
-    $fcoll = [
-      'type'=> 'FeatureCollection',
-      'features'=> [],
-    ];
-    $features = [];    
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+    $dbname = $this->dbname();
+    $sql = "select ST_AsText(geom) geom from $dbname.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+    $features = [];    
     foreach(MySql::query($sql) as $tuple) {
       //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
       $feature = new Feature(['properties'=>[], 'geometry'=> Geometry::fromWkt($tuple['geom'])]);
