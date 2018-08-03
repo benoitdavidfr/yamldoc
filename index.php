@@ -79,8 +79,6 @@ EOT;
 }
 session_start();
 require_once __DIR__.'/search.inc.php';
-if (file_exists(__DIR__.'/mysqlparams.inc.php'))
-  require_once __DIR__.'/mysqlparams.inc.php';
 require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/ydclasses.inc.php';
@@ -119,7 +117,7 @@ function show_menu(string $store, array $breadcrumb) {
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid$langp'>clone</a></td>\n";
-    if (function_exists('mysqlParams'))
+    if (MySql::available())
       echo "<td><a href='?action=reindex$docp$langp'>reindex</a></td>\n";
   }
   // dump
@@ -518,12 +516,12 @@ if ($_GET['action']=='checkIntegrity') {
 
 // action reindex - re-indexation incrémentale de tous les fichiers du store courant
 if ($_GET['action']=='reindex') {
-  if (function_exists('mysqlParams')) {
+  if (MySql::available()) {
     Search::incrIndex();
     die("reindex OK<br>\n");
   }
   else
-    die("reindex impossible, fonction mysqlParams() non définie<br>\n");
+    die("reindex impossible, MySql non disponible<br>\n");
 }
 
 // action showPhpSrc - affiche le source Php d''une requête

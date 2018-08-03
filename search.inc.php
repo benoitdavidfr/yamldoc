@@ -14,6 +14,8 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal: |
+  3/8/2018:
+    - reorganisation de l'interface MySql
   14/7/2018:
     - redéfinition de la tables SQL fragment pour y dissocier docid et ypath
   1/7/2018:
@@ -29,35 +31,13 @@ journal: |
     - création
 EOT;
 }
+require_once __DIR__.'/mysql.inc.php';
+
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 class Search {
-  static $mysqli=null; // connexion MySQL
   static $currentDocs = []; // en mode incrémental liste des docs avec leur date de mise à jour en base
-
-  // ouvre une connexion avec MySQL, enregistre la variable en variable statique de classe et la renvoie
-  // param sous la forme mysql://{user}:{passwd}@{host}/{database}
-  static function openMySQL(string $param) {
-    if (!preg_match('!^mysql://([^:]+):([^@]+)@([^/]+)/(.*)$!', $param, $matches))
-      throw new Exception("param \"".$param."\" incorrect");
-    //print_r($matches);
-    self::$mysqli = new mysqli($matches[3], $matches[1], $matches[2], $matches[4]);
-    if (mysqli_connect_error())
-  // La ligne ci-dessous ne s'affiche pas correctement si le serveur est arrêté !!!
-  //    throw new Exception("Connexion MySQL impossible pour $server_name : ".mysqli_connect_error());
-      throw new Exception("Connexion MySQL impossible sur $param");
-    if (!self::$mysqli->set_charset ('utf8'))
-      throw new Exception("mysqli->set_charset() impossible : ".self::$mysqli->error);
-    return self::$mysqli;
-  }
-  
-  // exécute une requête MySQL, soulève une exception en cas d'erreur, renvoie le résultat
-  static function query(string $sql) {
-    if (!($result = self::$mysqli->query($sql)))
-      throw new Exception("Req. \"$sql\" invalide: ".self::$mysqli->error);
-    return $result;
-  }
   
   // indexe un fragment élémentaire ($docid, $val)
   static function indexstring(string $docid, string $ypath, string $val) {
@@ -72,7 +52,7 @@ class Search {
     $storeid = Store::id();
     $docid = str_replace(['\\','"'],['\\\\','\"'], $docid);
     $val = str_replace(['\\','"'],['\\\\','\"'], $val);
-    self::query("replace into fragment(store,docid,ypath,text) values('$storeid', \"$docid\", \"$ypath\", \"$val\")");
+    MySql::query("replace into fragment(store,docid,ypath,text) values('$storeid', \"$docid\", \"$ypath\", \"$val\")");
   }
 
   // indexe un document ou un fragment
@@ -116,9 +96,9 @@ class Search {
   static function indexMainDoc(bool $global, string $docid) {
     echo "indexMainDoc($docid)<br>\n";
     $storeid = Store::id();
-    self::query("replace into document(store,docid,maj,readers) values('$storeid', \"$docid\", now(), null)");
+    MySql::query("replace into document(store,docid,maj,readers) values('$storeid', \"$docid\", now(), null)");
     if (!$global)
-      self::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
+      MySql::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
     try {
       $doc = new_doc($docid);
       if (!$doc)
@@ -186,25 +166,23 @@ class Search {
 
   // indexe de manière incrémentale un store
   static function incrIndex(string $ssdir='', string $fileNamePattern='') {
-    self::openMySQL(mysqlParams());
     self::$currentDocs = [];
     $storeid = Store::id();
-    $result = self::query("select docid, maj from document where store='$storeid'");
-    while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
+    $result = MySql::query("select docid, maj from document where store='$storeid'");
+    foreach($result as $tuple) {
       //print_r($tuple); echo "<br>\n";
       self::$currentDocs[$tuple['docid']] = $tuple['maj'];
     }
     self::scanfiles(false, $ssdir, $fileNamePattern);
     foreach (self::$currentDocs as $docid => $maj) {
-      self::query("delete from document where store='$storeid' and docid=\"$docid\"");
-      self::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
+      MySql::query("delete from document where store='$storeid' and docid=\"$docid\"");
+      MySql::query("delete from fragment where store='$storeid' and docid=\"$docid\"");
       echo "Suppression de $docid $maj de l'index plein texte<br>\n";
     }
   }
 
   // indexe tous les documents globalement une liste de store
   static function globalIndex(array $storeids, string $ssdir='', string $fileNamePattern='') {
-    self::openMySQL(mysqlParams());
     foreach (
       [
         "drop table if exists document",
@@ -227,11 +205,11 @@ class Search {
         ) COMMENT = 'fragment'
         DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci",
       ] as $sql)
-        self::query($sql);
+        MySql::query($sql);
     foreach ($storeids as $storeid) {
       Store::setStoreid($storeid);
       self::scanfiles(true, $ssdir, $fileNamePattern);
     }
-    self::query("create fulltext index fragment_fulltext on fragment(text)");
+    MySql::query("create fulltext index fragment_fulltext on fragment(text)");
   }
 }

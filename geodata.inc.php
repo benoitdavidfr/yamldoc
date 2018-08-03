@@ -48,9 +48,9 @@ journal: |
 EOT;
 }
 require_once __DIR__.'/../ogr2php/feature.inc.php';
+require_once __DIR__.'/mysql.inc.php';
 
 class GeoData extends YamlDoc {
-  static $mysqli = null; // handle MySQL
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -113,31 +113,6 @@ class GeoData extends YamlDoc {
     else
       return null;
   }
-  
-  // ouvre une connexion avec MySQL, enregistre la variable en variable statique de classe et la renvoie
-  // param sous la forme mysql://{user}:{passwd}@{host}/{database}
-  static function openMySQL() {
-    require_once __DIR__.'/mysqlparams.inc.php';
-    $param = mysqlParams();
-    if (!preg_match('!^mysql://([^:]+):([^@]+)@([^/]+)/(.*)$!', $param, $matches))
-      throw new Exception("param \"".$param."\" incorrect");
-    //print_r($matches);
-    self::$mysqli = new mysqli($matches[3], $matches[1], $matches[2], $matches[4]);
-    if (mysqli_connect_error())
-  // La ligne ci-dessous ne s'affiche pas correctement si le serveur est arrêté !!!
-  //    throw new Exception("Connexion MySQL impossible pour $server_name : ".mysqli_connect_error());
-      throw new Exception("Connexion MySQL impossible sur $param");
-    if (!self::$mysqli->set_charset ('utf8'))
-      throw new Exception("mysqli->set_charset() impossible : ".self::$mysqli->error);
-    return self::$mysqli;
-  }
-  
-  // exécute une requête MySQL, soulève une exception en cas d'erreur, renvoie le résultat
-  static function query(string $sql) {
-    if (!($result = self::$mysqli->query($sql)))
-      throw new Exception("Req. \"$sql\" invalide: ".self::$mysqli->error);
-    return $result;
-  }
 
   function queryByBbox(string $lyrname, string $bboxstr) {
     //4.8,47,4.9,47.1
@@ -145,15 +120,12 @@ class GeoData extends YamlDoc {
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
     $sql = "select ST_AsText(geom) geom from route500.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
-    //echo "sql=$sql<br>\n";
-    self::openMySQL();
-    $result = self::query($sql);
     $fcoll = [
       'type'=> 'FeatureCollection',
       'features'=> [],
     ];
     $features = [];    
-    while ($tuple = $result->fetch_array(MYSQLI_ASSOC)) {
+    foreach(MySql::query($sql) as $tuple) {
       //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
       $feature = new Feature(['properties'=>[], 'geometry'=> Geometry::fromWkt($tuple['geom'])]);
       //echo "feature=$feature<br>\n";
