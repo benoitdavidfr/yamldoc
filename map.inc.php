@@ -10,6 +10,14 @@ $phpDocs['map.inc.php'] = <<<'EOT'
 name: map.inc.php
 title: map.inc.php - sous-classe de documents pour l'affichage d'une carte Leaflet
 doc: |
+  La carte peut être affichée par appel de son URI suivie de /display
+  Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.
+  Le fichier map-default.yaml est utilisé pour définir une carte par défaut.
+  Cette carte par défaut contient 3 couches de base et 0 overlay.
+  
+  A FAIRE:
+    - afficher les propriétés d'un objet GeoJSON
+    - styler les objets GeoJSON au moins par couche
 journal: |
   5/8/2018:
     - création
@@ -25,20 +33,23 @@ class Map extends YamlDoc {
   // $yaml est généralement un array mais peut aussi être du texte
   function __construct(&$yaml) {
     $defaultParams = Yaml::parse(file_get_contents(__DIR__."/map-default.yaml"), Yaml::PARSE_DATETIME);
-    
     $this->_c = $defaultParams;
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
     if ($this->bases) {
-      foreach ($this->_c['bases'] as $id => $layer) {
+      foreach ($this->bases as $id => $layer) {
         $class = "Leaflet$layer[type]";
+        if (!class_exists($class))
+          throw new Exception("Erreur dans Map::__construct() le type de couche $layer[type] n'est pas autorisé");
         $this->_c['bases'][$id] = new $class($layer, $this->attributions);
       }
     }
     if ($this->overlays) {
       foreach ($this->_c['overlays'] as $id => $layer) {
         $class = "Leaflet$layer[type]";
+        if (!class_exists($class))
+          throw new Exception("Erreur dans Map::__construct() le type de couche $layer[type] n'est pas autorisé");
         $this->_c['overlays'][$id] = new $class($layer, $this->attributions);
       }
     }
