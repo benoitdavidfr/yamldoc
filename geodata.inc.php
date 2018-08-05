@@ -41,8 +41,13 @@ doc: |
       /geodata/route500/noeud_commune?where=nom_comm~BEAUN%
         retourne les objets dont la propriété nom_comm correspond à BEAUNE%
   - /{database}/{layer}/id/{id} : renvoie l'objet d'id {id}
-    
+  
+  A FAIRE:
+  - il faudrait d'un GeoData produise une carte de visualisation de ses couches
+  
 journal: |
+  5/8/2018:
+    - première version opérationnelle
   4/8/2018:
     - optimisation du queryByBbox en temps de traitement
     - le json_encode() consomme beaucoup de mémoire, passage à 2 GB
@@ -102,11 +107,33 @@ class GeoData extends YamlDoc {
     return $this->mysql_database[$mysqlServer];
   }
   
+  // fabrique la carte d'affichage des couches de la base
+  function map(string $docuri) {
+    $yaml = ['title'=> 'carte Route 500'];
+    foreach ($this->layers as $lyrid => $layer) {
+      $yaml['overlays'][$lyrid] = [
+        'title'=> $layer['title'],
+        'type'=> 'UGeoJSONLayer',
+        'endpoint'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
+      ];
+    }
+    $map = new Map($yaml);
+    return $map;
+  }
+  
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
     //echo "GeoData::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
+    elseif ($ypath == '/map') {
+      //echo "fragment '/map'\n";
+      return $this->map($docuri)->asArray();
+    }
+    elseif ($ypath == '/map/display') {
+      $this->map($docuri)->display($docuri);
+      die();
+    }
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
       //echo "accès à la layer $lyrname\n";
@@ -167,13 +194,24 @@ class GeoData extends YamlDoc {
   
   // version optimisée avec sortie par feature
   function queryByBbox(string $lyrname, string $bboxstr) {
-    //4.8,47,4.9,47.1
-    //POLYGON((-3.5667 48.19,-3.566 48.1902,-3.565 48.1899,-3.5667 48.19))
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     $dbname = $this->dbname();
-    $sql = "select ST_AsText(geom) geom from $dbname.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+    if (isset($this->layers[$lyrname]['select'])) {
+      //print_r($this->layers[$lyrname]);
+      //limite_administrative / nature='Limite côtière'
+      if (!preg_match("!^([^ ]+) / (.*)$!", $this->layers[$lyrname]['select'], $matches))
+        throw new Exception("No match on ".$this->layers[$lyrname]['select']);
+      $table = $matches[1];
+      $where = $matches[2];
+    }
+    else {
+      $table = $lyrname;
+      $where = '';
+    }
+    $sql = "select ST_AsText(geom) geom from $dbname.$table";
+    $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";

@@ -208,7 +208,7 @@ if ($verbose) {
       'id.log.yaml',
       YamlDoc::syaml([
         'duration'=> microtime(true) - $t0,
-        'nbFeatures'=> isset($fragment['nbFeatures']) ? $fragment['nbFeatures'] : 'unknown',
+        'nbFeatures'=> (is_array($fragment) && isset($fragment['nbFeatures'])) ? $fragment['nbFeatures'] : 'unknown',
       ]),
       FILE_APPEND
   );

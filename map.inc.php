@@ -16,23 +16,31 @@ journal: |
 EOT;
 }
 
+use Symfony\Component\Yaml\Yaml;
+
 class Map extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
   function __construct(&$yaml) {
-    $this->_c = [];
+    $defaultParams = Yaml::parse(file_get_contents(__DIR__."/map-default.yaml"), Yaml::PARSE_DATETIME);
+    
+    $this->_c = $defaultParams;
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
-    foreach ($this->_c['bases'] as $id => $layer) {
-      $class = "Leaflet$layer[type]";
-      $this->_c['bases'][$id] = new $class($layer, $this->attributions);
+    if ($this->bases) {
+      foreach ($this->_c['bases'] as $id => $layer) {
+        $class = "Leaflet$layer[type]";
+        $this->_c['bases'][$id] = new $class($layer, $this->attributions);
+      }
     }
-    foreach ($this->_c['overlays'] as $id => $layer) {
-      $class = "Leaflet$layer[type]";
-      $this->_c['overlays'][$id] = new $class($layer, $this->attributions);
+    if ($this->overlays) {
+      foreach ($this->_c['overlays'] as $id => $layer) {
+        $class = "Leaflet$layer[type]";
+        $this->_c['overlays'][$id] = new $class($layer, $this->attributions);
+      }
     }
   }
   
@@ -52,7 +60,16 @@ class Map extends YamlDoc {
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
   // Permet de maitriser l'ordre des champs
-  function asArray() { return $this->_c; }
+  function asArray() {
+    $ret = $this->_c;
+    foreach ($ret['bases'] as $lyrid => $layer) {
+      $ret['bases'][$lyrid] = $layer->asArray();
+    }
+    foreach ($ret['overlays'] as $lyrid => $layer) {
+      $ret['overlays'][$lyrid] = $layer->asArray();
+    }
+    return $ret;
+  }
 
   // extrait le fragment du document défini par $ypath
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
@@ -99,14 +116,18 @@ class Map extends YamlDoc {
          "imperial:",$this->scaleControl['imperial']?'true':'false',"}).addTo(map);\n";
          
     echo "var bases = {\n";
-    foreach ($this->bases as $lyrid => $layer) {
-      $layer->showAsCode();
+    if ($this->bases) {
+      foreach ($this->bases as $lyrid => $layer) {
+        $layer->showAsCode();
+      }
     }
     echo "};\n";
          
     echo "var overlays = {\n";
-    foreach ($this->overlays as $lyrid => $layer) {
-      $layer->showAsCode();
+    if ($this->overlays) {
+      foreach ($this->overlays as $lyrid => $layer) {
+        $layer->showAsCode();
+      }
     }
     echo "};\n";
     echo "map.addLayer(bases[\"",$this->bases[$this->addLayer]->title,"\"]);\n";
