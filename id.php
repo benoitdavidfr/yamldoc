@@ -28,8 +28,11 @@ require_once __DIR__.'/ydclasses.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
-//$verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
+//ini_set('memory_limit', '2048M');
+//ini_set('max_execution_time', 600);
+
+//$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
+$verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
 
 // URL de tests
 if (isset($_GET['action']) && ($_GET['action']=='tests')) {
@@ -133,7 +136,9 @@ if ($verbose) {
     'uri'=> $uri,
     '_SERVER'=> $_SERVER,
     '_GET'=> $_GET,
+    '_POST'=> $_POST,
   ]));
+  $t0 = microtime(true);
 }
 
 if (in_array($uri,['','/'])) {
@@ -189,13 +194,23 @@ if (!$fragment) {
   else
     error(404, $index['docid'], $index['ypath']);
 }
-if (isset($_GET['format']) && ($_GET['format']=='json')) {
-  header('Content-type: application/json');
-  header('Access-Control-Allow-Origin: *');
-  echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-}
-else {
+header('Access-Control-Allow-Origin: *');
+if (isset($_GET['format']) && ($_GET['format']=='yaml')) {
   header('Content-type: text/plain');
   echo YamlDoc::syaml($fragment);
+}
+else {
+  header('Content-type: application/json');
+  echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+}
+if ($verbose) {
+  file_put_contents(
+      'id.log.yaml',
+      YamlDoc::syaml([
+        'duration'=> microtime(true) - $t0,
+        'nbFeatures'=> isset($fragment['nbFeatures']) ? $fragment['nbFeatures'] : 'unknown',
+      ]),
+      FILE_APPEND
+  );
 }
 die();

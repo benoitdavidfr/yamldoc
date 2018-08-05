@@ -249,7 +249,7 @@ class CallingGraph {
 }
 
 { // gestion du store
-  if (isset($_GET['store'])) // si le paramètre store est défini alors la variable est reaffectée
+  if (0 && isset($_GET['store'])) // si le paramètre store est défini alors la variable est reaffectée
     Store::setStoreid($_GET['store']);
 }
 

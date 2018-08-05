@@ -43,8 +43,12 @@ doc: |
   - /{database}/{layer}/id/{id} : renvoie l'objet d'id {id}
     
 journal: |
+  4/8/2018:
+    - optimisation du queryByBbox en temps de traitement
+    - le json_encode() consomme beaucoup de mémoire, passage à 2 GB
+    - je pourrais optimiser en générant directement le GeoJSON à la volée sans construire le FeatureCollection
   2/8/2018:
-  - création
+    - création
 EOT;
 }
 require_once __DIR__.'/../ogr2php/feature.inc.php';
@@ -110,6 +114,8 @@ class GeoData extends YamlDoc {
         return null;
       elseif (isset($_GET['bbox']))
         return $this->queryByBbox($lyrname, $_GET['bbox']);
+      elseif (isset($_POST['bbox']))
+        return $this->queryByBbox($lyrname, $_POST['bbox']);
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
       else
@@ -124,6 +130,42 @@ class GeoData extends YamlDoc {
       return null;
   }
 
+  // version non optimisée désactivée
+  function queryByBbox1(string $lyrname, string $bboxstr) {
+    //4.8,47,4.9,47.1
+    //POLYGON((-3.5667 48.19,-3.566 48.1902,-3.565 48.1899,-3.5667 48.19))
+    $bbox = explode(',', $bboxstr);
+    $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+    $dbname = $this->dbname();
+    $sql = "select ST_AsText(geom) geom from $dbname.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+    $features = [];
+    $nbFeatures = 0;
+    foreach(MySql::query($sql) as $tuple) {
+      if (0) {
+        //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
+        $feature = new Feature(['properties'=>[], 'geometry'=> Geometry::fromWkt($tuple['geom'])]);
+        //echo "feature=$feature<br>\n";
+        $features[] = $feature->geojson();
+      }
+      else {
+        $features[] = ['type'=>'Feature', 'properties'=>[], 'geometry'=> self::wkt2geojson($tuple['geom'])];
+      }
+      $nbFeatures++;
+    }
+    if (1) {
+      file_put_contents(
+          'id.log.yaml',
+          YamlDoc::syaml([
+            'version'=> 'sortie optimisée avec json_encode par FeatureCollection',
+          ]),
+          FILE_APPEND
+      );
+    }
+    return ['type'=> 'FeatureCollection', 'features'=> $features, 'nbFeatures'=> $nbFeatures];
+  }
+  
+  // version optimisée avec sortie par feature
   function queryByBbox(string $lyrname, string $bboxstr) {
     //4.8,47,4.9,47.1
     //POLYGON((-3.5667 48.19,-3.566 48.1902,-3.565 48.1899,-3.5667 48.19))
@@ -132,13 +174,125 @@ class GeoData extends YamlDoc {
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     $dbname = $this->dbname();
     $sql = "select ST_AsText(geom) geom from $dbname.$lyrname where MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
-    $features = [];    
+    header('Access-Control-Allow-Origin: *');
+    header('Content-type: application/json');
+    echo '{"type":"FeatureCollection","features": [',"\n";
+    $nbFeatures = 0;
     foreach(MySql::query($sql) as $tuple) {
-      //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
-      $feature = new Feature(['properties'=>[], 'geometry'=> Geometry::fromWkt($tuple['geom'])]);
-      //echo "feature=$feature<br>\n";
-      $features[] = $feature->geojson();
+      $feature = ['type'=>'Feature', 'properties'=>[], 'geometry'=> self::wkt2geojson($tuple['geom'])];
+      if ($nbFeatures <> 0)
+        echo ",\n";
+      echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+      $nbFeatures++;
     }
-    return ['type'=> 'FeatureCollection', 'features'=> $features];
+    echo "],\n\"nbfeatures\": $nbFeatures\n}\n";
+    if (1) {
+      global $t0;
+      file_put_contents(
+          'id.log.yaml',
+          YamlDoc::syaml([
+            'version'=> 'sortie optimisée avec json_encode par feature',
+            'duration'=> microtime(true) - $t0,
+            'nbFeatures'=> $nbFeatures,
+          ]),
+          FILE_APPEND
+      );
+    }
+    die();
+  }
+  
+  // URL de test:
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
+  
+
+  static function wkt2geojson(string $wkt) {
+    //echo "wkt=$wkt<br>\n";
+    if (substr($wkt, 0, 6)=='POINT(') {
+      $wkt = substr($wkt, 6);
+      return ['type'=>'Point', 'coordinates'=> self::parseListPoints($wkt)[0]];
+    }
+    elseif (substr($wkt, 0, 11)=='LINESTRING(') {
+      $wkt = substr($wkt, 11);
+      return ['type'=>'LineString', 'coordinates'=> self::parseListPoints($wkt)];
+    }
+    elseif (substr($wkt, 0, 8)=='POLYGON(') {
+      $wkt = substr($wkt, 8);
+      return ['type'=>'Polygon', 'coordinates'=> self::parsePolygon($wkt)];
+    }
+    elseif (substr($wkt, 0, 13)=='MULTIPOLYGON(') {
+      $wkt = substr($wkt, 13);
+      return ['type'=>'MultiPolygon', 'coordinates'=> self::parseMultiPolygon($wkt)];
+    }
+    else
+      die("erreur GeoData::wkt2geojson(), wkt=$wkt");
+  }
+  
+  // 
+  static function parseMultiPolygon(string &$wkt): array {
+    //echo "parseMultiPolygon($wkt)<br>\n";
+    $geom = [];
+    $n = 0;
+    while ($wkt) {
+      if (substr($wkt, 0, 1)=='(') {
+        $wkt = substr($wkt, 1);
+        $geom[$n] = self::parsePolygon($wkt);
+        $n++;
+        //echo "left parseMultiPolygon 1=$wkt<br>\n";
+        if (substr($wkt, 0, 1) == ',') {
+          $wkt = substr($wkt, 1);
+          //echo "left parseMultiPolygon 2=$wkt<br>\n";
+        }
+      }
+      elseif ($wkt==')')
+        return $geom;
+      else {
+        //echo "left parseMultiPolygon 3=$wkt<br>\n";
+        die("ligne ".__LINE__);
+      }
+    }
+    return $geom;
+  }
+  
+  // consomme une liste de points entourée d'une paire de parenthèses + parenthèse fermante
+  static function parsePolygon(string &$wkt): array {
+    $geom = [];
+    $n = 0;
+    while($wkt) {
+      if (substr($wkt, 0, 1)=='(') {
+        $wkt = substr($wkt, 1);
+        $geom[$n++] = self::parseListPoints($wkt);
+      }
+      elseif (substr($wkt, 0, 3)=='),(') {
+        $wkt = substr($wkt, 3);
+        $geom[$n++] = self::parseListPoints($wkt);
+      }
+      elseif (substr($wkt, 0, 2)=='))') {
+        $wkt = substr($wkt, 2);
+        //echo "left parsePolygon 1=$wkt<br>\n";
+        return $geom;
+      }
+      else {
+        echo "left parsePolygon 2=$wkt<br>\n";
+        die("ligne ".__LINE__);
+      }
+    }
+    echo "left parsePolygon 3=$wkt<br>\n";
+    die("ligne ".__LINE__);
+  }
+  
+  // consomme une liste de points sans parenthèses
+  static function parseListPoints(string &$wkt): array {
+    $points = [];
+    $pattern = '!^(-?\d+(\.\d+)?) (-?\d+(\.\d+)?),?!';
+    while(preg_match($pattern, $wkt, $matches)) {
+      //echo "matches="; print_r($matches); echo "<br>";
+      $points[] = [$matches[1], $matches[3]];
+      $wkt = preg_replace($pattern, '', $wkt, 1);
+    }
+    //echo "left parseListPoints=$wkt<br>\n";
+    return $points;
   }
 };
