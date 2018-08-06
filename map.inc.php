@@ -16,9 +16,10 @@ doc: |
   Cette carte par défaut contient 3 couches de base et 0 overlay.
   
   A FAIRE:
-    - afficher les propriétés d'un objet GeoJSON
     - styler les objets GeoJSON au moins par couche
 journal: |
+  6/8/2018:
+    - affichage des propriétés d'un objet GeoJSON
   5/8/2018:
     - création
 EOT;
@@ -176,7 +177,7 @@ abstract class LeafletLayer implements YamlDocElement {
 };
 
 class LeafletTileLayer extends LeafletLayer {
-  function showAsCode() {
+  function showAsCode(): void {
     echo "  \"$this->title\" : new L.TileLayer(\n";
     echo "    '$this->url',\n";
     echo '    ',json_encode($this->options, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
@@ -185,9 +186,16 @@ class LeafletTileLayer extends LeafletLayer {
 };
 
 class LeafletUGeoJSONLayer extends LeafletLayer {
-  function showAsCode() {
+  function showAsCode(string $style=''): void {
+    //print_r($this);
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
     echo "    endpoint: '$this->endpoint',\n";
+    $popup = "'<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
+    echo "    onEachFeature: function (feature, layer) {\n",
+         "      layer.bindPopup($popup);\n",
+         "    },\n";
+    if ($style)
+      echo "style: ",json_encode($style),",\n";
     echo "    usebbox: true\n";
     echo "  }),\n";
   }

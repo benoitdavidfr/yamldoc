@@ -43,9 +43,12 @@ doc: |
   - /{database}/{layer}/id/{id} : renvoie l'objet d'id {id}
   
   A FAIRE:
-  - il faudrait d'un GeoData produise une carte de visualisation de ses couches
+  - autre requête que bbox ?
+  - id ?
   
 journal: |
+  6/8/2018:
+    - extraction des champs non géométriques
   5/8/2018:
     - première version opérationnelle
   4/8/2018:
@@ -148,6 +151,21 @@ class GeoData extends YamlDoc {
       else
         return ['title'=> $this->layers[$lyrname]['title']];
     }
+    elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
+      $lyrname = $matches[1];
+      //echo "accès à la layer $lyrname\n";
+      MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+      if (!isset($this->layers[$lyrname]))
+        return null;
+      elseif (isset($this->layers[$lyrname]['select'])) {
+        if (!preg_match("!^([^ ]+) / (.*)$!", $this->layers[$lyrname]['select'], $matches))
+          throw new Exception("No match on ".$this->layers[$lyrname]['select']);
+        $table = $matches[1];
+        return $this->properties($table);
+      }
+      else
+        return $this->properties($lyrname);
+    }
     elseif (preg_match('!^/([^/]+)/id/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
       $id = $matches[2];
@@ -157,6 +175,18 @@ class GeoData extends YamlDoc {
       return null;
   }
 
+  // liste des propriétés d'une table hors geom
+  function properties(string $table): array {
+    $fields = [];
+    $dbname = $this->dbname();
+    foreach(MySql::query("describe $dbname.$table") as $tuple) {
+      //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
+      if ($tuple['Type']<>'geometry')
+        $fields[] = $tuple['Field'];
+    }
+    return $fields;
+  }
+  
   // version non optimisée désactivée
   function queryByBbox1(string $lyrname, string $bboxstr) {
     //4.8,47,4.9,47.1
@@ -192,7 +222,16 @@ class GeoData extends YamlDoc {
     return ['type'=> 'FeatureCollection', 'features'=> $features, 'nbFeatures'=> $nbFeatures];
   }
   
+  // URL de test:
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-0.7,47.2,0.8,49.7&zoom=8
+  
+  
   // version optimisée avec sortie par feature
+  // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
   function queryByBbox(string $lyrname, string $bboxstr) {
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
@@ -210,14 +249,24 @@ class GeoData extends YamlDoc {
       $table = $lyrname;
       $where = '';
     }
-    $sql = "select ST_AsText(geom) geom from $dbname.$table";
+    
+    $props = $this->properties($table);
+    if ($props)
+      $props = implode(', ', $props).',';
+    else
+      $props = '';
+    $sql = "select $props ST_AsText(geom) geom from $dbname.$table\n";
     $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+    //echo "sql=$sql<br>\n";
+    //die("FIN ligne ".__LINE__);
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";
     $nbFeatures = 0;
     foreach(MySql::query($sql) as $tuple) {
-      $feature = ['type'=>'Feature', 'properties'=>[], 'geometry'=> self::wkt2geojson($tuple['geom'])];
+      $geom = $tuple['geom'];
+      unset($tuple['geom']);
+      $feature = ['type'=>'Feature', 'properties'=>$tuple, 'geometry'=> self::wkt2geojson($geom)];
       if ($nbFeatures <> 0)
         echo ",\n";
       echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
@@ -239,13 +288,7 @@ class GeoData extends YamlDoc {
     die();
   }
   
-  // URL de test:
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
-  
-
+  // génère à la volée un GeoJSON à partir d'un WKT
   static function wkt2geojson(string $wkt) {
     //echo "wkt=$wkt<br>\n";
     if (substr($wkt, 0, 6)=='POINT(') {
@@ -268,7 +311,7 @@ class GeoData extends YamlDoc {
       die("erreur GeoData::wkt2geojson(), wkt=$wkt");
   }
   
-  // 
+  // traite le MultiPolygon
   static function parseMultiPolygon(string &$wkt): array {
     //echo "parseMultiPolygon($wkt)<br>\n";
     $geom = [];
