@@ -16,10 +16,13 @@ doc: |
   Cette carte par défaut contient 3 couches de base et 0 overlay.
   
   A FAIRE:
-    - styler les objets GeoJSON au moins par couche
+    - définition de couche en fonction du zoom
+    - par exemple troncon_route ou limite_administrative
+  
 journal: |
   6/8/2018:
     - affichage des propriétés d'un objet GeoJSON
+    - stylage des objets GeoJSON par couche et en fonction d'un attribut
   5/8/2018:
     - création
 EOT;
@@ -186,7 +189,7 @@ class LeafletTileLayer extends LeafletLayer {
 };
 
 class LeafletUGeoJSONLayer extends LeafletLayer {
-  function showAsCode(string $style=''): void {
+  function showAsCode(): void {
     //print_r($this);
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
     echo "    endpoint: '$this->endpoint',\n";
@@ -194,8 +197,10 @@ class LeafletUGeoJSONLayer extends LeafletLayer {
     echo "    onEachFeature: function (feature, layer) {\n",
          "      layer.bindPopup($popup);\n",
          "    },\n";
-    if ($style)
-      echo "style: ",json_encode($style),",\n";
+    if ($this->style && is_array($this->style))
+      echo "    style: ",json_encode($this->style),",\n";
+    elseif ($this->style && is_string($this->style))
+      echo "    style: ",$this->style,",\n";
     echo "    usebbox: true\n";
     echo "  }),\n";
   }

@@ -38,19 +38,21 @@ doc: |
     ex:
       /geodata/route500/commune?bbox=4.8,47,4.9,47.1&zoom=12
         retourne les objets inclus dans la boite
-      /geodata/route500/noeud_commune?where=nom_comm~BEAUN%
+      /geodata/route500/noeud_commune?where=nom_comm like 'BEAUN%'
         retourne les objets dont la propriété nom_comm correspond à BEAUNE%
   - /{database}/{layer}/id/{id} : renvoie l'objet d'id {id}
   
   A FAIRE:
-  - autre requête que bbox ?
-  - id ?
+    - gestion des exceptions par renvoi d'un feature d'erreur
   
 journal: |
   6/8/2018:
     - extraction des champs non géométriques
+    - mise en place de sélections d'objets dépendant du zoom
+    - requête where
   5/8/2018:
     - première version opérationnelle
+    - optimisation de la génération GeoJSON à la volée sans construction intermédiaire de FeatureCollection
   4/8/2018:
     - optimisation du queryByBbox en temps de traitement
     - le json_encode() consomme beaucoup de mémoire, passage à 2 GB
@@ -114,11 +116,14 @@ class GeoData extends YamlDoc {
   function map(string $docuri) {
     $yaml = ['title'=> 'carte Route 500'];
     foreach ($this->layers as $lyrid => $layer) {
-      $yaml['overlays'][$lyrid] = [
+      $overlay = [
         'title'=> $layer['title'],
         'type'=> 'UGeoJSONLayer',
         'endpoint'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
       ];
+      if (isset($layer['style']))
+        $overlay['style'] = $layer['style'];
+      $yaml['overlays'][$lyrid] = $overlay;
     }
     $map = new Map($yaml);
     return $map;
@@ -142,10 +147,10 @@ class GeoData extends YamlDoc {
       //echo "accès à la layer $lyrname\n";
       if (!isset($this->layers[$lyrname]))
         return null;
-      elseif (isset($_GET['bbox']))
-        return $this->queryByBbox($lyrname, $_GET['bbox']);
-      elseif (isset($_POST['bbox']))
-        return $this->queryByBbox($lyrname, $_POST['bbox']);
+      elseif (isset($_GET['bbox']) && isset($_GET['zoom']))
+        return $this->queryByBbox($lyrname, $_GET['bbox'], $_GET['zoom']);
+      elseif (isset($_POST['bbox']) && isset($_POST['zoom']))
+        return $this->queryByBbox($lyrname, $_POST['bbox'], $_POST['zoom']);
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
       else
@@ -230,9 +235,26 @@ class GeoData extends YamlDoc {
   // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-0.7,47.2,0.8,49.7&zoom=8
   
   
+  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%'
+
+  function queryByWhere(string $table, string $where) {
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+    $dbname = $this->dbname();
+    $props = $this->properties($table);
+    if ($props)
+      $props = implode(', ', $props).',';
+    else
+      $props = '';
+    $sql = "select $props ST_AsText(geom) geom from $dbname.$table\n";
+    $sql .= " where $where";
+    //echo "sql=$sql<br>\n";
+    //die("FIN ligne ".__LINE__);
+    $this->queryAndPrintInGeoJson($sql);
+  }
+  
   // version optimisée avec sortie par feature
   // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
-  function queryByBbox(string $lyrname, string $bboxstr) {
+  function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
@@ -240,10 +262,37 @@ class GeoData extends YamlDoc {
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
       //limite_administrative / nature='Limite côtière'
-      if (!preg_match("!^([^ ]+) / (.*)$!", $this->layers[$lyrname]['select'], $matches))
-        throw new Exception("No match on ".$this->layers[$lyrname]['select']);
+      if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
+        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
       $table = $matches[1];
-      $where = $matches[2];
+      $where = isset($matches[3]) ? $matches[3] : '';
+    }
+    elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
+      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $select) {
+        if ($zoom >= $zoomMin)
+          break;
+      }
+      if ($zoom < $zoomMin) {
+        header('Access-Control-Allow-Origin: *');
+        header('Content-type: application/json');
+        echo '{"type":"FeatureCollection","features": [],nbfeatures: 0 }',"\n";
+        die();
+      }
+      if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))
+        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$select);
+      $table = $matches[1];
+      $where = isset($matches[3]) ? $matches[3] : '';
+      if (1) {
+        file_put_contents(
+            'id.log.yaml',
+            YamlDoc::syaml([
+              'zoom'=> $zoom,
+              'table'=> $table,
+              'where'=> $where,
+            ]),
+            FILE_APPEND
+        );
+      }
     }
     else {
       $table = $lyrname;
@@ -259,6 +308,11 @@ class GeoData extends YamlDoc {
     $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
     //echo "sql=$sql<br>\n";
     //die("FIN ligne ".__LINE__);
+    $this->queryAndPrintInGeoJson($sql);
+  }
+  
+  // exécution de la requête SQL et traduction du résultat en GeoJSON
+  function queryAndPrintInGeoJson(string $sql) {
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";
