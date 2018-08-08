@@ -81,7 +81,7 @@ class GeoData extends YamlDoc {
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $docid, string $ypath): void {
-    echo "GeoData::show($docid, $ypath)<br>\n";
+    //echo "GeoData::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else
@@ -114,7 +114,7 @@ class GeoData extends YamlDoc {
   
   // fabrique la carte d'affichage des couches de la base
   function map(string $docuri) {
-    $yaml = ['title'=> 'carte Route 500'];
+    $yaml = ['title'=> 'carte '.$this->title];
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
@@ -184,6 +184,7 @@ class GeoData extends YamlDoc {
   function properties(string $table): array {
     $fields = [];
     $dbname = $this->dbname();
+    //echo "describe $dbname.$table\n";
     foreach(MySql::query("describe $dbname.$table") as $tuple) {
       //echo "<pre>tuple="; print_r($tuple); echo "</pre>\n";
       if ($tuple['Type']<>'geometry')
@@ -233,6 +234,8 @@ class GeoData extends YamlDoc {
   // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
   // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
   // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-0.7,47.2,0.8,49.7&zoom=8
+  
+  // http://127.0.0.1/yamldoc/id.php/geodata/ne_110m_physical/coastline?bbox=-95.8,-4.5,101.7,74.5&zoom=3
   
   
   // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%'
@@ -360,6 +363,10 @@ class GeoData extends YamlDoc {
     elseif (substr($wkt, 0, 13)=='MULTIPOLYGON(') {
       $wkt = substr($wkt, 13);
       return ['type'=>'MultiPolygon', 'coordinates'=> self::parseMultiPolygon($wkt)];
+    }
+    elseif (substr($wkt, 0, 16)=='MULTILINESTRING(') {
+      $wkt = substr($wkt, 16);
+      return ['type'=>'MultiLineString', 'coordinates'=> self::parsePolygon($wkt)];
     }
     else
       die("erreur GeoData::wkt2geojson(), wkt=$wkt");
