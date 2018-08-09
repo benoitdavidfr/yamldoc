@@ -87,7 +87,7 @@ elseif (isset($_GET['action'])) {
     foreach ($cap->FeatureTypeList->FeatureType as $FeatureType) {
       echo "<tr><td>",$FeatureType->Name,"</td>";
       //echo "<td>",$FeatureType->Title,"</td>";
-      echo "<td>",$FeatureType->Abstract,"</td>";
+      //echo "<td>",$FeatureType->Abstract,"</td>";
       //echo "<td><pre>"; print_r($FeatureType); echo "</pre></td>\n";
       echo "</tr>\n";
     }

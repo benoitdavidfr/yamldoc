@@ -1,16 +1,37 @@
 <?php
 /*PhpDoc:
 name: wfsserver.inc.php
-title: wfsserver.inc.php - sous-classe de documents pour l'utilisation d'un serveur WFS
+title: wfsserver.inc.php - document définissant un ensemble de couches exposées par un serveur WFS
 functions:
 doc: <a href='/yamldoc/?action=version&name=wfsserver.inc.php'>doc intégrée en Php</a>
 */
 {
 $phpDocs['wfsserver.inc.php'] = <<<'EOT'
 name: wfsserver.inc.php
-title: wfsserver.inc.php - sous-classe de documents pour l'utilisation d'un serveur WFS
+title: wfsserver.inc.php - document définissant un ensemble de couches exposées par un serveur WFS
 doc: |
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+    - urlWfs: fournissant l'URL du serveur à compléter avec les paramètres,
+    - layers: définissant la dictionnaire des couches avec un identifiant et des champs.
+  Chaque couche doit définir les champs suivants:
+    - title: titre de la couche pour un humain dans le contexte du document
+    - abstract (facultatif): résumé de la couche lisible par un humain
+    - select: soit le typename dans le serveur WFS, soit le typename suivi d'un / et d'un critère ECQL
+  Voir par exemple: http://127.0.0.1/yamldoc/id.php/geodata/bdcarto
+  
+  Liste des points d'entrée de l'API:
+  - /{document} : description de la base de données, y compris la liste de ses couches
+  - /{document}/{layer} : description de la couche
+  - /{document}/{layer}?bbox={bbox}&zoom={zoom} : requête sur la couche renvoyant un FeatureCollection
+    ex:
+      /geodata/bdcarto/commune?bbox=4.8,47,4.9,47.1&zoom=12
+        retourne les objets inclus dans la boite
+  - /{document}/map : génère une carte Leaflet standard avec les couches définies par le document
+  - /{document}/map/display : génère le code HTML de la carte Leaflet standard
+
 journal: |
+  9/8/2018:
+    - création
   7/8/2018:
     - création
 EOT;
@@ -54,9 +75,9 @@ class WfsServer extends YamlDoc {
     return YamlDoc::sextract($this->_c, $ypath);
   }
   
-  // fabrique la carte d'affichage des couches de la base
+  // fabrique la carte d'affichage des couches du document
   function map(string $docuri) {
-    $yaml = ['title'=> 'carte WFS GP IGN'];
+    $yaml = ['title'=> 'carte '.$this->title];
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
@@ -75,7 +96,7 @@ class WfsServer extends YamlDoc {
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
-    //echo "GeoData::extractByUri($docuri, $ypath)<br>\n";
+    //echo "WfsServer::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
     elseif ($ypath == '/map') {
@@ -86,6 +107,7 @@ class WfsServer extends YamlDoc {
       $this->map($docuri)->display($docuri);
       die();
     }
+    // accès à la layer /{lyrname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
       //echo "accès à la layer $lyrname\n";
@@ -98,34 +120,12 @@ class WfsServer extends YamlDoc {
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
       else
-        return ['title'=> $this->layers[$lyrname]['title']];
-    }
-    elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
-      $lyrname = $matches[1];
-      //echo "accès à la layer $lyrname\n";
-      MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
-      if (!isset($this->layers[$lyrname]))
-        return null;
-      elseif (isset($this->layers[$lyrname]['select'])) {
-        if (!preg_match("!^([^ ]+) / (.*)$!", $this->layers[$lyrname]['select'], $matches))
-          throw new Exception("No match on ".$this->layers[$lyrname]['select']);
-        $table = $matches[1];
-        return $this->properties($table);
-      }
-      else
-        return $this->properties($lyrname);
-    }
-    elseif (preg_match('!^/([^/]+)/id/([^/]+)$!', $ypath, $matches)) {
-      $lyrname = $matches[1];
-      $id = $matches[2];
-      echo "accès à la layer $lyrname, objet $id\n";
+        return $this->layers[$lyrname];
     }
     else
       return null;
   }
   
-  // http://127.0.0.1/yamldoc/id.php/geodata/adminexpress/ADMINEXPRESS_COG_2018:region?bbox=3.41,48.35,3.50,48.39&zoom=14
-
   // version non optimisée
   function queryByBbox0(string $lyrname, string $bboxstr, string $zoom) {
     $bbox = explode(',', $bboxstr);
@@ -160,23 +160,90 @@ class WfsServer extends YamlDoc {
     die();  
   }
 
+  // http://127.0.0.1/yamldoc/id.php/geodata/bdcarto/coastline?bbox=-2.25,46.90,-2.06,46.98&zoom=13
+  
   // version optimisée
   function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
+    
+    if (isset($this->layers[$lyrname]['select'])) {
+      //print_r($this->layers[$lyrname]);
+      if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
+        throw new Exception("Erreur dans WfsServer::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
+      $typename = $matches[1];
+      $where = isset($matches[3]) ? $matches[3] : '';
+      $this->sendWfsRequest($typename, $where, $bboxstr);
+    }
+    elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
+      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $select) {
+        if ($zoom >= $zoomMin)
+          break;
+      }
+      if ($zoom < $zoomMin) {
+        header('Access-Control-Allow-Origin: *');
+        header('Content-type: application/json');
+        echo '{"type":"FeatureCollection","features": [],nbfeatures: 0 }',"\n";
+        die();
+      }
+      if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))
+        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$select);
+      $typename = $matches[1];
+      $where = isset($matches[3]) ? $matches[3] : '';
+      if (1) {
+        file_put_contents(
+            'id.log.yaml',
+            YamlDoc::syaml([
+              'zoom'=> $zoom,
+              'typename'=> $typename,
+              'where'=> $where,
+            ]),
+            FILE_APPEND
+        );
+      }
+      $this->sendWfsRequest($typename, $where, $bboxstr);
+    }
+    else {
+      throw new Exception("Erreur dans GeoData::queryByBbox() : layer $lyrname mal définie");
+    }
+  }
+  
+  function sendWfsRequest(string $typename, string $where, string $bboxstr) {
+    if (1) {
+      file_put_contents(
+          'id.log.yaml',
+          YamlDoc::syaml([
+            'appel'=> 'WfsServer::sendWfsRequest',
+            'typename'=> $typename,
+            'where'=> $where,
+            'bboxstr'=> $bboxstr,
+          ]),
+          FILE_APPEND
+      );
+    }
     $bbox = explode(',', $bboxstr);
     $bboxwkt = "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
+    $where = utf8_decode($where); // expérimentalement les requêtes doivent être encodées en ISO-8859-1
     $url = $this->urlWfs.'?service=WFS';
     foreach([
       'version'=> '2.0.0',
       'request'=> 'GetFeature',
-      'TYPENAME'=> $lyrname,
+      'typename'=> $typename,
       'outputFormat'=> 'application/json',
-      'srsName'=> 'CRS:84',
-      'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)"),
+      'srsName'=> 'CRS:84', // système de coordonnées nécessaire pour du GeoJSON
+      'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)".($where?" AND $where":'')),
       ] as $k => $v)
         $url .= "&$k=$v";
     $context = stream_context_create(['http'=> ['header'=> "referer: http://gexplor.fr/\r\n"]]);
     header('Content-type: application/json');
     if (!readfile($url, false, $context)) {
+      file_put_contents(
+          'id.log.yaml',
+          YamlDoc::syaml([
+            'erreur'=> "Erreur dans WfsServer::sendWfsRequest() sur readfile()",
+            'bbox'=> $bboxstr,
+            'urlWfs'=> $url,
+          ]),
+          FILE_APPEND
+      );
       throw new Exception("Erreur dans WfsServer::queryByBbox() : sur url=$url");
     }
     if (1) {
@@ -186,6 +253,7 @@ class WfsServer extends YamlDoc {
           YamlDoc::syaml([
             'version'=> 'version optimisée avec readfile',
             'duration'=> microtime(true) - $t0,
+            'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)".($where?" AND $where":'')),
           ]),
           FILE_APPEND
       );

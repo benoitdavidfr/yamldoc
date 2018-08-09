@@ -108,6 +108,7 @@ class Map extends YamlDoc {
   // affiche la carte
   function display(string $docid): void {
     //echo "Map::display($docid)<br>\n";
+    //echo "<pre>_SERVER="; print_r($_SERVER); die();
     echo "<!DOCTYPE HTML><html><head>";
     echo "<title>",$this->title,"</title><meta charset='UTF-8'>\n";
     echo "<!-- meta nécessaire pour le mobile -->\n",
@@ -120,9 +121,11 @@ class Map extends YamlDoc {
       echo "  <script src='$plugin'></script>\n";
     echo "</head>\n";
     echo "<body>\n";
-    echo "  <div id='map' style='height: ",$this->mapStyle['height'],"; width: ",$this->mapStyle['width'],"'></div>\n";
+    echo "  <div id='map' style='height: ",$this->mapStyle['height'],
+         "; width: ",$this->mapStyle['width'],"'></div>\n";
     echo "  <script>\n";
-    echo "var map = L.map('map').setView([",implode(',',$this->view['latlon']),"], ",$this->view['zoom'],"); // view pour la zone\n";
+    echo "var map = L.map('map').setView([",implode(',',$this->view['latlon']),"], ",
+         $this->view['zoom'],"); // view pour la zone\n";
     if ($this->locate)
       echo "map.locate({setView: ",$this->locate['setView']?'true':'false',
            ", maxZoom: ",$this->locate['maxZoom'],"});\n";
@@ -133,7 +136,7 @@ class Map extends YamlDoc {
     echo "var bases = {\n";
     if ($this->bases) {
       foreach ($this->bases as $lyrid => $layer) {
-        $layer->showAsCode();
+        $layer->showAsCode("$docid/$lyrid");
       }
     }
     echo "};\n";
@@ -141,7 +144,7 @@ class Map extends YamlDoc {
     echo "var overlays = {\n";
     if ($this->overlays) {
       foreach ($this->overlays as $lyrid => $layer) {
-        $layer->showAsCode();
+        $layer->showAsCode("$docid/$lyrid");
       }
     }
     echo "};\n";
@@ -179,8 +182,9 @@ abstract class LeafletLayer implements YamlDocElement {
   function show(string $docid, string $prefix='') { showDoc($docid, $this->_c); }
 };
 
+// classe pour couche L.TileLayer
 class LeafletTileLayer extends LeafletLayer {
-  function showAsCode(): void {
+  function showAsCode(string $name): void {
     echo "  \"$this->title\" : new L.TileLayer(\n";
     echo "    '$this->url',\n";
     echo '    ',json_encode($this->options, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
@@ -188,13 +192,26 @@ class LeafletTileLayer extends LeafletLayer {
   }
 };
 
+// classe pour couche L.UGeoJSONLayer
 class LeafletUGeoJSONLayer extends LeafletLayer {
-  function showAsCode(): void {
+  function showAsCode(string $lyrid): void {
     //print_r($this);
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
+    echo "    lyrid: '$lyrid',\n";
+    //echo "    title: '$this->title',\n";
     echo "    endpoint: '$this->endpoint',\n";
-    $popup = "'<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
+    // affichage des propriétés du feature
+    //$popup = "'<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
+    // affichage de la layer (debuggage)
+    //$popup = "'<pre>'+JSON.stringify(layer,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
+    // test d'affichage du lyrid
+    //$popup = "'<b>'+layer.options.lyrid+'</b>'";
+    // affichage lyrid + propriétés
+    $lyrurl = "$this->endpoint?zoom='+map.getZoom()+'";
+    $popup = "'<b><a href=\"$lyrurl\">'+layer.options.lyrid+', zoom='+map.getZoom()+'</a></b><br>'"
+      ."+'<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
     echo "    onEachFeature: function (feature, layer) {\n",
+         //"      console.log(Object.values(layer));\n",
          "      layer.bindPopup($popup);\n",
          "    },\n";
     if ($this->style && is_array($this->style))

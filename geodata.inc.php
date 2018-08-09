@@ -26,8 +26,8 @@ doc: |
   Par exemple la BDTopo est découpée par département. Ce découpage est transparent pour l'utilisation.
   
   Un document GeoData contient:
-    - des métadonénes génériques
-    - des infoss permettant de charger les SHP en bases
+    - des métadonnées génériques
+    - des infos permettant de charger les SHP en base
     - la description des datasets correspondant à un éventuel découpage
     - la description des couches (layers)
 
@@ -154,7 +154,7 @@ class GeoData extends YamlDoc {
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
       else
-        return ['title'=> $this->layers[$lyrname]['title']];
+        return $this->layers[$lyrname];
     }
     elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
       $lyrname = $matches[1];

@@ -20,3 +20,4 @@ require_once __DIR__.'/ydata.inc.php';
 require_once __DIR__.'/geodata.inc.php';
 require_once __DIR__.'/map.inc.php';
 require_once __DIR__.'/wfsserver.inc.php';
+require_once __DIR__.'/mscalegd.inc.php';
