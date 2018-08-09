@@ -119,8 +119,10 @@ class WfsServer extends YamlDoc {
         return $this->queryByBbox($lyrname, $_POST['bbox'], $_POST['zoom']);
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
-      else
-        return $this->layers[$lyrname];
+      else {
+        //echo "<pre>"; print_r($_SERVER);
+        return array_merge(['uri'=>$_SERVER['PATH_INFO']], $this->layers[$lyrname]);
+      }
     }
     else
       return null;

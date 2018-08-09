@@ -154,7 +154,7 @@ class GeoData extends YamlDoc {
       elseif (isset($_GET['where']))
         return $this->queryByWhere($lyrname, $_GET['where']);
       else
-        return $this->layers[$lyrname];
+        return array_merge(['uri'=>$_SERVER['PATH_INFO']], $this->layers[$lyrname]);
     }
     elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
       $lyrname = $matches[1];

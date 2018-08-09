@@ -96,6 +96,18 @@ class MultiScaleGeoData extends YamlDoc {
     return new Map($map);
   }
   
+  function defByZoom(string $lyrname, int $zoom) {
+    $def = null;
+    foreach ($this->layers[$lyrname]['definition'] as $zmin => $zdef) {
+      //echo "$zmin: $zdef\n";
+      if ($zoom >= $zmin) {
+        //echo "$zoom >= $zmin\n";
+        $def = $zdef;
+      }
+    }
+    return $def;
+  }
+  
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
     //echo "GeoData::extractByUri($docuri, $ypath)<br>\n";
@@ -119,21 +131,13 @@ class MultiScaleGeoData extends YamlDoc {
       elseif (isset($_POST['bbox']) && isset($_POST['zoom']))
         return $this->queryByBbox($lyrname, $_POST['bbox'], $_POST['zoom']);
       elseif (isset($_GET['zoom'])) {
-        $def = null;
-        foreach ($this->layers[$lyrname]['definition'] as $zmin => $zdef) {
-          //echo "$zmin: $zdef\n";
-          if ($zoom >= $zmin) {
-            //echo "$zoom >= $zmin\n";
-            $def = $zdef;
-          }
+        if (!($def = $this->defByZoom($lyrname, $_GET['zoom']))) {
+          return $this->layers[$lyrname];
         }
-        //echo "$zoom: $def\n";
-        if ($def) {
-          header("Location: $def?zoom=$zoom");
+        else {
+          header("Location: $def?zoom=$_GET[zoom]");
           die();
         }
-        else
-          return $this->layers[$lyrname];
       }
       else
         return $this->layers[$lyrname];
