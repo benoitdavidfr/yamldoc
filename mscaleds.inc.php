@@ -1,14 +1,14 @@
 <?php
 /*PhpDoc:
-name: mscalegd.inc.php
-title: mscalegd.inc.php - sous-classe de documents pour la gestion des données géographiques multi-échelles
+name: mscaleds.inc.php
+title: mscaleds.inc.php - sous-classe de documents pour la gestion des données géographiques multi-échelles
 functions:
-doc: <a href='/yamldoc/?action=version&name=mscalegd.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=mscaleds.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['mscalegd.inc.php'] = <<<'EOT'
-name: mscalegd.inc.php
-title: mscalegd.inc.php - sous-classe GeoData pour la gestion des données géographiques multi-échelles
+$phpDocs['mscaleds.inc.php'] = <<<'EOT'
+name: mscaleds.inc.php
+title: mscaleds.inc.php - documents décrivant des SD multi-échelles
 doc: |
   objectifs:
     - définir des bases de données géographiques multi-échelles
@@ -37,7 +37,7 @@ journal: |
 EOT;
 }
 
-class MultiScaleGeoData extends YamlDoc {
+class MultiScaleDataset extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml

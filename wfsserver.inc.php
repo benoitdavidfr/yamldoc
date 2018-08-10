@@ -12,11 +12,19 @@ title: wfsserver.inc.php - document définissant un ensemble de couches exposée
 doc: |
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - urlWfs: fournissant l'URL du serveur à compléter avec les paramètres,
-    - layers: définissant la dictionnaire des couches avec un identifiant et des champs.
-  Chaque couche doit définir les champs suivants:
-    - title: titre de la couche pour un humain dans le contexte du document
-    - abstract (facultatif): résumé de la couche lisible par un humain
-    - select: soit le typename dans le serveur WFS, soit le typename suivi d'un / et d'un critère ECQL
+    - layers: définissant le dictionnaire des couches avec un identifiant pour chacune.
+  Une couche peut être définie de 2 manières différentes:
+    - soit par un champ typename qui définit la couche dans le serveur WFS
+    - soit par un champ select de la forme "{lyrname} / {where}" qui définit une sélection dans la couche {lyrname}
+  En outre, une couche:
+    - doit comporter un champ title qui est le titre de la couche pour un humain dans le contexte du document,
+    - peut comporter les champs suivants:
+      - style qui définit le style Leaflet de la couche soit en JSON soit en JavaScript
+      - conformsTo qui définit la spécification de la couche
+  Le champ conformsTo est une extension du JSON Schema avec:
+    - un champ geometryType définit le type de géométrie de chaque feature
+    - chaque propriété peut comporter une description
+    - 
   Voir par exemple: http://127.0.0.1/yamldoc/id.php/geodata/bdcarto
   
   Liste des points d'entrée de l'API:
@@ -30,9 +38,9 @@ doc: |
   - /{document}/map/display : génère le code HTML de la carte Leaflet standard
 
 journal: |
-  9/8/2018:
-    - création
-  7/8/2018:
+  10/8/2018:
+    - chgt structure du document, amélioration documentation
+  7-9/8/2018:
     - création
 EOT;
 }
@@ -167,14 +175,22 @@ class WfsServer extends YamlDoc {
   // version optimisée
   function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
     
-    if (isset($this->layers[$lyrname]['select'])) {
+    // la couche est définie par un typename WFS
+    if (isset($this->layers[$lyrname]['typename'])) {
+      $this->sendWfsRequest($this->layers[$lyrname]['typename'], '', $bboxstr);
+    }
+    // la couche est définie par une sélection dans une autre couche
+    elseif (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
         throw new Exception("Erreur dans WfsServer::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
-      $typename = $matches[1];
+      $lyrname0 = $matches[1];
       $where = isset($matches[3]) ? $matches[3] : '';
-      $this->sendWfsRequest($typename, $where, $bboxstr);
+      if (!isset($this->layers[$lyrname0]) || !isset($this->layers[$lyrname0]['typename']))
+        throw new Exception("Erreur dans WfsServer::queryByBbox() : Dans la définition de la couche $lyrname, la couche $lyrname n'est pas définie par un typename");
+      $this->sendWfsRequest($this->layers[$lyrname0]['typename'], $where, $bboxstr);
     }
+    // à revoir, aucun exemple
     elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
       foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $select) {
         if ($zoom >= $zoomMin)

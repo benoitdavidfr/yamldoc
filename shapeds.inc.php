@@ -1,14 +1,14 @@
 <?php
 /*PhpDoc:
-name: geodata.inc.php
-title: geodata.inc.php - sous-classe de documents pour la gestion des données géographiques
+name: shapeds.inc.php
+title: shapeds.inc.php - document définissant une série de données géo constituéen d'un ensemble de fichiers Shape
 functions:
-doc: <a href='/yamldoc/?action=version&name=geodata.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=shapeds.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['geodata.inc.php'] = <<<'EOT'
-name: geodata.inc.php
-title: geodata.inc.php - sous-classe GeoData pour la gestion des données géographiques
+$phpDocs['shapeds.inc.php'] = <<<'EOT'
+name: shapeds.inc.php
+title: shapeds.inc.php - document définissant une série de données géo constituéen d'un ensemble de fichiers Shape
 doc: |
   objectifs:
     - offrir une API d'accès aux objets géographiques
@@ -28,8 +28,19 @@ doc: |
   Un document GeoData contient:
     - des métadonnées génériques
     - des infos permettant de charger les SHP en base
-    - la description des datasets correspondant à un éventuel découpage
-    - la description des couches (layers)
+    - la description des datasets correspondant à un éventuel découpage (à supprimer)
+    - la description du dictionnaire de couches (layers)
+    
+  Une couche peut être définie de 2 manières différentes:
+    - soit par un champ path qui définit le fichier SHP correspondant, dans ce cas le fichier SHP est chargé
+      dans MySQL dans une table ayant pour nom l'id de la couche,
+    - soit par un champ select de la forme "{lyrname} / {where}" qui définit une sélection dans la table {lyrname}
+  En outre, une couche:
+    - doit comporter un champ title qui est le titre de la couche pour un humain dans le contexte du document,
+    - peut comporter un champ style qui définit le style Leaflet de la couche soit en JSOn soit en JavaScript
+  En outre une couche définie par un path peut comporter un champ selectOnZoom qui est un dictionnaire
+      {zoomMin} : {lyrname} / {where}
+    A un niveau de {zoom} donné, le select sera le dernier pour lequel {zoom} >= {zoomMin}
 
   Liste des points d'entrée de l'API:
   - /{database} : description de la base de données, y compris la liste de ses couches
@@ -46,6 +57,9 @@ doc: |
     - gestion des exceptions par renvoi d'un feature d'erreur
   
 journal: |
+  10/8/2018:
+    - ajout spécification du document
+    - modif selectOnZoom
   6/8/2018:
     - extraction des champs non géométriques
     - mise en place de sélections d'objets dépendant du zoom
@@ -64,7 +78,7 @@ EOT;
 require_once __DIR__.'/../ogr2php/feature.inc.php';
 require_once __DIR__.'/../phplib/mysql.inc.php';
 
-class GeoData extends YamlDoc {
+class ShapeDataset extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -252,7 +266,7 @@ class GeoData extends YamlDoc {
     $sql .= " where $where";
     //echo "sql=$sql<br>\n";
     //die("FIN ligne ".__LINE__);
-    $this->queryAndPrintInGeoJson($sql);
+    $this->queryAndShowInGeoJson($sql);
   }
   
   // version optimisée avec sortie par feature
@@ -262,6 +276,7 @@ class GeoData extends YamlDoc {
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     $dbname = $this->dbname();
+    
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
       //limite_administrative / nature='Limite côtière'
@@ -271,18 +286,19 @@ class GeoData extends YamlDoc {
       $where = isset($matches[3]) ? $matches[3] : '';
     }
     elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
-      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $select) {
+      $select = '';
+      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $selectForZoom) {
         if ($zoom >= $zoomMin)
-          break;
+          $select = $selectForZoom;
       }
-      if ($zoom < $zoomMin) {
+      if (!$select) {
         header('Access-Control-Allow-Origin: *');
         header('Content-type: application/json');
         echo '{"type":"FeatureCollection","features": [],nbfeatures: 0 }',"\n";
         die();
       }
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))
-        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$select);
+        throw new Exception("Erreur dans GeoData::queryByBbox() : expression '".$select."' incorrecte");
       $table = $matches[1];
       $where = isset($matches[3]) ? $matches[3] : '';
       if (1) {
@@ -297,9 +313,12 @@ class GeoData extends YamlDoc {
         );
       }
     }
-    else {
+    elseif (isset($this->layers[$lyrname]['path'])) {
       $table = $lyrname;
       $where = '';
+    }
+    else {
+      throw new Exception("Erreur dans GeoData::queryByBbox() : cas non prévu pour la couche $lyrname");
     }
     
     $props = $this->properties($table);
@@ -311,11 +330,11 @@ class GeoData extends YamlDoc {
     $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
     //echo "sql=$sql<br>\n";
     //die("FIN ligne ".__LINE__);
-    $this->queryAndPrintInGeoJson($sql);
+    $this->queryAndShowInGeoJson($sql);
   }
   
-  // exécution de la requête SQL et traduction du résultat en GeoJSON
-  function queryAndPrintInGeoJson(string $sql) {
+  // exécute la requête SQL et affiche le résultat en GeoJSON
+  function queryAndShowInGeoJson(string $sql) {
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";
