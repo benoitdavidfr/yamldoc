@@ -161,8 +161,12 @@ class ShapeDataset extends YamlDoc {
       //echo "accès à la layer $lyrname\n";
       if (!isset($this->layers[$lyrname]))
         return null;
-      elseif (isset($_GET['bbox']) && isset($_GET['zoom']))
-        return $this->queryByBbox($lyrname, $_GET['bbox'], $_GET['zoom']);
+      elseif (isset($_GET['bbox']) && isset($_GET['zoom'])) {
+        if (($_GET['bbox']=='{bbox}') && ($_GET['zoom']=='{zoom}'))
+          return array_merge(['uri'=>$_SERVER['PATH_INFO']], $this->layers[$lyrname]);
+        else
+          return $this->queryByBbox($lyrname, $_GET['bbox'], $_GET['zoom']);
+      }
       elseif (isset($_POST['bbox']) && isset($_POST['zoom']))
         return $this->queryByBbox($lyrname, $_POST['bbox'], $_POST['zoom']);
       elseif (isset($_GET['where']))
@@ -273,6 +277,10 @@ class ShapeDataset extends YamlDoc {
   // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
   function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
     $bbox = explode(',', $bboxstr);
+    if ((count($bbox)<>4) || !is_numeric($bbox[0]) || !is_numeric($bbox[1]) || !is_numeric($bbox[2]) || !is_numeric($bbox[3]))
+      throw new Exception("Erreur dans ShapeDataset::queryByBbox() : bbox '$bboxstr' incorrect");
+    if (!is_numeric($zoom))
+      throw new Exception("Erreur dans ShapeDataset::queryByBbox() : zoom '$zoom' incorrect");
     $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     $dbname = $this->dbname();
@@ -281,7 +289,7 @@ class ShapeDataset extends YamlDoc {
       //print_r($this->layers[$lyrname]);
       //limite_administrative / nature='Limite côtière'
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
-        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
+        throw new Exception("Erreur dans ShapeDataset::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
       $table = $matches[1];
       $where = isset($matches[3]) ? $matches[3] : '';
     }
@@ -294,7 +302,16 @@ class ShapeDataset extends YamlDoc {
       if (!$select) {
         header('Access-Control-Allow-Origin: *');
         header('Content-type: application/json');
-        echo '{"type":"FeatureCollection","features": [],nbfeatures: 0 }',"\n";
+        echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
+        if (1) {
+          file_put_contents(
+              'id.log.yaml',
+              YamlDoc::syaml([
+                'message'=> "Aucun selectOnZoom défini pour zoom $zoom",
+              ]),
+              FILE_APPEND
+          );
+        }
         die();
       }
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))

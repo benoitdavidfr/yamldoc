@@ -41,7 +41,6 @@ class MultiScaleDataset extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
-  // $yaml est généralement un array mais peut aussi être du texte
   function __construct(&$yaml) {
     $this->_c = [];
     foreach ($yaml as $prop => $value) {
@@ -54,7 +53,7 @@ class MultiScaleDataset extends YamlDoc {
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $docid, string $ypath): void {
-    //echo "GeoData::show($docid, $ypath)<br>\n";
+    //echo "MultiScaleDataset::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else
@@ -63,20 +62,15 @@ class MultiScaleDataset extends YamlDoc {
   }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
-  // ce décapsulage ne s'effectue qu'à un seul niveau
-  // Permet de maitriser l'ordre des champs
   function asArray() { return $this->_c; }
 
   // extrait le fragment du document défini par $ypath
-  // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
-  // Utilisé par YamlDoc::yaml() et YamlDoc::json()
-  // Evite de construire une structure intermédiaire volumineuse avec asArray()
   function extract(string $ypath) {
     return YamlDoc::sextract($this->_c, $ypath);
   }
   
   // fabrique la carte d'affichage des couches de la base
-  function map(string $docuri) {
+  function map(string $docuri): Map {
     $map = ['title'=> 'carte '.$this->title];
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
@@ -96,6 +90,8 @@ class MultiScaleDataset extends YamlDoc {
     return new Map($map);
   }
   
+  // identifie la définition adaptée au zoom
+  // effectue le remplacement de {server} par le nom du serveur courant
   function defByZoom(string $lyrname, int $zoom) {
     $def = null;
     foreach ($this->layers[$lyrname]['definition'] as $zmin => $zdef) {
@@ -105,8 +101,12 @@ class MultiScaleDataset extends YamlDoc {
         $def = $zdef;
       }
     }
+    if ($def && (strncmp($def,'http://{server}/',16)==0))
+      $def = "http://$_SERVER[SERVER_NAME]/".substr($def,16);
     return $def;
   }
+  
+  // http://localhost/yamldoc/id.php/geodata/mscale/coastline?zoom=15
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
@@ -146,24 +146,15 @@ class MultiScaleDataset extends YamlDoc {
       return null;
   }
 
-  // http://127.0.0.1/yamldoc/id.php/geodata/mscalegd/coastline?bbox=-95.8,-4.5,101.7,74.5&zoom=3
+  // http://localhost/yamldoc/id.php/geodata/mscale/coastline?bbox=-95.8,-4.5,101.7,74.5&zoom=3
   
   function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
-    echo "MultiScaleGeoData::queryByBbox\n";
-    $def = null;
-    foreach ($this->layers[$lyrname]['definition'] as $zmin => $zdef) {
-      //echo "$zmin: $zdef\n";
-      if ($zoom >= $zmin) {
-        //echo "$zoom >= $zmin\n";
-        $def = $zdef;
-      }
-    }
-    //echo "$zoom: $def\n";
-    if ($def) {
-      header("Location: $def?bbox=$bboxstr&zoom=$zoom");
-      die();
-    }
-    else
+    echo "MultiScaleGeoData::queryByBbox<br>\n";
+    //echo "<pre>_SERVER="; print_r($_SERVER);
+    if (!($def = $this->defByZoom($lyrname, $zoom)))
       return null;
+    //die("Location: $def?bbox=$bboxstr&zoom=$zoom");
+    header("Location: $def?bbox=$bboxstr&zoom=$zoom");
+    die();
   }
 };
