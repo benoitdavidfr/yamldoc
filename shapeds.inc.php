@@ -57,6 +57,9 @@ doc: |
     - gestion des exceptions par renvoi d'un feature d'erreur
   
 journal: |
+  12/8/2018:
+    - nouvelle optimisation de la génération de GeoJSON à partir d'un WKT nécessaire pour ne_10m_physical/land
+    - tranfert de la conversion WKT -> GeoJSON dans le package geometry
   10/8/2018:
     - ajout spécification du document
     - modif selectOnZoom
@@ -77,6 +80,7 @@ EOT;
 }
 require_once __DIR__.'/../ogr2php/feature.inc.php';
 require_once __DIR__.'/../phplib/mysql.inc.php';
+require_once __DIR__.'/yamldoc.inc.php';
 
 class ShapeDataset extends YamlDoc {
   protected $_c; // contient les champs
@@ -247,16 +251,16 @@ class ShapeDataset extends YamlDoc {
   }
   
   // URL de test:
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-0.7,47.2,0.8,49.7&zoom=8
+  // http://localhost/yamldoc/id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://localhost/yamldoc/id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://localhost/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8
+  // http://localhost/yamldoc/id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70
+  // http://localhost/yamldoc/id.php/geodata/route500/noeud_commune?bbox=-0.7,47.2,0.8,49.7&zoom=8
   
-  // http://127.0.0.1/yamldoc/id.php/geodata/ne_110m_physical/coastline?bbox=-95.8,-4.5,101.7,74.5&zoom=3
+  // http://localhost/yamldoc/id.php/geodata/ne_110m_physical/coastline?bbox=-95.8,-4.5,101.7,74.5&zoom=3
   
   
-  // http://127.0.0.1/yamldoc/id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%'
+  // http://localhost/yamldoc/id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%'
 
   function queryByWhere(string $table, string $where) {
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
@@ -359,7 +363,7 @@ class ShapeDataset extends YamlDoc {
     foreach(MySql::query($sql) as $tuple) {
       $geom = $tuple['geom'];
       unset($tuple['geom']);
-      $feature = ['type'=>'Feature', 'properties'=>$tuple, 'geometry'=> self::wkt2geojson($geom)];
+      $feature = ['type'=>'Feature', 'properties'=>$tuple, 'geometry'=> Wkt2GeoJson::convert($geom)];
       if ($nbFeatures <> 0)
         echo ",\n";
       echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
@@ -379,98 +383,5 @@ class ShapeDataset extends YamlDoc {
       );
     }
     die();
-  }
-  
-  // génère à la volée un GeoJSON à partir d'un WKT
-  static function wkt2geojson(string $wkt) {
-    //echo "wkt=$wkt<br>\n";
-    if (substr($wkt, 0, 6)=='POINT(') {
-      $wkt = substr($wkt, 6);
-      return ['type'=>'Point', 'coordinates'=> self::parseListPoints($wkt)[0]];
-    }
-    elseif (substr($wkt, 0, 11)=='LINESTRING(') {
-      $wkt = substr($wkt, 11);
-      return ['type'=>'LineString', 'coordinates'=> self::parseListPoints($wkt)];
-    }
-    elseif (substr($wkt, 0, 8)=='POLYGON(') {
-      $wkt = substr($wkt, 8);
-      return ['type'=>'Polygon', 'coordinates'=> self::parsePolygon($wkt)];
-    }
-    elseif (substr($wkt, 0, 13)=='MULTIPOLYGON(') {
-      $wkt = substr($wkt, 13);
-      return ['type'=>'MultiPolygon', 'coordinates'=> self::parseMultiPolygon($wkt)];
-    }
-    elseif (substr($wkt, 0, 16)=='MULTILINESTRING(') {
-      $wkt = substr($wkt, 16);
-      return ['type'=>'MultiLineString', 'coordinates'=> self::parsePolygon($wkt)];
-    }
-    else
-      die("erreur GeoData::wkt2geojson(), wkt=$wkt");
-  }
-  
-  // traite le MultiPolygon
-  static function parseMultiPolygon(string &$wkt): array {
-    //echo "parseMultiPolygon($wkt)<br>\n";
-    $geom = [];
-    $n = 0;
-    while ($wkt) {
-      if (substr($wkt, 0, 1)=='(') {
-        $wkt = substr($wkt, 1);
-        $geom[$n] = self::parsePolygon($wkt);
-        $n++;
-        //echo "left parseMultiPolygon 1=$wkt<br>\n";
-        if (substr($wkt, 0, 1) == ',') {
-          $wkt = substr($wkt, 1);
-          //echo "left parseMultiPolygon 2=$wkt<br>\n";
-        }
-      }
-      elseif ($wkt==')')
-        return $geom;
-      else {
-        //echo "left parseMultiPolygon 3=$wkt<br>\n";
-        die("ligne ".__LINE__);
-      }
-    }
-    return $geom;
-  }
-  
-  // consomme une liste de points entourée d'une paire de parenthèses + parenthèse fermante
-  static function parsePolygon(string &$wkt): array {
-    $geom = [];
-    $n = 0;
-    while($wkt) {
-      if (substr($wkt, 0, 1)=='(') {
-        $wkt = substr($wkt, 1);
-        $geom[$n++] = self::parseListPoints($wkt);
-      }
-      elseif (substr($wkt, 0, 3)=='),(') {
-        $wkt = substr($wkt, 3);
-        $geom[$n++] = self::parseListPoints($wkt);
-      }
-      elseif (substr($wkt, 0, 2)=='))') {
-        $wkt = substr($wkt, 2);
-        //echo "left parsePolygon 1=$wkt<br>\n";
-        return $geom;
-      }
-      else {
-        echo "left parsePolygon 2=$wkt<br>\n";
-        die("ligne ".__LINE__);
-      }
-    }
-    echo "left parsePolygon 3=$wkt<br>\n";
-    die("ligne ".__LINE__);
-  }
-  
-  // consomme une liste de points sans parenthèses
-  static function parseListPoints(string &$wkt): array {
-    $points = [];
-    $pattern = '!^(-?\d+(\.\d+)?) (-?\d+(\.\d+)?),?!';
-    while(preg_match($pattern, $wkt, $matches)) {
-      //echo "matches="; print_r($matches); echo "<br>";
-      $points[] = [$matches[1], $matches[3]];
-      $wkt = preg_replace($pattern, '', $wkt, 1);
-    }
-    //echo "left parseListPoints=$wkt<br>\n";
-    return $points;
   }
 };

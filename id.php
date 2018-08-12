@@ -28,8 +28,8 @@ require_once __DIR__.'/ydclasses.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-//ini_set('memory_limit', '2048M');
-//ini_set('max_execution_time', 600);
+ini_set('memory_limit', '2048M');
+ini_set('max_execution_time', 600);
 
 //$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
 $verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
