@@ -13,34 +13,26 @@ doc: |
   objectifs:
     - offrir une API d'accès aux objets géographiques
 
-  Un GeoData est composé de couches. Une couche peut être réelle ou virtuelle.
-  Une couche réelle est constitué d'objets géographiques ayant un schéma commun.
-  Ces objets peuvent être stockés par exemple dans une table MySQL, correspondre à une requête
-  ou être exposés par un web-service externe.
-  Une couche virtuelle correspond à différentes autres couches d'autres bases en fonction du niveau de zoom. 
-  Par exemple, la couche vituelle coastline de la base mult correspond en fonction du zoom aux lignes de côte
-  de Natural Earth, de GéoFLA, de Route 500, de la BDCarto ou de la BD Topo.
-  Les objets géographiques d'une couche virtuelle n'ont pas forcément le même schéma.
-
-  Un GeoData peut être découpé en différents jeux de données (dataset) en fonction du territoire. 
-  Par exemple la BDTopo est découpée par département. Ce découpage est transparent pour l'utilisation.
+  Un ShapeDataset est composé de couches.
+  Une couche est constitué d'objets géographiques ayant un schéma commun.
+  Ces objets peuvent être stockés dans une table MySQL ou correspondre à une requête MySQL.
   
-  Un document GeoData contient:
+  Un document ShapeDataset contient:
     - des métadonnées génériques
     - des infos permettant de charger les SHP en base
-    - la description des datasets correspondant à un éventuel découpage (à supprimer)
     - la description du dictionnaire de couches (layers)
     
   Une couche peut être définie de 2 manières différentes:
-    - soit par un champ path qui définit le fichier SHP correspondant, dans ce cas le fichier SHP est chargé
-      dans MySQL dans une table ayant pour nom l'id de la couche,
+    - soit par un champ path qui définit le (ou les) fichier (s) SHP correspondant, dans ce cas le(s) fichier(s) SHP
+      est(sont) chargé(s) dans MySQL dans la table ayant pour nom l'id de la couche,
     - soit par un champ select de la forme "{lyrname} / {where}" qui définit une sélection dans la table {lyrname}
   En outre, une couche:
     - doit comporter un champ title qui est le titre de la couche pour un humain dans le contexte du document,
     - peut comporter un champ style qui définit le style Leaflet de la couche soit en JSOn soit en JavaScript
-  En outre une couche définie par un path peut comporter un champ selectOnZoom qui est un dictionnaire
-      {zoomMin} : {lyrname} / {where}
-    A un niveau de {zoom} donné, le select sera le dernier pour lequel {zoom} >= {zoomMin}
+  En outre, une couche définie par un path peut comporter un champ filterOnZoom qui est un dictionnaire
+      {zoomMin} : {where} | 'all'
+    A un niveau de {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.
+    Si {filter} == 'all' alors aucune sélection n'est effectuée.
 
   Liste des points d'entrée de l'API:
   - /{database} : description de la base de données, y compris la liste de ses couches
@@ -57,6 +49,10 @@ doc: |
     - gestion des exceptions par renvoi d'un feature d'erreur
   
 journal: |
+  14/8/2018:
+    - ajout possibilité d'afficher des données de l'autre côté de l'anti-méridien
+  13/8/2018:
+    - modif selectOnZoom renommé filterOnZoom
   12/8/2018:
     - nouvelle optimisation de la génération de GeoJSON à partir d'un WKT nécessaire pour ne_10m_physical/land
     - tranfert de la conversion WKT -> GeoJSON dans le package geometry
@@ -277,6 +273,11 @@ class ShapeDataset extends YamlDoc {
     $this->queryAndShowInGeoJson($sql);
   }
   
+  // retourne un polygon WKT à partir d'un bbox [lngMin, latMin, lngMax, latMax]
+  static function bboxWkt(array $bbox) {
+    return "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
+  }
+  
   // version optimisée avec sortie par feature
   // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
   function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
@@ -285,25 +286,25 @@ class ShapeDataset extends YamlDoc {
       throw new Exception("Erreur dans ShapeDataset::queryByBbox() : bbox '$bboxstr' incorrect");
     if (!is_numeric($zoom))
       throw new Exception("Erreur dans ShapeDataset::queryByBbox() : zoom '$zoom' incorrect");
-    $bboxwkt = "POLYGON(($bbox[0] $bbox[1],$bbox[0] $bbox[3],$bbox[2] $bbox[3],$bbox[2] $bbox[1],$bbox[0] $bbox[1]))";
+    $bboxwkt = self::bboxWkt($bbox);
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     $dbname = $this->dbname();
     
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
-      //limite_administrative / nature='Limite côtière'
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
         throw new Exception("Erreur dans ShapeDataset::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
       $table = $matches[1];
       $where = isset($matches[3]) ? $matches[3] : '';
     }
-    elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
-      $select = '';
-      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $selectForZoom) {
+    elseif (isset($this->layers[$lyrname]['filterOnZoom'])) {
+      //echo "<pre>"; print_r($this->layers[$lyrname]);
+      $filter = '';
+      foreach ($this->layers[$lyrname]['filterOnZoom'] as $zoomMin => $filterOnZoom) {
         if ($zoom >= $zoomMin)
-          $select = $selectForZoom;
+          $filter = $filterOnZoom;
       }
-      if (!$select) {
+      if (!$filter) {
         header('Access-Control-Allow-Origin: *');
         header('Content-type: application/json');
         echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
@@ -311,18 +312,16 @@ class ShapeDataset extends YamlDoc {
           file_put_contents(
               'id.log.yaml',
               YamlDoc::syaml([
-                'message'=> "Aucun selectOnZoom défini pour zoom $zoom",
+                'message'=> "Aucun filterOnZoom défini pour zoom $zoom",
               ]),
               FILE_APPEND
           );
         }
         die();
       }
-      if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))
-        throw new Exception("Erreur dans GeoData::queryByBbox() : expression '".$select."' incorrecte");
-      $table = $matches[1];
-      $where = isset($matches[3]) ? $matches[3] : '';
-      if (1) {
+      $table = $lyrname;
+      $where = $filter <> 'all' ? $filter : '';
+      if (1) { // log 
         file_put_contents(
             'id.log.yaml',
             YamlDoc::syaml([
@@ -351,26 +350,47 @@ class ShapeDataset extends YamlDoc {
     $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
     //echo "sql=$sql<br>\n";
     //die("FIN ligne ".__LINE__);
-    $this->queryAndShowInGeoJson($sql);
+    $sqls = [$sql, null, null];
+    if ($bbox[2] > 180.0) { // la requête coupe l'antiméridien
+      $bbox2 = [$bbox[0] - 360.0, $bbox[1], $bbox[2] - 360.0, $bbox[3]];
+      $bboxwkt2 = self::bboxWkt($bbox2);
+      $sql = "select $props ST_AsText(geom) geom from $dbname.$table\n";
+      $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt2'))";
+      $sqls[1] = $sql;
+    }
+    if ($bbox[0] < -180.0) { // la requête coupe l'antiméridien
+      $bbox2 = [$bbox[0] + 360.0, $bbox[1], $bbox[2] + 360.0, $bbox[3]];
+      $bboxwkt2 = self::bboxWkt($bbox2);
+      $sql = "select $props ST_AsText(geom) geom from $dbname.$table\n";
+      $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt2'))";
+      $sqls[2] = $sql;
+    }
+    
+    $this->queryAndShowInGeoJson($sqls);
   }
   
-  // exécute la requête SQL et affiche le résultat en GeoJSON
-  function queryAndShowInGeoJson(string $sql) {
+  // exécute les requêtes SQL et affiche le résultat en GeoJSON
+  function queryAndShowInGeoJson(array $sqls) {
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";
     $nbFeatures = 0;
-    foreach(MySql::query($sql) as $tuple) {
-      $geom = $tuple['geom'];
-      unset($tuple['geom']);
-      $feature = ['type'=>'Feature', 'properties'=>$tuple, 'geometry'=> Wkt2GeoJson::convert($geom)];
-      if ($nbFeatures <> 0)
-        echo ",\n";
-      echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-      $nbFeatures++;
+    foreach ($sqls as $n => $sql) {
+      if (!$sql)
+        continue;
+      $shift = ($n == 0 ? 0.0 : ($n == 1 ? +360.0 : -360.0));
+      foreach(MySql::query($sql) as $tuple) {
+        $geom = $tuple['geom'];
+        unset($tuple['geom']);
+        $feature = ['type'=>'Feature', 'properties'=>$tuple, 'geometry'=> Wkt2GeoJson::convert($geom, $shift)];
+        if ($nbFeatures <> 0)
+          echo ",\n";
+        echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        $nbFeatures++;
+      }
     }
     echo "],\n\"nbfeatures\": $nbFeatures\n}\n";
-    if (1) {
+    if (1) { // log
       global $t0;
       file_put_contents(
           'id.log.yaml',
