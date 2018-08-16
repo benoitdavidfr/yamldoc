@@ -1,51 +1,54 @@
 <?php
 /*PhpDoc:
 name: wfsserver.inc.php
-title: wfsserver.inc.php - document définissant un ensemble de couches exposées par un serveur WFS
+title: wfsserver.inc.php - document correspondant à un serveur WFS
 functions:
 doc: <a href='/yamldoc/?action=version&name=wfsserver.inc.php'>doc intégrée en Php</a>
 */
 {
 $phpDocs['wfsserver.inc.php'] = <<<'EOT'
 name: wfsserver.inc.php
-title: wfsserver.inc.php - document définissant un ensemble de couches exposées par un serveur WFS
+title: wfsserver.inc.php - document correspondant à un serveur WFS
 doc: |
+  La classe WfsServer expose différentes méthodes utilisant un serveur WFS.
+  
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - urlWfs: fournissant l'URL du serveur à compléter avec les paramètres,
-    - layers: définissant le dictionnaire des couches avec un identifiant pour chacune.
-  Une couche peut être définie de 2 manières différentes:
-    - soit par un champ typename qui définit la couche dans le serveur WFS
-    - soit par un champ select de la forme "{lyrname} / {where}" qui définit une sélection dans la couche {lyrname}
-  En outre, une couche:
-    - doit comporter un champ title qui est le titre de la couche pour un humain dans le contexte du document,
-    - peut comporter les champs suivants:
-      - style qui définit le style Leaflet de la couche soit en JSON soit en JavaScript
-      - conformsTo qui définit la spécification de la couche
-  Le champ conformsTo est une extension du JSON Schema avec:
-    - un champ geometryType définit le type de géométrie de chaque feature
-    - chaque propriété peut comporter une description
-    - 
-  Voir par exemple: http://127.0.0.1/yamldoc/id.php/geodata/bdcarto
-  
-  Liste des points d'entrée de l'API:
-  - /{document} : description de la base de données, y compris la liste de ses couches
-  - /{document}/{layer} : description de la couche
-  - /{document}/{layer}?bbox={bbox}&zoom={zoom} : requête sur la couche renvoyant un FeatureCollection
-    ex:
-      /geodata/bdcarto/commune?bbox=4.8,47,4.9,47.1&zoom=12
-        retourne les objets inclus dans la boite
-  - /{document}/map : génère une carte Leaflet standard avec les couches définies par le document
-  - /{document}/map/display : génère le code HTML de la carte Leaflet standard
+  Il peut aussi définir les champs suivants:
+    - referer: définissant le referer à transmettre à chaque appel du serveur.
 
+  Liste des points d'entrée de l'API:
+    - /{document} : description du serveur
+    - /{document}/getCapabilities : lecture des capacités du serveur et renvoi en XML, rafraichit le cache
+    - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
+    - /{document}/t : liste en JSON les couches
+    - /{document}/t/{typeName} : description de la couche en JSON
+    - /{document}/t/{typeName}/numberMatched?bbox={bbox}&where={where} : renvoi du nbre d'objets
+      correspondant à la requête définie par bbox et where,
+      where est encodé en UTF-8
+    - /{document}/t/{typeName}/getFeature?bbox={bbox}&where={where} : affiche en GeoJSON les objets
+      correspondant à la requête définie par bbox et where, limité à 1000 objets
+    - /{document}/t/{typeName}/getAllFeatures?bbox={bbox}&where={where} : affiche en GeoJSON les objets
+      correspondant à la requête définie par bbox et where, utilise la pagination si plus de 1000 objets
+    
+  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester cette classe.
+  
 journal: |
-  10/8/2018:
-    - chgt structure du document, amélioration documentation
-  7-9/8/2018:
+  15/8/2018:
     - création
 EOT;
 }
 
+require_once __DIR__.'/yd.inc.php';
+require_once __DIR__.'/store.inc.php';
+require_once __DIR__.'/ydclasses.inc.php';
+
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
+
+// classe simplifiant l'envoi de requêtes WFS
 class WfsServer extends YamlDoc {
+  static $log = '/wfs.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -71,211 +74,226 @@ class WfsServer extends YamlDoc {
   }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
-  // ce décapsulage ne s'effectue qu'à un seul niveau
-  // Permet de maitriser l'ordre des champs
   function asArray() { return $this->_c; }
 
   // extrait le fragment du document défini par $ypath
-  // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
-  // Utilisé par YamlDoc::yaml() et YamlDoc::json()
-  // Evite de construire une structure intermédiaire volumineuse avec asArray()
-  function extract(string $ypath) {
-    return YamlDoc::sextract($this->_c, $ypath);
+  function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
+  
+  // retourne bbox [lngMin, latMin, lngMax, latMax] à partir d'un bbox sous forme de chaine
+  static function decodeBbox(string $bboxstr): array {
+    if (!$bboxstr)
+      return [];
+    $bbox = explode(',', $bboxstr);
+    if ((count($bbox)<>4) || !is_numeric($bbox[0]) || !is_numeric($bbox[1]) || !is_numeric($bbox[2]) || !is_numeric($bbox[3]))
+      throw new Exception("Erreur dans WfsServer::decodeBbox() : bbox '$bboxstr' incorrect");
+    return $bbox;
   }
   
-  // fabrique la carte d'affichage des couches du document
-  function map(string $docuri) {
-    $yaml = ['title'=> 'carte '.$this->title];
-    foreach ($this->layers as $lyrid => $layer) {
-      $overlay = [
-        'title'=> $layer['title'],
-        'type'=> 'UGeoJSONLayer',
-        'endpoint'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
-      ];
-      if (isset($layer['style']))
-        $overlay['style'] = $layer['style'];
-      $yaml['overlays'][$lyrid] = $overlay;
-    }
-    $map = new Map($yaml);
-    return $map;
+  // retourne un polygon WKT EPSG:4346 à partir d'un bbox [lngMin, latMin, lngMax, latMax]
+  static function bboxWkt(array $bbox) {
+    if (!$bbox)
+      return '';
+    return "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
   }
-  
-  // http://127.0.0.1/yamldoc/id.php/geodata/igngpwfs/ADMINEXPRESS_COG_2018_CARTO:departement_carto?bbox=-0.087890625,46.73986059969267,6.08642578125,49.228360140901295&zoom=8
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
-    //echo "WfsServer::extractByUri($docuri, $ypath)<br>\n";
+    //echo "WfsLayers::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
-    elseif ($ypath == '/map') {
-      //echo "fragment '/map'\n";
-      return $this->map($docuri)->asArray();
-    }
-    elseif ($ypath == '/map/display') {
-      $this->map($docuri)->display($docuri);
+    elseif ($ypath == '/query') {
+      $params = isset($_GET) ? $_GET : (isset($_POST) ? $_POST : []);
+      if (isset($params['OUTPUTFORMAT']) && ($params['OUTPUTFORMAT']=='application/json'))
+        header('Content-type: application/json');
+      else
+        header('Content-type: application/xml');
+      echo $this->query($params);
       die();
     }
-    // accès à la layer /{lyrname}
-    elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
-      $lyrname = $matches[1];
-      //echo "accès à la layer $lyrname\n";
-      if (!isset($this->layers[$lyrname]))
-        return null;
-      elseif (isset($_GET['bbox']) && isset($_GET['zoom']))
-        return $this->queryByBbox($lyrname, $_GET['bbox'], $_GET['zoom']);
-      elseif (isset($_POST['bbox']) && isset($_POST['zoom']))
-        return $this->queryByBbox($lyrname, $_POST['bbox'], $_POST['zoom']);
-      elseif (isset($_GET['where']))
-        return $this->queryByWhere($lyrname, $_GET['where']);
-      else {
-        //echo "<pre>"; print_r($_SERVER);
-        return array_merge(['uri'=>$_SERVER['PATH_INFO']], $this->layers[$lyrname]);
+    elseif ($ypath == '/getCapabilities') {
+      $filepath = __DIR__.'/'.Store::id().'/'.$docuri.'.xml';
+      $result = $this->query(['request'=> 'GetCapabilities']);
+      header('Content-type: application/xml');
+      echo $result;
+      file_put_contents($filepath, $result);
+      die();
+    }
+    elseif ($ypath == '/t') {
+      $filepath = __DIR__.'/'.Store::id().'/'.$docuri.'.xml';
+      if (file_exists($filepath))
+        $cap = file_get_contents($filepath);
+      else
+        $cap = $this->query(['request'=> 'GetCapabilities']);
+      $cap = new SimpleXMLElement($cap);
+      $typeNames = [];
+      foreach ($cap->FeatureTypeList->FeatureType as $FeatureType) {
+        $typeNames[(string)$FeatureType->Name] = [
+          'title'=> (string)$FeatureType->Title,
+          'abstract'=> (string)$FeatureType->Abstract,
+        ];
       }
+      return $typeNames;
+    }
+    // accès à la layer /t/{typeName}
+    // effectue la requête DescribeFeatureType et retourne le résultat comme texte JSON
+    elseif (preg_match('!^/t/([^/]+)$!', $ypath, $matches)) {
+      $typeName = $matches[1];
+      //echo "accès à la layer $typeName\n";
+      header('Content-type: application/json');
+      echo $this->query([
+        'REQUEST'=> 'DescribeFeatureType',
+        'TYPENAME'=> $typeName,
+        'OUTPUTFORMAT'=> 'application/json',
+      ]);
+      die();
+    }
+    // accès à /t/{typeName}/numberMatched
+    elseif (preg_match('!^/t/([^/]+)/numberMatched$!', $ypath, $matches)) {
+      $typeName = $matches[1];
+      header('Content-type: application/json');
+      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = self::decodeBbox($bbox);
+      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
+      echo '{"numberMatched": ', $this->getNumberMatched($typeName, $bbox, $where), "}\n";
+      die();
+    }
+    elseif (preg_match('!^/t/([^/]+)/getFeature$!', $ypath, $matches)) {
+      $typeName = $matches[1];
+      header('Content-type: application/json');
+      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = self::decodeBbox($bbox);
+      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
+      //echo "where=$where\n";
+      echo $this->getFeature($typeName, $bbox, $where);
+      die();
+    }
+    elseif (preg_match('!^/t/([^/]+)/getAllFeatures$!', $ypath, $matches)) {
+      $typeName = $matches[1];
+      header('Content-type: application/json');
+      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = self::decodeBbox($bbox);
+      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
+      $this->printAllFeatures($typeName, $bbox, $where);
+      die();
     }
     else
       return null;
   }
   
-  // version non optimisée
-  function queryByBbox0(string $lyrname, string $bboxstr, string $zoom) {
-    $bbox = explode(',', $bboxstr);
-    $bboxwkt = "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
-    $url = $this->urlWfs.'?service=WFS';
-    foreach([
-      'version'=> '2.0.0',
-      'request'=> 'GetFeature',
-      'TYPENAME'=> $lyrname,
-      'outputFormat'=> 'application/json',
-      'srsName'=> 'CRS:84',
-      'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)"),
-      ] as $k => $v)
-        $url .= "&$k=$v";
-    $context = stream_context_create(['http'=> ['header'=> "referer: http://gexplor.fr/\r\n"]]);
-    if (!($result = file_get_contents($url, false, $context))) {
-      throw new Exception("Erreur dans WfsServer::queryByBbox() : sur url=$url");
-    }
-    header('Content-type: application/json');
-    echo $result;  
-    if (1) {
-      global $t0;
+  // envoi une requête et récupère la réponse sous la forme d'un texte
+  function query(array $params): string {
+    if (self::$log) { // log
       file_put_contents(
-          'id.log.yaml',
+          __DIR__.self::$log,
           YamlDoc::syaml([
-            'version'=> 'version initiale',
-            'duration'=> microtime(true) - $t0,
+            'date'=> date(DateTime::ATOM),
+            'appel'=> 'WfsServer::request',
+            'params'=> $params,
           ]),
           FILE_APPEND
       );
     }
-    die();  
+    $url = $this->urlWfs.'?SERVICE=WFS&VERSION=2.0.0';
+    foreach($params as $key => $value)
+      $url .= "&$key=$value";
+    $referer = $this->referer;
+    //echo "referer=$referer\n";
+    $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
+    if (($result = file_get_contents($url, false, $context)) === false) {
+      var_dump($http_response_header);
+      throw new Exception("Erreur dans WfsServer::request() : sur url=$url");
+    }
+    if (self::$log) { // log
+      file_put_contents(
+          __DIR__.self::$log,
+          YamlDoc::syaml([
+            'url'=> $url,
+          ]),
+          FILE_APPEND
+      );
+    }
+    //die($result);
+    if (substr($result, 0, 17) == '<ExceptionReport>') {
+      if (!preg_match('!^<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
+        throw new Exception("Erreur dans WfsServer::request() : message d'erreur non détecté");
+      throw new Exception ("Erreur dans WfsServer::request() : $matches[1]");
+    }
+    return $result;
   }
-
-  // http://127.0.0.1/yamldoc/id.php/geodata/bdcarto/coastline?bbox=-2.25,46.90,-2.06,46.98&zoom=13
-  
-  // version optimisée
-  function queryByBbox(string $lyrname, string $bboxstr, string $zoom) {
     
-    // la couche est définie par un typename WFS
-    if (isset($this->layers[$lyrname]['typename'])) {
-      $this->sendWfsRequest($this->layers[$lyrname]['typename'], '', $bboxstr);
+  // retourne le nbre d'objets correspondant au résultat de la requête
+  function getNumberMatched(string $typename, array $bbox=[], string $where=''): int {
+    $request = [
+      'REQUEST'=> 'GetFeature',
+      'TYPENAMES'=> $typename,
+      'SRSNAME'=> 'CRS:84', // système de coordonnées nécessaire pour du GeoJSON
+      'RESULTTYPE'=> 'hits',
+    ];
+    $cql_filter = '';
+    if ($bbox) {
+      $bboxwkt = self::bboxWkt($bbox);
+      $cql_filter = "Intersects(the_geom,$bboxwkt)";
     }
-    // la couche est définie par une sélection dans une autre couche
-    elseif (isset($this->layers[$lyrname]['select'])) {
-      //print_r($this->layers[$lyrname]);
-      if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
-        throw new Exception("Erreur dans WfsServer::queryByBbox() : No match on ".$this->layers[$lyrname]['select']);
-      $lyrname0 = $matches[1];
-      $where = isset($matches[3]) ? $matches[3] : '';
-      if (!isset($this->layers[$lyrname0]) || !isset($this->layers[$lyrname0]['typename']))
-        throw new Exception("Erreur dans WfsServer::queryByBbox() : Dans la définition de la couche $lyrname, la couche $lyrname n'est pas définie par un typename");
-      $this->sendWfsRequest($this->layers[$lyrname0]['typename'], $where, $bboxstr);
+    if ($where) {
+      $where = utf8_decode($where); // expérimentalement les requêtes doivent être encodées en ISO-8859-1
+      $cql_filter .= ($cql_filter ? ' AND ':'').$where;
     }
-    // à revoir, aucun exemple
-    elseif (isset($this->layers[$lyrname]['selectOnZoom'])) {
-      foreach ($this->layers[$lyrname]['selectOnZoom'] as $zoomMin => $select) {
-        if ($zoom >= $zoomMin)
-          break;
-      }
-      if ($zoom < $zoomMin) {
-        header('Access-Control-Allow-Origin: *');
-        header('Content-type: application/json');
-        echo '{"type":"FeatureCollection","features": [],nbfeatures: 0 }',"\n";
-        die();
-      }
-      if (!preg_match("!^([^ ]+)( / (.*))?$!", $select, $matches))
-        throw new Exception("Erreur dans GeoData::queryByBbox() : No match on ".$select);
-      $typename = $matches[1];
-      $where = isset($matches[3]) ? $matches[3] : '';
-      if (1) {
-        file_put_contents(
-            'id.log.yaml',
-            YamlDoc::syaml([
-              'zoom'=> $zoom,
-              'typename'=> $typename,
-              'where'=> $where,
-            ]),
-            FILE_APPEND
-        );
-      }
-      $this->sendWfsRequest($typename, $where, $bboxstr);
+    if ($cql_filter)
+      $request['CQL_FILTER'] = urlencode($cql_filter);
+    $result = $this->query($request);
+    if (!preg_match('! numberMatched="(\d+)" !', $result, $matches)) {
+      echo "result=",$result,"\n";
+      throw new Exception("Erreur dans WfsServer::getNumberMatched() : no match on result");
     }
-    else {
-      throw new Exception("Erreur dans GeoData::queryByBbox() : layer $lyrname mal définie");
-    }
+    return (int)$matches[1];
   }
   
-  function sendWfsRequest(string $typename, string $where, string $bboxstr) {
-    if (1) {
-      file_put_contents(
-          'id.log.yaml',
-          YamlDoc::syaml([
-            'appel'=> 'WfsServer::sendWfsRequest',
-            'typename'=> $typename,
-            'where'=> $where,
-            'bboxstr'=> $bboxstr,
-          ]),
-          FILE_APPEND
-      );
+  // retourne le résultat de la requête en GeoJSON
+  function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
+    $request = [
+      'REQUEST'=> 'GetFeature',
+      'TYPENAMES'=> $typename,
+      'OUTPUTFORMAT'=> 'application/json',
+      'SRSNAME'=> 'CRS:84', // système de coordonnées nécessaire pour du GeoJSON
+      'COUNT'=> $count,
+      'STARTINDEX'=> $startindex,
+    ];
+    $cql_filter = '';
+    if ($bbox) {
+      $bboxwkt = self::bboxWkt($bbox);
+      $cql_filter = "Intersects(the_geom,$bboxwkt)";
     }
-    $bbox = explode(',', $bboxstr);
-    $bboxwkt = "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
-    $where = utf8_decode($where); // expérimentalement les requêtes doivent être encodées en ISO-8859-1
-    $url = $this->urlWfs.'?service=WFS';
-    foreach([
-      'version'=> '2.0.0',
-      'request'=> 'GetFeature',
-      'typename'=> $typename,
-      'outputFormat'=> 'application/json',
-      'srsName'=> 'CRS:84', // système de coordonnées nécessaire pour du GeoJSON
-      'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)".($where?" AND $where":'')),
-      ] as $k => $v)
-        $url .= "&$k=$v";
-    $context = stream_context_create(['http'=> ['header'=> "referer: http://gexplor.fr/\r\n"]]);
-    header('Content-type: application/json');
-    if (!readfile($url, false, $context)) {
-      file_put_contents(
-          'id.log.yaml',
-          YamlDoc::syaml([
-            'erreur'=> "Erreur dans WfsServer::sendWfsRequest() sur readfile()",
-            'bbox'=> $bboxstr,
-            'urlWfs'=> $url,
-          ]),
-          FILE_APPEND
-      );
-      throw new Exception("Erreur dans WfsServer::queryByBbox() : sur url=$url");
+    if ($where) {
+      $where = utf8_decode($where); // expérimentalement les requêtes doivent être encodées en ISO-8859-1
+      $cql_filter .= ($cql_filter ? ' AND ':'').$where;
     }
-    if (1) {
-      global $t0;
-      file_put_contents(
-          'id.log.yaml',
-          YamlDoc::syaml([
-            'version'=> 'version optimisée avec readfile',
-            'duration'=> microtime(true) - $t0,
-            'cql_filter'=> urlencode("Intersects(the_geom,$bboxwkt)".($where?" AND $where":'')),
-          ]),
-          FILE_APPEND
-      );
+    if ($cql_filter)
+      $request['CQL_FILTER'] = urlencode($cql_filter);
+    return $this->query($request);
+  }
+  
+  // affiche le résultat de la requête en GeoJSON
+  function printAllFeatures(string $typename, array $bbox=[], string $where=''): void {
+    $numberMatched = $this->getNumberMatched($typename, $bbox, $where);
+    if ($numberMatched <= 100) {
+      echo $this->getFeature($typename, $bbox, $where);
+      return;
     }
-    die();  
+    //$numberMatched = 12; POUR TESTS
+    echo '{"type":"FeatureCollection","numberMatched":'.$numberMatched.',"features":[',"\n";
+    $startindex = 0;
+    $count = 100;
+    while ($startindex < $numberMatched) {
+      $fc = $this->getFeature($typename, $bbox, $where, $count, $startindex);
+      // recherche de la position de la fin du dernier Feature dans la FeatureCollection
+      $pos = strpos($fc, '],"crs":{"type":"EPSG","properties":{"code":');
+      // affichage de la liste des features sans les []
+      if ($startindex<>0)
+        echo ",\n";
+      echo substr($fc, 40, $pos-40);
+      $startindex += $count;
+      //die(']}');
+    }
+    echo "\n]}\n";
   }
 };
