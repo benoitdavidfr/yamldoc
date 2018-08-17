@@ -1,8 +1,9 @@
 # Visualisateur de documents YamlDoc
 YamlDoc est un système de gestion documentaire [décrit ici](http://georef.eu/yamldoc/?doc=yamldoc).  
-Ce répertoire Github correspond à l'archive Git du visualisateur de ce système.  
+Ce répertoire Github correspond au code Php du visualisateur de ce système.  
 Les documents de l'espace public peuvent être consultés sur le
-[site de consultation](http://georef.eu/yamldoc/?doc=index).
+[site de consultation](http://georef.eu/yamldoc/?doc=index) ;
+ils sont disponibles dans le [répertoire yamldocs](https://github.com/benoitdavidfr/yamldocs)
 
 Ce logiciel utilise MySQL comme index plein texte.
 Pour cela il faut paramétrer l'accès à un serveur et une base en spécialisant le fichier
