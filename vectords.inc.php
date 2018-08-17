@@ -463,6 +463,8 @@ class VectorDataset extends WfsServer {
           $sqls[2] = $sql;
         }
       }
+      header('Access-Control-Allow-Origin: *');
+      header('Content-type: application/json');
       $this->queryMySqlAndPrintInGeoJson($sqls);
     }
     elseif (isset($this->layers[$lyrname]['typename'])) {
@@ -479,6 +481,8 @@ class VectorDataset extends WfsServer {
             FILE_APPEND
         );
       }
+      header('Access-Control-Allow-Origin: *');
+      header('Content-type: application/json');
       $this->printAllFeatures($typename, $bbox, $where);
       die();  
     }
@@ -489,8 +493,6 @@ class VectorDataset extends WfsServer {
     
   // exécute les requêtes SQL, affiche le résultat en GeoJSON et s'arrête
   function queryMySqlAndPrintInGeoJson(array $sqls) {
-    header('Access-Control-Allow-Origin: *');
-    header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [',"\n";
     $nbFeatures = 0;
     foreach ($sqls as $n => $sql) {
