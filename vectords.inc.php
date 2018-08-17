@@ -139,7 +139,7 @@ class VectorDataset extends WfsServer {
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $docid, string $ypath): void {
-    //echo "GeoData::show($docid, $ypath)<br>\n";
+    echo "VectorDataset::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else
@@ -202,7 +202,7 @@ class VectorDataset extends WfsServer {
     // fragment /{lyrname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
-      $params = (isset($_GET) ? $_GET : (isset($_POST) ? $_POST : []));
+      $params = ((isset($_POST) && $_POST) ? $_POST : (isset($_GET) ? $_GET : []));
       $where = isset($params['where']) ? $params['where'] : '';
       $selfUri = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$_SERVER[PATH_INFO]";
       //echo "accès à la layer $lyrname\n";

@@ -15,11 +15,17 @@ doc: |
   Le fichier map-default.yaml est utilisé pour définir une carte par défaut.
   Cette carte par défaut contient 3 couches de base et 0 overlay.
   
+  Voir la carte geodata/testmap.yaml comme exemple et spécification.
+  
   A FAIRE:
     - définition de couche en fonction du zoom
     - par exemple troncon_route ou limite_administrative
   
 journal: |
+  17/8/2018:
+    - modif de l'initialisation pour que les paramètres originaux ne s'affichent pas à la fin
+    - les endpoint des couches UGeoJSONLayer peuvent soit être des URI de couche
+      soit le chemin {docid}/{lyrname} dans le store courant
   6/8/2018:
     - affichage des propriétés d'un objet GeoJSON
     - stylage des objets GeoJSON par couche et en fonction d'un attribut
@@ -36,10 +42,11 @@ class Map extends YamlDoc {
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
   function __construct(&$yaml) {
+    $this->_c = $yaml;
     $defaultParams = Yaml::parse(file_get_contents(__DIR__."/map-default.yaml"), Yaml::PARSE_DATETIME);
-    $this->_c = $defaultParams;
-    foreach ($yaml as $prop => $value) {
-      $this->_c[$prop] = $value;
+    foreach ($defaultParams as $prop => $value) {
+      if (!isset($this->_c[$prop]))
+        $this->_c[$prop] = $value;
     }
     if ($this->bases) {
       foreach ($this->bases as $id => $layer) {
@@ -196,6 +203,8 @@ class LeafletTileLayer extends LeafletLayer {
 class LeafletUGeoJSONLayer extends LeafletLayer {
   function showAsCode(string $lyrid): void {
     //print_r($this);
+    if (strncmp($this->endpoint, 'http://', 7)<>0)
+      $this->_c['endpoint'] = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/".$this->endpoint;
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
     echo "    lyrid: '$lyrid',\n";
     //echo "    title: '$this->title',\n";
