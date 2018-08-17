@@ -20,22 +20,22 @@ doc: |
   constituée des 6 points d'entrée suivants :
   
     1. {docid} : description de la SD en JSON (ou en Yaml), y compris la liste de ses couches
-      ([exemple de Route500](/yamldoc/id.php/geodata/route500),
-      [en Yaml](/yamldoc/id.php/geodata/route500?format=yaml)),
+      ([exemple de Route500](id.php/geodata/route500),
+      [en Yaml](id.php/geodata/route500?format=yaml)),
     2. {docid}/{lyrname} : description de la couche en JSON (ou en Yaml), cette URI identifie la couche
-      ([exemple de la couche commune de Route500](/yamldoc/id.php/geodata/route500/commune)),
+      ([exemple de la couche commune de Route500](id.php/geodata/route500/commune)),
     3. {docid}/{lyrname}?{query} : requête sur la couche renvoyant un FeatureCollection GeoJSON  
       où {query} peut être:
         - bbox={lngMin},{latMin},{lngMax},{latMax}&zoom={zoom}
-          ([exemple](/yamldoc/id.php/geodata/route500/commune?bbox=-2.71,47.21,2.72,47.22&zoom=10)),
+          ([exemple](id.php/geodata/route500/commune?bbox=-2.71,47.21,2.72,47.22&zoom=10)),
         - where={critère SQL/CQL}
           ([exemple des communes dont le nom commence par
-          BEAUN](/yamldoc/id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%')),
+          BEAUN](id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%')),
     4. {docid}/{lyrname}/id/{id} : renvoie l'objet d'id {id} (A FAIRE)
     5. {docid}/map : renvoie le document JSON décrivant la carte standard affichant la SD
-      ([exemple de la carte Route500](/yamldoc/id.php/geodata/route500/map)),
+      ([exemple de la carte Route500](id.php/geodata/route500/map)),
     6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
-      ([exemple d'affichage de la carte Route500](/yamldoc/id.php/geodata/route500/map/display)),
+      ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
 
   Un document VectorDataset contient:
     - des métadonnées génériques
@@ -48,24 +48,24 @@ doc: |
       dans ce cas la couche comporte un champ *ogrPath* définissant le (ou les) fichier(s) SHP correspondants(s),
       le(s) couche(s) OGR est(sont) chargée(s) dans MySQL dans la table ayant pour nom l'id de la couche ;
       la SD doit définir un champ *dbpath* qui définit le répertoire des fichiers OGR.
-      Le prototype est la couche http://localhost/yamldoc/id.php/geodata/route500/limite_administrative
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
       
     2. elle peut aussi correspondre à une couche exposée par un service WFS ;
       dans ce cas la couche comporte un champ *typename* qui définit la couche dans le serveur WFS ;
       la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS.
-      Le prototype est la couche http://localhost/yamldoc/id.php/geodata/bdcarto/troncon_hydrographique
+      Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
       
       Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom ;
       elle comporte alors un champ *filterOnZoom* qui est un dictionnaire
           {zoomMin} : {where} | 'all'
       A un niveau de {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.
       Si {filter} == 'all' alors aucune sélection n'est effectuée.
-      Le prototype est la couche http://localhost/yamldoc/id.php/geodata/route500/limite_administrative
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
     
     3. elle peut être définie par une sélection dans une des couches précédentes définie dans la même SD ;  
       dans ce cas la couche comporte un champ *select* de la forme "{lyrname} / {where}"
       qui définit une sélection dans la couche {lyrname} définie dans la même SD ;
-      Le prototype est la couche http://localhost/yamldoc/id.php/geodata/route500/coastline
+      Le prototype est la couche id.php/geodata/route500/coastline
     
     4. elle peut enfin être définie en fonction du zoom d'affichage et de la zone géographique
       par une des couches précédentes définie dans la même SD ou dans une autre ;
@@ -78,7 +78,7 @@ doc: |
       où {definition} peut être d'une des 2 formes suivantes:
       - le chemin de définition d'une couche dans une autre SD commencant /
       - {lyrname} / {where} définissant une sélection dans une autre couche de la même SD. (A FAIRE)
-      Le prototype est la couche http://localhost/yamldoc/id.php/geodata/mscale/coastline
+      Le prototype est la couche id.php/geodata/mscale/coastline
   
   En outre, une couche:
     - doit comporter un champ title qui fournit le titre de la couche pour un humain dans le contexte du document,
@@ -89,10 +89,13 @@ doc: |
 
   A FAIRE:
     - gestion des exceptions par renvoi d'un feature d'erreur
+    - améliorer la gestion du log, création d'un fichier log propre à la classe ?
   
 journal: |
   15-17/8/2018:
-    - restructuration par fusion des 3 types de documents ShapeDataset WfsDataset et MultiscaleDataset
+    - restructuration du code par fusion des 3 types dans VectorDataset des documents ShapeDataset WfsDataset
+      et MultiscaleDataset
+    - ajout dans selectOnZoom de la sélection en fonction de l'espace géographique
   14/8/2018:
     - ajout possibilité d'afficher des données de l'autre côté de l'anti-méridien
   13/8/2018:
@@ -429,6 +432,7 @@ class VectorDataset extends WfsServer {
   
   // étape 2: traite ogrPath et typename
   function queryFeatures2(string $lyrname, array $bbox, string $zoom, string $where) {
+    // requête dans MySQL
     if (isset($this->layers[$lyrname]['ogrPath'])) {
       MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
       $dbname = $this->dbname();
@@ -447,6 +451,7 @@ class VectorDataset extends WfsServer {
       //echo "sql=$sql<br>\n";
       //die("FIN ligne ".__LINE__);
       $sqls = [$sql, null, null];
+      // si la bbox est de l'autre côté de l'anti-méridien ou à cheval dessus, décalage des données de 360°
       if ($bbox) {
         if ($bbox[2] > 180.0) { // la requête coupe l'antiméridien
           $bbox2 = [$bbox[0] - 360.0, $bbox[1], $bbox[2] - 360.0, $bbox[3]];
@@ -467,6 +472,7 @@ class VectorDataset extends WfsServer {
       header('Content-type: application/json');
       $this->queryMySqlAndPrintInGeoJson($sqls);
     }
+    // requête WFS
     elseif (isset($this->layers[$lyrname]['typename'])) {
       $typename = $this->layers[$lyrname]['typename'];
       if (1) {
