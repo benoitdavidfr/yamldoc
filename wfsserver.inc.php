@@ -89,11 +89,18 @@ class WfsServer extends YamlDoc {
     return $bbox;
   }
   
-  // retourne un polygon WKT EPSG:4346 à partir d'un bbox [lngMin, latMin, lngMax, latMax]
-  static function bboxWkt(array $bbox) {
+  // retourne un polygon WKT LatLng à partir d'un bbox [lngMin, latMin, lngMax, latMax]
+  static function bboxWktLatLng(array $bbox) {
     if (!$bbox)
       return '';
     return "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
+  }
+  
+  // retourne un polygon WKT LngLat à partir d'un bbox [lngMin, latMin, lngMax, latMax]
+  static function bboxWktLngLat(array $bbox) {
+    if (!$bbox)
+      return '';
+    return "POLYGON(($bbox[0] $bbox[1],$bbox[2] $bbox[1],$bbox[2] $bbox[3],$bbox[0] $bbox[3],$bbox[0] $bbox[1]))";
   }
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
@@ -231,7 +238,7 @@ class WfsServer extends YamlDoc {
     ];
     $cql_filter = '';
     if ($bbox) {
-      $bboxwkt = self::bboxWkt($bbox);
+      $bboxwkt = self::bboxWktLatLng($bbox);
       $cql_filter = "Intersects(the_geom,$bboxwkt)";
     }
     if ($where) {
@@ -260,7 +267,7 @@ class WfsServer extends YamlDoc {
     ];
     $cql_filter = '';
     if ($bbox) {
-      $bboxwkt = self::bboxWkt($bbox);
+      $bboxwkt = self::bboxWktLatLng($bbox);
       $cql_filter = "Intersects(the_geom,$bboxwkt)";
     }
     if ($where) {
