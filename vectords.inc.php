@@ -44,22 +44,36 @@ doc: |
 
   Une couche vecteur peut être définie de 4 manières différentes:
   
-    1. elle correspond à un fichier SHP (ou plus généralement une couche OGR) chargé dans une table d'une base MySQL ;
-      dans ce cas la couche comporte un champ *ogrPath* définissant le (ou les) fichier(s) SHP correspondants(s),
+    1. elle correspond à une (ou plusieurs) couche(s) OGR chargée(s) dans une table MySQL ;
+      dans ce cas la couche doit comporter un champ *ogrPath* définissant le (ou les) couche(s) OGR correspondante(s),
       le(s) couche(s) OGR est(sont) chargée(s) dans MySQL dans la table ayant pour nom l'id de la couche ;
-      la SD doit définir un champ *dbpath* qui définit le répertoire des fichiers OGR.
+      la SD doit définir un champ *dbpath* qui définit le répertoire des couches OGR.
       Le prototype est la couche id.php/geodata/route500/limite_administrative
       
     2. elle peut aussi correspondre à une couche exposée par un service WFS ;
-      dans ce cas la couche comporte un champ *typename* qui définit la couche dans le serveur WFS ;
-      la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS.
+      dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
+      la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS
+      et peut définir un champ referer qui sera utilisé dans l'appel WFS.
       Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
       
-      Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom ;
-      elle comporte alors un champ *filterOnZoom* qui est un dictionnaire
-          {zoomMin} : {where} | 'all'
-      A un niveau de {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.
-      Si {filter} == 'all' alors aucune sélection n'est effectuée.
+      Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom plus éventuellement en fonction du bbox ;
+      la couche doit alors comporter un champ *onZoomGeo* qui est un dictionnaire
+          {zoomMin} : {filtre}
+        ou
+          {zoomMin} : 
+            {geoZone}: {filtre}
+        où:
+          {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
+      Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.
+      {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.
+      Un {filtre} retenu sera le premire pour lequel le bbox courant intersecte la {geoZone}.
+      
+      Le filtre peut prendre les valeurs suivantes:
+        - Si {filtre} == 'all' alors aucune sélection n'est effectuée.
+        - {where} est un critère SQL ou CQL, ex "nature in ('Limite côtière','Frontière internationale')",
+        - {select} est une sélection dans une autre couche de la SD de la forme "{lyrname} / {where}"
+        - {layerDefinition} est le chemin de définition d'une couche dans une autre SD commencant /,
+          ex /geodata/ne_10m/admin_0_boundary_lines_land.
       Le prototype est la couche id.php/geodata/route500/limite_administrative
     
     3. elle peut être définie par une sélection dans une des couches précédentes définie dans la même SD ;  
@@ -69,15 +83,8 @@ doc: |
     
     4. elle peut enfin être définie en fonction du zoom d'affichage et de la zone géographique
       par une des couches précédentes définie dans la même SD ou dans une autre ;
-      dans ce cas la couche comporte un champ *selectOnZooom* qui est un dictionnaire
-      sur {zoomMin} et éventuellement sur {space}
-          {zoomMin} : {definition} | 'all'
-        ou
-          {zoomMin}:
-            {space}: {definition} | 'all'
-      où {definition} peut être d'une des 2 formes suivantes:
-      - le chemin de définition d'une couche dans une autre SD commencant /
-      - {lyrname} / {where} définissant une sélection dans une autre couche de la même SD. (A FAIRE)
+      dans ce cas la couche comporte un champ *onZoomGeo* défini comme précédemment
+      en limitant les filtres possibles à {select} | {layerDefinition}
       Le prototype est la couche id.php/geodata/mscale/coastline
   
   En outre, une couche:
@@ -87,15 +94,34 @@ doc: |
       - *style* qui définit le style Leaflet de la couche soit en JSON soit en JavaScript,
       - *conformsTo* qui fournit la spécification de la couche
 
+  Dans un onZoomGeo {geoZone} est un des codes prédéfinis suivants de zone géographique :
+    - 'FXX' pour la métropole,
+    - 'ANF' pour les Antilles françaises (Guadeloupe, Martinique, Saint-Barthélémy, Saint-Martin),
+    - 'ASP' pour les îles Saint-Paul et Amsterdam,
+    - 'CRZ' pour îles Crozet,
+    - 'GUF' pour la Guyane,
+    - 'KER' pour les îles Kerguelen,
+    - 'MYT' pour Mayotte,
+    - 'NCL' pour la Nouvelle Calédonie,
+    - 'PYF' pour la Polynésie Française,
+    - 'REU' pour la Réunion,
+    - 'SPM' pour Saint-Pierre et Miquelon,
+    - 'WLF' pour Wallis et Futuna,
+    - 'WLD' pour le monde entier
+    
   A FAIRE:
+    - céer une couche boundary+coastline por ne_110m et ne_10m
     - gestion des exceptions par renvoi d'un feature d'erreur
     - améliorer la gestion du log, création d'un fichier log propre à la classe ?
   
 journal: |
+  18/8/2018:
+    - fusion selectOnZoom et filterOnZoom en onZoomGeo
   15-17/8/2018:
     - restructuration du code par fusion des 3 types dans VectorDataset des documents ShapeDataset WfsDataset
       et MultiscaleDataset
     - ajout dans selectOnZoom de la sélection en fonction de l'espace géographique
+    - ajout dans filterOnZoom du renvoi vers une autre SD
   14/8/2018:
     - ajout possibilité d'afficher des données de l'autre côté de l'anti-méridien
   13/8/2018:
@@ -220,13 +246,17 @@ class VectorDataset extends WfsServer {
       elseif ($where) // cas où where est seul défini
         return $this->queryFeatures($lyrname, '', '', $where);
       // cas de description d'une couche définie en fonction du zoom
-      elseif (isset($this->layers[$lyrname]['selectOnZooom']) && isset($params['zoom'])) {
-        if (!($select = $this->selectOnZooom($lyrname, $params['zoom'])))
+      elseif (isset($this->layers[$lyrname]['onZoomGeo']) && isset($params['zoom'])) {
+        if (!($select = $this->onZoomGeo($this->layers[$lyrname]['onZoomGeo'], $params['zoom'])))
           return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
-        if (is_array($select))
+        elseif (is_array($select))
           return $select;
-        header("Location: $select?zoom=$params[zoom]");
-        die("header(Location: $select?zoom=$params[zoom])");
+        elseif (strncmp($select, 'http://', 7) == 0) {
+          header("Location: $select?zoom=$params[zoom]");
+          die("header(Location: $select?zoom=$params[zoom])");
+        }
+        else
+          return $select;
       }
       else // cas de description d'une couche standard
         return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
@@ -255,53 +285,23 @@ class VectorDataset extends WfsServer {
       return null;
   }
   
-  // teste l'intersection de 2 bbox
-  // l'intersection est [xmin, ymin, xmax, ymax]
-  // l'intersection est vrai ssi la bbox n'est pas dégénérée
-  static function bboxIntersect(array $a, array $b): bool {
-    $xmin = max($a[0], $b[0]);
-    $ymin = max($a[1], $b[1]);
-    $xmax = min($a[2], $b[2]);
-    $ymax = min($a[3], $b[3]);
-    return ($xmin < $xmax) && ($ymin < $ymax);
-  }
-
-  // teste l'intersection de zones prédéfinies avec le bbox courant
-  static function zoneIntersects(string $zone, array $bbox) {
-    static $zones = [ // définition de qqs zones particulières en [lngMin, latMin, lngMax, latMax]
-      'FXX'=> [-6, 41, 10, 52], // métropole
-      'ANF'=> [-63.234823, 14.383330,-60.750000, 18.253533],
-      'ASP'=> [ 77.480000,-38.760000, 77.625000,-37.770000],
-      'CRZ'=> [ 50.000000,-46.750000, 52.500000,-45.750000],
-      'GUF'=> [-55, 2, -50, 6],
-      'KER'=> [68.108119,-50.033556, 70.897338,-48.379219],
-      'MYT'=> [44.9, -13.1, 45.4, -12],
-      'NCL'=> [163.5, -23, 168.25, -19.36],
-      'PYF'=> [-152, -18, -149, -15],
-      'REU'=> [55, -21.5, 56, -20.75],
-      'SPM'=> [-56.5236, 46.74, -56.08, 47.1528],
-      'WLF'=> [-178.5, -14.5, -175.5, -13.17],
-      'WLD'=> [-999, -999, 999, 999], // le monde
-    ];
-    if (!isset($zones[$zone]))
-      throw new Exception("Erreur dans VectorDataset::zoneIntersects: zone $zone non définie");
-    return self::bboxIntersect($zones[$zone], $bbox);
-  }
-  
-  // renvoie la définition du selectOnZooom correspondant au zoom
+  // renvoie la définition du onZoomGeo correspondant au zoom
   // Utilisé dans 2 cas: affichage des features ou de la description de la couche
   // dans le 2ème cas, bbox n'est pas défini
-  function selectOnZooom(string $lyrname, int $zoom, array $bbox=[]) {
+  // le retour est normalement un chaine sauf dans le 2ème cas qd il y a une selection géographique
+  function onZoomGeo(array $onZoomGeo, string $zoom, array $bbox=[]) {
+    if ($zoom == '') // nécesaire par exemple pour les requêtes where
+      return 'all';
     $select = '';
-    foreach ($this->layers[$lyrname]['selectOnZooom'] as $zoomMin => $selectOnZoom) {
+    foreach ($onZoomGeo as $zoomMin => $selectOnZoom) {
       if ($zoom >= $zoomMin)
         $select = $selectOnZoom;
     }
     if (is_array($select)) { // cas du second select sur zone
-      $selectOnZones = $select;
+      $onGeo = $select;
       if (!$bbox) { // cas de la définition de la couche
         $ret = [];
-        foreach ($selectOnZones as $zone => $select) {
+        foreach ($onGeo as $zone => $select) {
           if (strncmp($select,'/',1)==0)
             $ret[$zone] = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$select";
           else
@@ -311,8 +311,8 @@ class VectorDataset extends WfsServer {
       }
       // cas de l'affichage des features
       $select = '';      
-      foreach($selectOnZones as $zone => $selectOnZone) {
-        if (self::zoneIntersects($zone, $bbox)) {
+      foreach($onGeo as $zone => $selectOnZone) {
+        if (GeoZone::intersects($zone, $bbox)) {
           $select = $selectOnZone;
           break;
         }
@@ -356,13 +356,32 @@ class VectorDataset extends WfsServer {
     $this->queryAndShowInGeoJson($sql);
   }
   
+  static function emptyFeatureCollection(string $message) {
+    header('Access-Control-Allow-Origin: *');
+    header('Content-type: application/json');
+    echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
+    if (1) {
+      file_put_contents(
+          'id.log.yaml',
+          YamlDoc::syaml([
+            'message'=> $message,
+          ]),
+          FILE_APPEND
+      );
+    }
+    die();
+  }
+  
   // version optimisée avec sortie par feature
   // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
   // Fonctionne en 2 étapes:
-  // - la première vérifie les paramètres, traduit les select et les filterOnZoom
+  // - la première vérifie les paramètres, traduit les select et les onZoomGeo
+  // Ne fonctionne pas si zoom et where sont tous les 2 définis
   function queryFeatures(string $lyrname, string $bboxstr, string $zoom, string $where) {
+    if ($zoom && $where)
+      throw new Exception("Erreur dans VectorDataset::queryFeatures() : zoom=$zoom et where=$where");
     if (($zoom<>'') && !is_numeric($zoom))
-      throw new Exception("Erreur dans VectorDataset::queryByBbox() : zoom '$zoom' incorrect");
+      throw new Exception("Erreur dans VectorDataset::queryFeatures() : zoom '$zoom' incorrect");
     $bbox = parent::decodeBbox($bboxstr);
     
     if (isset($this->layers[$lyrname]['select'])) {
@@ -372,28 +391,15 @@ class VectorDataset extends WfsServer {
             .$this->layers[$lyrname]['select']);
       return $this->queryFeatures2($matches[1], $bbox, $zoom, isset($matches[3]) ? $matches[3] : '');
     }
-    elseif (isset($this->layers[$lyrname]['filterOnZoom']) && ($zoom<>'')) {
+    /*elseif (isset($this->layers[$lyrname]['filterOnZoom']) && ($zoom<>'')) {
       //echo "<pre>"; print_r($this->layers[$lyrname]);
       $filter = '';
       foreach ($this->layers[$lyrname]['filterOnZoom'] as $zoomMin => $filterOnZoom) {
         if ($zoom >= $zoomMin)
           $filter = $filterOnZoom;
       }
-      if (!$filter) {
-        header('Access-Control-Allow-Origin: *');
-        header('Content-type: application/json');
-        echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
-        if (1) {
-          file_put_contents(
-              'id.log.yaml',
-              YamlDoc::syaml([
-                'message'=> "Aucun filterOnZoom défini pour zoom $zoom",
-              ]),
-              FILE_APPEND
-          );
-        }
-        die();
-      }
+      if (!$filter)
+        emptyFeatureCollection("Aucun filterOnZoom défini pour zoom $zoom");
       if (1) { // log 
         file_put_contents(
             'id.log.yaml',
@@ -404,26 +410,25 @@ class VectorDataset extends WfsServer {
             FILE_APPEND
         );
       }
-      return $this->queryFeatures2($lyrname, $bbox, $zoom, $filter <> 'all' ? $filter : '');
-    }
-    elseif (isset($this->layers[$lyrname]['selectOnZooom'])) {
-      if (!($select = $this->selectOnZooom($lyrname, $zoom, $bbox))) {
-        header('Access-Control-Allow-Origin: *');
-        header('Content-type: application/json');
-        echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
-        if (1) {
-          file_put_contents(
-              'id.log.yaml',
-              YamlDoc::syaml([
-                'message'=> "Aucun selectOnZooom défini pour zoom $zoom",
-              ]),
-              FILE_APPEND
-          );
-        }
-        die();
+      if (strncmp($filter, '/', 1) <> 0)
+        return $this->queryFeatures2($lyrname, $bbox, $zoom, $filter <> 'all' ? $filter : '');
+      $location = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$filter?bbox=$bboxstr&zoom=$zoom";
+      header("Location: $location");
+      die("Location: $location");
+    }*/
+    elseif (isset($this->layers[$lyrname]['onZoomGeo'])) {
+      if (!($select = $this->onZoomGeo($this->layers[$lyrname]['onZoomGeo'], $zoom, $bbox)))
+        self::emptyFeatureCollection("Aucun onZoomGeo défini pour zoom $zoom sur layer $lyrname");
+      if (strncmp($select, 'http://', 7) == 0) {
+        header("Location: $select?bbox=$bboxstr&zoom=$zoom");
+        die("Location: $select?bbox=$bboxstr&zoom=$zoom");
       }
-      header("Location: $select?bbox=$bboxstr&zoom=$zoom");
-      die("Location: $select?bbox=$bboxstr&zoom=$zoom");
+      elseif (preg_match('!([^ ]+) / (.*)$!', $select, $matches))
+        return $this->queryFeatures2($matches[1], $bbox, $zoom, $matches[2]);
+      elseif (isset($this->layers[$lyrname]['ogrPath']) || isset($this->layers[$lyrname]['typename']))
+        return $this->queryFeatures2($lyrname, $bbox, $zoom, $select == 'all' ? $where : $select);
+      else
+        throw new Exception("Dans VectorDataset::queryFeatures: onZoomGeo de $lyrname incorrect");
     }
     else {
       return $this->queryFeatures2($lyrname, $bbox, $zoom, $where);
@@ -432,6 +437,7 @@ class VectorDataset extends WfsServer {
   
   // étape 2: traite ogrPath et typename
   function queryFeatures2(string $lyrname, array $bbox, string $zoom, string $where) {
+    //echo "VectorDataset::queryFeatures2($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
     // requête dans MySQL
     if (isset($this->layers[$lyrname]['ogrPath'])) {
       MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
@@ -445,9 +451,10 @@ class VectorDataset extends WfsServer {
       $bboxwkt = parent::bboxWktLngLat($bbox);
       
       $sql = "select $props ST_AsText(geom) geom from $dbname.$lyrname\n";
-      $sql .= " where $where";
+      if ($where)
+        $sql .= " where $where";
       if ($bboxwkt)
-        $sql .= ($where ? ' and ':'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+        $sql .= ($where ? ' and ':' where ')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
       //echo "sql=$sql<br>\n";
       //die("FIN ligne ".__LINE__);
       $sqls = [$sql, null, null];
@@ -531,3 +538,39 @@ class VectorDataset extends WfsServer {
     die();
   }
 };
+
+class GeoZone {
+  static $zones = [ // définition de qqs zones particulières en [lngMin, latMin, lngMax, latMax]
+    'FXX'=> [-6, 41, 10, 52], // métropole
+    'ANF'=> [-63.234823, 14.383330,-60.750000, 18.253533],
+    'ASP'=> [ 77.480000,-38.760000, 77.625000,-37.770000],
+    'CRZ'=> [ 50.000000,-46.750000, 52.500000,-45.750000],
+    'GUF'=> [-55, 2, -50, 6],
+    'KER'=> [68.108119,-50.033556, 70.897338,-48.379219],
+    'MYT'=> [44.9, -13.1, 45.4, -12],
+    'NCL'=> [163.5, -23, 168.25, -19.36],
+    'PYF'=> [-152, -18, -149, -15],
+    'REU'=> [55, -21.5, 56, -20.75],
+    'SPM'=> [-56.5236, 46.74, -56.08, 47.1528],
+    'WLF'=> [-178.5, -14.5, -175.5, -13.17],
+    'WLD'=> [-999, -999, 999, 999], // le monde
+  ];
+  
+  // teste l'intersection de 2 bbox
+  // l'intersection est [xmin, ymin, xmax, ymax]
+  // l'intersection est vrai ssi la bbox n'est pas dégénérée
+  static function bboxIntersect(array $a, array $b): bool {
+    $xmin = max($a[0], $b[0]);
+    $ymin = max($a[1], $b[1]);
+    $xmax = min($a[2], $b[2]);
+    $ymax = min($a[3], $b[3]);
+    return ($xmin < $xmax) && ($ymin < $ymax);
+  }
+
+  // teste l'intersection d'une des zones prédéfinies avec un bbox
+  static function intersects(string $zone, array $bbox) {
+    if (!isset(self::$zones[$zone]))
+      throw new Exception("Erreur dans GeoZone::intersects: zone $zone non définie");
+    return self::bboxIntersect(self::$zones[$zone], $bbox);
+  }
+}
