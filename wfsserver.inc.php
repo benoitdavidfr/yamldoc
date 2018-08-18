@@ -48,7 +48,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 // classe simplifiant l'envoi de requêtes WFS
 class WfsServer extends YamlDoc {
-  static $log = '/wfs.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $log = __DIR__.'/wfs.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -191,7 +191,7 @@ class WfsServer extends YamlDoc {
   function query(array $params): string {
     if (self::$log) { // log
       file_put_contents(
-          __DIR__.self::$log,
+          self::$log,
           YamlDoc::syaml([
             'date'=> date(DateTime::ATOM),
             'appel'=> 'WfsServer::request',
@@ -211,13 +211,7 @@ class WfsServer extends YamlDoc {
       throw new Exception("Erreur dans WfsServer::request() : sur url=$url");
     }
     if (self::$log) { // log
-      file_put_contents(
-          __DIR__.self::$log,
-          YamlDoc::syaml([
-            'url'=> $url,
-          ]),
-          FILE_APPEND
-      );
+      file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
     }
     //die($result);
     if (substr($result, 0, 17) == '<ExceptionReport>') {

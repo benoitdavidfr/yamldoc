@@ -111,12 +111,13 @@ doc: |
     
   A FAIRE:
     - céer une couche boundary+coastline por ne_110m et ne_10m
-    - gestion des exceptions par renvoi d'un feature d'erreur
-    - améliorer la gestion du log, création d'un fichier log propre à la classe ?
   
 journal: |
   18/8/2018:
     - fusion selectOnZoom et filterOnZoom en onZoomGeo
+    - amélioration de la gestion du log, création d'un fichier log propre à la classe
+    - gestion des exceptions par renvoi d'un feature d'erreur
+    - verification du bon traitement des erreurs
   15-17/8/2018:
     - restructuration du code par fusion des 3 types dans VectorDataset des documents ShapeDataset WfsDataset
       et MultiscaleDataset
@@ -152,6 +153,7 @@ require_once __DIR__.'/../phplib/mysql.inc.php';
 require_once __DIR__.'/yamldoc.inc.php';
 
 class VectorDataset extends WfsServer {
+  static $log = __DIR__.'/vectords.log.yaml'; // nom du fichier de log ou '' pour pas de log
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -160,6 +162,24 @@ class VectorDataset extends WfsServer {
     $this->_c = [];
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
+    }
+    if (self::$log) {
+      if (php_sapi_name() <> 'cli') {
+        $uri = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
+        if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'])
+          $uri = substr($uri, 0, strlen($uri)-strlen($_SERVER['QUERY_STRING'])-1);
+        $record = [ 'uri'=> $uri ];
+      }
+      else {
+        $record = [ 'argv'=> $_SERVER['argv'] ];
+      }
+      $record['date'] = date(DateTime::ATOM);
+      $record['_SERVER'] = $_SERVER;
+      if (isset($_GET) && $_GET)
+        $record['_GET'] = $_GET;
+      if (isset($_POST) && $_POST)
+        $record['_POST'] = $_POST;
+      file_put_contents(self::$log, YamlDoc::syaml($record));
     }
   }
   
@@ -234,32 +254,57 @@ class VectorDataset extends WfsServer {
       $params = ((isset($_POST) && $_POST) ? $_POST : (isset($_GET) ? $_GET : []));
       $where = isset($params['where']) ? $params['where'] : '';
       $selfUri = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$_SERVER[PATH_INFO]";
-      //echo "accès à la layer $lyrname\n";
-      if (!isset($this->layers[$lyrname]))
-        return null;
-      elseif (isset($params['bbox']) && isset($params['zoom'])) { // affichage zoom bbox
-        if (($params['bbox']=='{bbox}') && ($params['zoom']=='{zoom}')) // description de la couche
-          return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
-        else // affichage réel
-          return $this->queryFeatures($lyrname, $params['bbox'], $params['zoom'], $where);
-      }
-      elseif ($where) // cas où where est seul défini
-        return $this->queryFeatures($lyrname, '', '', $where);
-      // cas de description d'une couche définie en fonction du zoom
-      elseif (isset($this->layers[$lyrname]['onZoomGeo']) && isset($params['zoom'])) {
-        if (!($select = $this->onZoomGeo($this->layers[$lyrname]['onZoomGeo'], $params['zoom'])))
-          return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
-        elseif (is_array($select))
-          return $select;
-        elseif (strncmp($select, 'http://', 7) == 0) {
-          header("Location: $select?zoom=$params[zoom]");
-          die("header(Location: $select?zoom=$params[zoom])");
+      try {
+        if (!isset($this->layers[$lyrname]))
+          return null;
+        elseif (isset($params['bbox']) && isset($params['zoom'])) { // affichage zoom bbox
+          if (($params['bbox']=='{bbox}') && ($params['zoom']=='{zoom}')) // description de la couche
+            return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
+          else // affichage réel
+            return $this->queryFeaturesPrep($lyrname, $params['bbox'], $params['zoom']);
         }
-        else
-          return $select;
+        elseif ($where) // cas où where est seul défini
+          return $this->queryFeatures($lyrname, [], '', $where);
+        // cas de description d'une couche définie en fonction du zoom
+        elseif (isset($this->layers[$lyrname]['onZoomGeo']) && isset($params['zoom'])) {
+          if (!($select = $this->onZoomGeo($this->layers[$lyrname]['onZoomGeo'], $params['zoom'])))
+            return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
+          elseif (is_array($select))
+            return $select;
+          elseif (strncmp($select, 'http://', 7) == 0) {
+            header("Location: $select?zoom=$params[zoom]");
+            die("header(Location: $select?zoom=$params[zoom])");
+          }
+          else
+            return $select;
+        }
+        else // cas de description d'une couche standard
+          return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
+      } catch(Exception $e) {
+        header('Access-Control-Allow-Origin: *');
+        if (!isset($params['bbox']) || ($params['bbox']=='{bbox}')) {
+          header('HTTP/1.1 500 Internal Server Error');
+          header('Content-type: text/plain');
+          die("Exception ".$e->getMessage());
+        }
+        header('Content-type: application/json');
+        $bbox = parent::decodeBbox($params['bbox']);
+        $errorFeatureColl = [
+          'type'=> 'FeatureCollection',
+          'features'=> [
+            [ 'type'=> 'Feature',
+              'properties'=> [ 'errorMessage'=> $e->getMessage() ],
+              'geometry'=> [
+                'type'=> 'Point',
+                'coordinates'=> [ ($bbox[0]+$bbox[2])/2, ($bbox[1]+$bbox[3])/2 ]
+              ]
+            ]
+          ],
+        ];
+        echo json_encode($errorFeatureColl, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        file_put_contents(self::$log, YamlDoc::syaml(['erreur'=> $e->getMessage()]), FILE_APPEND);
+        die();
       }
-      else // cas de description d'une couche standard
-        return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
     }
     elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
       $lyrname = $matches[1];
@@ -290,8 +335,6 @@ class VectorDataset extends WfsServer {
   // dans le 2ème cas, bbox n'est pas défini
   // le retour est normalement un chaine sauf dans le 2ème cas qd il y a une selection géographique
   function onZoomGeo(array $onZoomGeo, string $zoom, array $bbox=[]) {
-    if ($zoom == '') // nécesaire par exemple pour les requêtes where
-      return 'all';
     $select = '';
     foreach ($onZoomGeo as $zoomMin => $selectOnZoom) {
       if ($zoom >= $zoomMin)
@@ -339,83 +382,35 @@ class VectorDataset extends WfsServer {
     }
     return $fields;
   }
-  
-  // A SUPPRIMER
-  function queryByWhere(string $table, string $where) {
-    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
-    $dbname = $this->dbname();
-    $props = $this->properties($table);
-    if ($props)
-      $props = implode(', ', $props).',';
-    else
-      $props = '';
-    $sql = "select $props ST_AsText(geom) geom from $dbname.$table\n";
-    $sql .= " where $where";
-    //echo "sql=$sql<br>\n";
-    //die("FIN ligne ".__LINE__);
-    $this->queryAndShowInGeoJson($sql);
-  }
-  
+    
+  // affiche une couche vide et enregistre le message dans le log
   static function emptyFeatureCollection(string $message) {
     header('Access-Control-Allow-Origin: *');
     header('Content-type: application/json');
     echo '{"type":"FeatureCollection","features": [],"nbfeatures": 0 }',"\n";
-    if (1) {
-      file_put_contents(
-          'id.log.yaml',
-          YamlDoc::syaml([
-            'message'=> $message,
-          ]),
-          FILE_APPEND
-      );
+    if (self::$log) {
+      file_put_contents(self::$log, YamlDoc::syaml(['message'=> $message,]), FILE_APPEND);
     }
     die();
   }
   
-  // version optimisée avec sortie par feature
   // affiche le GeoJSON au fur et à mesure, ne retourne pas au script appellant
+  // version optimisée avec sortie par feature
   // Fonctionne en 2 étapes:
   // - la première vérifie les paramètres, traduit les select et les onZoomGeo
   // Ne fonctionne pas si zoom et where sont tous les 2 définis
-  function queryFeatures(string $lyrname, string $bboxstr, string $zoom, string $where) {
-    if ($zoom && $where)
-      throw new Exception("Erreur dans VectorDataset::queryFeatures() : zoom=$zoom et where=$where");
+  function queryFeaturesPrep(string $lyrname, string $bboxstr, string $zoom) {
     if (($zoom<>'') && !is_numeric($zoom))
-      throw new Exception("Erreur dans VectorDataset::queryFeatures() : zoom '$zoom' incorrect");
+      throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : zoom '$zoom' incorrect");
     $bbox = parent::decodeBbox($bboxstr);
     
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
-        throw new Exception("Erreur dans VectorDataset::queryFeatures() : No match on "
-            .$this->layers[$lyrname]['select']);
-      return $this->queryFeatures2($matches[1], $bbox, $zoom, isset($matches[3]) ? $matches[3] : '');
+        throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : "
+            .'select "'.$this->layers[$lyrname]['select'].'" incorrect');
+      return $this->queryFeatures($matches[1], $bbox, $zoom, isset($matches[3]) ? $matches[3] : '');
     }
-    /*elseif (isset($this->layers[$lyrname]['filterOnZoom']) && ($zoom<>'')) {
-      //echo "<pre>"; print_r($this->layers[$lyrname]);
-      $filter = '';
-      foreach ($this->layers[$lyrname]['filterOnZoom'] as $zoomMin => $filterOnZoom) {
-        if ($zoom >= $zoomMin)
-          $filter = $filterOnZoom;
-      }
-      if (!$filter)
-        emptyFeatureCollection("Aucun filterOnZoom défini pour zoom $zoom");
-      if (1) { // log 
-        file_put_contents(
-            'id.log.yaml',
-            YamlDoc::syaml([
-              'zoom'=> $zoom,
-              'lyrname'=> $lyrname,
-            ]),
-            FILE_APPEND
-        );
-      }
-      if (strncmp($filter, '/', 1) <> 0)
-        return $this->queryFeatures2($lyrname, $bbox, $zoom, $filter <> 'all' ? $filter : '');
-      $location = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$filter?bbox=$bboxstr&zoom=$zoom";
-      header("Location: $location");
-      die("Location: $location");
-    }*/
     elseif (isset($this->layers[$lyrname]['onZoomGeo'])) {
       if (!($select = $this->onZoomGeo($this->layers[$lyrname]['onZoomGeo'], $zoom, $bbox)))
         self::emptyFeatureCollection("Aucun onZoomGeo défini pour zoom $zoom sur layer $lyrname");
@@ -424,20 +419,20 @@ class VectorDataset extends WfsServer {
         die("Location: $select?bbox=$bboxstr&zoom=$zoom");
       }
       elseif (preg_match('!([^ ]+) / (.*)$!', $select, $matches))
-        return $this->queryFeatures2($matches[1], $bbox, $zoom, $matches[2]);
+        return $this->queryFeatures($matches[1], $bbox, $zoom, $matches[2]);
       elseif (isset($this->layers[$lyrname]['ogrPath']) || isset($this->layers[$lyrname]['typename']))
-        return $this->queryFeatures2($lyrname, $bbox, $zoom, $select == 'all' ? $where : $select);
+        return $this->queryFeatures($lyrname, $bbox, $zoom, $select == 'all' ? '' : $select);
       else
-        throw new Exception("Dans VectorDataset::queryFeatures: onZoomGeo de $lyrname incorrect");
+        throw new Exception("Dans VectorDataset::queryFeaturesPrep: onZoomGeo de $lyrname incorrect");
     }
     else {
-      return $this->queryFeatures2($lyrname, $bbox, $zoom, $where);
+      return $this->queryFeatures($lyrname, $bbox, $zoom, '');
     }
   }
   
   // étape 2: traite ogrPath et typename
-  function queryFeatures2(string $lyrname, array $bbox, string $zoom, string $where) {
-    //echo "VectorDataset::queryFeatures2($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
+  function queryFeatures(string $lyrname, array $bbox, string $zoom, string $where) {
+    //echo "VectorDataset::queryFeatures($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
     // requête dans MySQL
     if (isset($this->layers[$lyrname]['ogrPath'])) {
       MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
@@ -482,11 +477,10 @@ class VectorDataset extends WfsServer {
     // requête WFS
     elseif (isset($this->layers[$lyrname]['typename'])) {
       $typename = $this->layers[$lyrname]['typename'];
-      if (1) {
-        file_put_contents(
-            'id.log.yaml',
+      if (self::$log) {
+        file_put_contents(self::$log,
             YamlDoc::syaml([
-              'call'=> 'VectorDataset::queryFeatures2',
+              'method'=> 'VectorDataset::queryFeatures',
               'typename'=> $typename,
               'where'=> $where,
               'bbox'=> $bbox,
@@ -497,10 +491,14 @@ class VectorDataset extends WfsServer {
       header('Access-Control-Allow-Origin: *');
       header('Content-type: application/json');
       $this->printAllFeatures($typename, $bbox, $where);
+      if (self::$log) {
+        global $t0;
+        file_put_contents(self::$log, YamlDoc::syaml(['duration'=> microtime(true) - $t0]), FILE_APPEND);
+      }
       die();  
     }
     else {
-      throw new Exception("Erreur dans VectorDataset::queryFeatures2() : cas non prévu pour la couche $lyrname");
+      throw new Exception("Erreur dans VectorDataset::queryFeatures() : cas non prévu pour la couche $lyrname");
     }
   }
     
@@ -523,10 +521,9 @@ class VectorDataset extends WfsServer {
       }
     }
     echo "],\n\"nbfeatures\": $nbFeatures\n}\n";
-    if (1) { // log
+    if (self::$log) {
       global $t0;
-      file_put_contents(
-          'id.log.yaml',
+      file_put_contents(self::$log,
           YamlDoc::syaml([
             'version'=> 'sortie optimisée avec json_encode par feature',
             'duration'=> microtime(true) - $t0,
@@ -539,6 +536,7 @@ class VectorDataset extends WfsServer {
   }
 };
 
+// la classe GeoZone permet de tester l'intersection entre un bbox et une des zones prédéfinies
 class GeoZone {
   static $zones = [ // définition de qqs zones particulières en [lngMin, latMin, lngMax, latMax]
     'FXX'=> [-6, 41, 10, 52], // métropole
@@ -567,7 +565,7 @@ class GeoZone {
     return ($xmin < $xmax) && ($ymin < $ymax);
   }
 
-  // teste l'intersection d'une des zones prédéfinies avec un bbox
+  // teste l'intersection d'une des zones prédéfinies avec un bbox ([lngMin, latMin, lngMax, latMax])
   static function intersects(string $zone, array $bbox) {
     if (!isset(self::$zones[$zone]))
       throw new Exception("Erreur dans GeoZone::intersects: zone $zone non définie");
