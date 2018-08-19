@@ -113,6 +113,8 @@ doc: |
     
   A FAIRE:
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
+    - fabriquer une couche limite administrative pour la BD Parcellaire
+    - gérer des couches d'étiquettes associées ou remplacant certaines couches vecteur
   
 journal: |
   19/8/2018:
@@ -120,6 +122,7 @@ journal: |
       - ajout minZoom et maxZoom sur les couches
       - modif du mécanisme de définition des calques affichés par défaut
       - modif des coordonnées et du zoom initial
+    - ajout du view en paramètre optionnel de display
   18/8/2018:
     - fusion selectOnZoom et filterOnZoom en onZoomGeo
     - amélioration de la gestion du log, création d'un fichier log propre à la classe
@@ -278,12 +281,12 @@ class VectorDataset extends WfsServer {
   function extractByUri(string $docuri, string $ypath) {
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
-    elseif ($ypath == '/map') {
-      //echo "fragment '/map'\n";
+    elseif ($ypath == '/map')
       return $this->map($docuri)->asArray();
-    }
     elseif ($ypath == '/map/display') {
-      $this->map($docuri)->display($docuri);
+      $latlon = isset($_GET['latlon']) ? explode(',',$_GET['latlon']) : [];
+      $zoom = isset($_GET['zoom']) ? $_GET['zoom']+0 : -1;
+      $this->map($docuri)->display($docuri, $latlon, $zoom);
       die();
     }
     // fragment /{lyrname}

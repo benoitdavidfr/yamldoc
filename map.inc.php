@@ -13,17 +13,17 @@ doc: |
   La carte peut être affichée par appel de son URI suivie de /display
   Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.
   Le fichier map-default.yaml est utilisé pour définir une carte par défaut.
-  Cette carte par défaut contient 3 couches de base et 0 calques.
+  Cette carte par défaut contient 3 couches de base et 0 calques (overlays).
   
   Voir la carte geodata/testmap.yaml comme exemple et spécification.
   
-  A FAIRE:
-    - définition de couche en fonction du zoom
-    - par exemple troncon_route ou limite_administrative
+  La carte peut aussi être généré dynamiquement par un autre document, par un VectorDataset.
+  Voir comme exemple id.php/geodata/route500/map
   
 journal: |
   19/8/2018:
     - modif des spécifications des couches affichées par défaut de addLayer en defaultLayers
+    - ajout du view en paramètre optionnel de display
   17/8/2018:
     - modif de l'initialisation pour que les paramètres originaux ne s'affichent pas à la fin
     - les endpoint des couches UGeoJSONLayer peuvent soit être des URI de couche
@@ -105,8 +105,11 @@ class Map extends YamlDoc {
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
-    if ($ypath=='/display')
-      $this->display($docuri);
+    if ($ypath=='/display') {
+      $latlon = isset($_GET['latlon']) ? explode(',',$_GET['latlon']) : [];
+      $zoom = isset($_GET['zoom']) ? $_GET['zoom']+0 : -1;
+      $this->display($docuri, $latlon, $zoom);
+    }
     else {
       $fragment = $this->extract($ypath);
       $fragment = self::replaceYDEltByArray($fragment);
@@ -115,7 +118,7 @@ class Map extends YamlDoc {
   }
   
   // affiche la carte
-  function display(string $docid): void {
+  function display(string $docid, array $latlon=[], int $zoom=-1): void {
     //echo "Map::display($docid)<br>\n";
     //echo "<pre>_SERVER="; print_r($_SERVER); die();
     echo "<!DOCTYPE HTML><html><head>";
@@ -133,8 +136,11 @@ class Map extends YamlDoc {
     echo "  <div id='map' style='height: ",$this->mapStyle['height'],
          "; width: ",$this->mapStyle['width'],"'></div>\n";
     echo "  <script>\n";
-    echo "var map = L.map('map').setView([",implode(',',$this->view['latlon']),"], ",
-         $this->view['zoom'],"); // view pour la zone\n";
+    if (!$latlon)
+      $latlon = $this->view['latlon'];
+    if ($zoom == -1)
+      $zoom = $this->view['zoom'];
+    echo "var map = L.map('map').setView([",implode(',',$latlon),"], ",$zoom,"); // view pour la zone\n";
     if ($this->locate)
       echo "map.locate({setView: ",$this->locate['setView']?'true':'false',
            ", maxZoom: ",$this->locate['maxZoom'],"});\n";
