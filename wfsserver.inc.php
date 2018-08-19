@@ -243,8 +243,8 @@ class WfsServer extends YamlDoc {
       $request['CQL_FILTER'] = urlencode($cql_filter);
     $result = $this->query($request);
     if (!preg_match('! numberMatched="(\d+)" !', $result, $matches)) {
-      echo "result=",$result,"\n";
-      throw new Exception("Erreur dans WfsServer::getNumberMatched() : no match on result");
+      //echo "result=",$result,"\n";
+      throw new Exception("Erreur dans WfsServer::getNumberMatched() : no match on result $result");
     }
     return (int)$matches[1];
   }

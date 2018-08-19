@@ -13,7 +13,7 @@ doc: |
   La carte peut être affichée par appel de son URI suivie de /display
   Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.
   Le fichier map-default.yaml est utilisé pour définir une carte par défaut.
-  Cette carte par défaut contient 3 couches de base et 0 overlay.
+  Cette carte par défaut contient 3 couches de base et 0 calques.
   
   Voir la carte geodata/testmap.yaml comme exemple et spécification.
   
@@ -22,6 +22,8 @@ doc: |
     - par exemple troncon_route ou limite_administrative
   
 journal: |
+  19/8/2018:
+    - modif des spécifications des couches affichées par défaut de addLayer en defaultLayers
   17/8/2018:
     - modif de l'initialisation pour que les paramètres originaux ne s'affichent pas à la fin
     - les endpoint des couches UGeoJSONLayer peuvent soit être des URI de couche
@@ -155,7 +157,11 @@ class Map extends YamlDoc {
       }
     }
     echo "};\n";
-    echo "map.addLayer(bases[\"",$this->bases[$this->addLayer]->title,"\"]);\n";
+    foreach ($this->defaultLayers as $lyrid)
+      if (isset($this->bases[$lyrid]))
+        echo "map.addLayer(bases[\"",$this->bases[$lyrid]->title,"\"]);\n";
+      elseif (isset($this->overlays[$lyrid]))
+        echo "map.addLayer(overlays[\"",$this->overlays[$lyrid]->title,"\"]);\n";
     // ajout de l'outil de sélection de couche
     echo "L.control.layers(bases, overlays).addTo(map);\n";
     echo "  </script>\n</body></html>\n";
@@ -227,6 +233,11 @@ class LeafletUGeoJSONLayer extends LeafletLayer {
       echo "    style: ",json_encode($this->style),",\n";
     elseif ($this->style && is_string($this->style))
       echo "    style: ",$this->style,",\n";
+    if ($this->minZoom !== null)
+      echo "    minZoom: ",$this->minZoom,",\n";
+    if ($this->maxZoom !== null)
+      echo "    maxZoom: ",$this->maxZoom,",\n";
+    
     echo "    usebbox: true\n";
     echo "  }),\n";
   }

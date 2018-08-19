@@ -93,6 +93,8 @@ doc: |
       - *abstract* qui fournit un résumé,
       - *style* qui définit le style Leaflet de la couche soit en JSON soit en JavaScript,
       - *conformsTo* qui fournit la spécification de la couche
+      - *minZoom*
+      - *maxZoom*
 
   Dans un onZoomGeo {geoZone} est un des codes prédéfinis suivants de zone géographique :
     - 'FXX' pour la métropole,
@@ -110,9 +112,14 @@ doc: |
     - 'WLD' pour le monde entier
     
   A FAIRE:
-    - céer une couche boundary+coastline por ne_110m et ne_10m
+    - structurer la BD TOPO, définir une vue multi-échelles par défaut
   
 journal: |
+  19/8/2018:
+    - modifs de la carte standard:
+      - ajout minZoom et maxZoom sur les couches
+      - modif du mécanisme de définition des calques affichés par défaut
+      - modif des coordonnées et du zoom initial
   18/8/2018:
     - fusion selectOnZoom et filterOnZoom en onZoomGeo
     - amélioration de la gestion du log, création d'un fichier log propre à la classe
@@ -221,19 +228,50 @@ class VectorDataset extends WfsServer {
   
   // fabrique la carte d'affichage des couches de la base
   function map(string $docuri) {
-    $yaml = ['title'=> 'carte '.$this->title];
+    $map = [
+      'title'=> 'carte '.$this->title,
+      'view'=> ['latlon'=> [47, 3], 'zoom'=> 6],
+    ];
+    $map['bases'] = [
+      'cartes'=> [
+        'title'=> "Cartes IGN",
+        'type'=> 'TileLayer',
+        'url'=> 'http://igngp.geoapi.fr/tile.php/cartes/{z}/{x}/{y}.jpg',
+        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
+      ],
+      'orthos'=> [
+        'title'=> "Ortho-images",
+        'type'=> 'TileLayer',
+        'url'=> 'http://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg',
+        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
+      ],
+      'whiteimg'=> [
+        'title'=> "Fond blanc",
+        'type'=> 'TileLayer',
+        'url'=> 'http://visu.gexplor.fr/utilityserver.php/whiteimg/{z}/{x}/{y}.jpg',
+        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 21 ],
+      ],
+    ];
+    $map['defaultLayers'] = ['whiteimg'];
+        
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
         'type'=> 'UGeoJSONLayer',
         'endpoint'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
       ];
-      if (isset($layer['style']))
-        $overlay['style'] = $layer['style'];
-      $yaml['overlays'][$lyrid] = $overlay;
+      foreach (['style','minZoom','maxZoom'] as $key)
+        if (isset($layer[$key]))
+          $overlay[$key] = $layer[$key];
+        elseif ($this->$key !== null)
+          $overlay[$key] = $this->$key;
+
+      $map['overlays'][$lyrid] = $overlay;
+      if (isset($layer['displayedByDefault']))
+        $map['defaultLayers'][] = $lyrid;
     }
-    $map = new Map($yaml);
-    return $map;
+        
+    return new Map($map);
   }
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI

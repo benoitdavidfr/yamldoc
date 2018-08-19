@@ -30,4 +30,5 @@ bases:
     url: http://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg
     options: { format: image/jpeg, minZoom: 0, maxZoom: 20, detectRetina: true, attribution: ign }
 overlays:
-addLayer: cartes
+defaultLayers:
+  - cartes
