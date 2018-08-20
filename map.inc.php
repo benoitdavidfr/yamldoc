@@ -21,6 +21,8 @@ doc: |
   Voir comme exemple id.php/geodata/route500/map
   
 journal: |
+  20/8/2018:
+    - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:
     - modif des spécifications des couches affichées par défaut de addLayer en defaultLayers
     - ajout du view en paramètre optionnel de display
@@ -121,6 +123,8 @@ class Map extends YamlDoc {
   function display(string $docid, array $latlon=[], int $zoom=-1): void {
     //echo "Map::display($docid)<br>\n";
     //echo "<pre>_SERVER="; print_r($_SERVER); die();
+    $markerId = 'markerlib';
+    $markerLib = new_doc($markerId);
     echo "<!DOCTYPE HTML><html><head>";
     echo "<title>",$this->title,"</title><meta charset='UTF-8'>\n";
     echo "<!-- meta nécessaire pour le mobile -->\n",
@@ -136,6 +140,7 @@ class Map extends YamlDoc {
     echo "  <div id='map' style='height: ",$this->mapStyle['height'],
          "; width: ",$this->mapStyle['width'],"'></div>\n";
     echo "  <script>\n";
+    echo $markerLib->asJavaScript($markerId);
     if (!$latlon)
       $latlon = $this->view['latlon'];
     if ($zoom == -1)
@@ -232,9 +237,11 @@ class LeafletUGeoJSONLayer extends LeafletLayer {
     $popup = "'<b><a href=\"$lyrurl\">'+layer.options.lyrid+', zoom='+map.getZoom()+'</a></b><br>'"
       ."+'<pre>'+JSON.stringify(feature.properties,null,' ').replace(/[\{\}\"]/g,'')+'</pre>'";
     echo "    onEachFeature: function (feature, layer) {\n",
-         //"      console.log(Object.values(layer));\n",
+         //"      console.log(layer);\n",
          "      layer.bindPopup($popup);\n",
          "    },\n";
+    if ($this->pointToLayer && is_string($this->pointToLayer))
+      echo "    pointToLayer: ",$this->pointToLayer,",\n";
     if ($this->style && is_array($this->style))
       echo "    style: ",json_encode($this->style),",\n";
     elseif ($this->style && is_string($this->style))

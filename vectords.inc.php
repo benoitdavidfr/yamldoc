@@ -117,6 +117,8 @@ doc: |
     - gérer des couches d'étiquettes associées ou remplacant certaines couches vecteur
   
 journal: |
+  20/8/2018:
+    - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:
     - modifs de la carte standard:
       - ajout minZoom et maxZoom sur les couches
@@ -263,7 +265,7 @@ class VectorDataset extends WfsServer {
         'type'=> 'UGeoJSONLayer',
         'endpoint'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
       ];
-      foreach (['style','minZoom','maxZoom'] as $key)
+      foreach (['pointToLayer','style','minZoom','maxZoom'] as $key)
         if (isset($layer[$key]))
           $overlay[$key] = $layer[$key];
         elseif ($this->$key !== null)
