@@ -16,7 +16,7 @@ doc: |
   des traitements.
   Le format interne peut être stocké dans les fichiers .pser
     
-journal: |
+journal:
   22/8/2018:
   - réécriture de ydext()
   28/7/2018:
@@ -49,7 +49,7 @@ journal: |
   - modification de l'affichage d'un texte et d'une chaine
   - une chaine qui commence par http:// ou https:// est remplacée à l'affichage par un lien
   - pour un texte, 3 possibilités de formattage:
-    - si le texte commence par "Content-Type: text/plain\n" alors affichage du texte brut
+    - 'si le texte commence par "Content-Type: text/plain\n" alors affichage du texte brut'
     - si le texte commence par "<html>\n" alors affichage du texte considéré comme du HTML
     - sinon le texte est considéré comme du Markdown
   9/6/2018:

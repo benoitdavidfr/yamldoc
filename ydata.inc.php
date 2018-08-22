@@ -11,6 +11,7 @@ name: ydata.inc.php
 title: ydata.inc.php - sous-classes YamlData et YamlDataTable pour la gestion des données
 doc: |
   objectifs:
+  
     - abandon du YamlSchema au profit de json-schema, spécification mieux définie des données et plus standard
     - réécriture à la suite de la restructuration des classes YamlDoc et BasicYamlDoc.
       La nouvelle classe hérite de YamlDoc et non de BasicYamlDoc.'
@@ -19,6 +20,7 @@ doc: |
 
   Un document YData doit définir à la racine un champ yamlClass avec la valeur YData.
   Il peut alors:
+  
     - soit contenir une seule table stockée en Yaml dans le champ data
     - soit contenir une liste de tables stockée dans une structure Yaml
       tables:
@@ -29,7 +31,7 @@ doc: |
   
   Implémente pour URI un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
   
-journal: |
+journal:
   29/7/2018:
   - mécanismes d'accès de base
   - manque projection, sélection

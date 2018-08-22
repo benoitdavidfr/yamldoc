@@ -10,9 +10,9 @@ $phpDocs['map.inc.php'] = <<<'EOT'
 name: map.inc.php
 title: map.inc.php - sous-classe de documents pour l'affichage d'une carte Leaflet
 doc: |
-  La carte peut être affichée par appel de son URI suivie de /display
-  Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.
-  Le fichier map-default.yaml est utilisé pour définir une carte par défaut.
+  La carte peut être affichée par appel de son URI suivie de /display  
+  Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.  
+  Le fichier map-default.yaml est utilisé pour définir une carte par défaut.  
   Cette carte par défaut contient 3 couches de base et 0 calques (overlays).
   
   Voir la carte geodata/testmap.yaml comme exemple et spécification.
@@ -20,7 +20,7 @@ doc: |
   La carte peut aussi être généré dynamiquement par un autre document, par un VectorDataset.
   Voir comme exemple id.php/geodata/route500/map
   
-journal: |
+journal:
   20/8/2018:
     - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:

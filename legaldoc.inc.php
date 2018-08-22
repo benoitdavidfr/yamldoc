@@ -14,12 +14,16 @@ doc: |
   Ce fichier définit les classes LegalDoc et LegalPart.
   
   Idée: utiliser isReplacedBy pour exprimer par exemple que le document annexe I
-  est remplacé par le thésaurus inspireThemesAnnexI
+  est remplacé par le thésaurus inspireThemesAnnexI  
   A l'intérieur du document utiliser:
-    isReplacedBy: { ypath: /schemes/annex1Themes }
+  
+      isReplacedBy: { ypath: /schemes/annex1Themes }
+      
   Entre documents, utiliser l'URI:
-    isReplacedBy: http://id.georef.eu/inspire-directive/schemes/annex1Themes
-journal: |
+  
+      isReplacedBy: http://id.georef.eu/inspire-directive/schemes/annex1Themes
+      
+journal:
   23/7/2018:
   - création
 EOT;

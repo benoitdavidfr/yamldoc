@@ -10,16 +10,17 @@ $phpDocs['multidata.inc.php'] = <<<'EOT'
 name: multidata.inc.php
 title: multidata.inc.php - class MultiData pour décomposer une grande table en sous-tables stockées chacune dans un sous-document
 doc: |
-  Le concept MultiData permet de décomposer une grande table en sous-tables stockées chacune dans un sous-document.
-  Tous les sous-documents sont stockés dans un répertoire portant comme nom celui du MultiData.
+  Le concept MultiData permet de décomposer une grande table en sous-tables stockées chacune dans un sous-document.  
+  Tous les sous-documents sont stockés dans un répertoire portant comme nom celui du MultiData.  
   Ainsi, un document MultiData contient dans le champ multi la liste de docid correspondant chacun à un sous-document
   situé dans le répertoire ayant pour nom l'id du document multi.
-  Chaque sous-document est un YamlData composé d'une seule table.
+  Chaque sous-document est un YamlData composé d'une seule table.  
   Le document MultiData créé est composé d'une table qui est la concaténation des tables des sous-documents.
   
-  A FAIRE:
-  - il serait utile de vérifier la compatibilité des différents schémas déclarés et/ou effectifs.
-journal: |
+  ### A FAIRE:
+  
+    - il serait utile de vérifier la compatibilité des différents schémas déclarés et/ou effectifs.
+journal:
   14/6/2018:
   - première version simple
 EOT;

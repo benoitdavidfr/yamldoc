@@ -8,11 +8,11 @@ doc: |
 {
 $phpDocs['pdfdoc.inc.php'] = <<<EOT
 name: pdfdoc.inc.php
-title: pdfdoc.inc.php - gestion des fichiers PDF
+title: pdfdoc.inc.php - affichage des fichiers PDF
 doc: |
-journal: |
+journal:
   22/8/2018:
-  - modif OdtDoc::checkReadAccess()
+  - modif PdfDoc::checkReadAccess()
   28/7/2018:
   - création
 EOT;

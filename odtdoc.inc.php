@@ -8,9 +8,9 @@ doc: |
 {
 $phpDocs['odtdoc.inc.php'] = <<<EOT
 name: odtdoc.inc.php
-title: odtdoc.inc.php - gestion des fichiers ODT
+title: odtdoc.inc.php - affichage des fichiers ODT
 doc: |
-journal: |
+journal:
   22/8/2018:
   - modif OdtDoc::checkReadAccess()
   28/7/2018:

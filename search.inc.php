@@ -13,7 +13,7 @@ doc: |
   La ré-indexation globale efface la base et la reconstruit à partir des fichiers.
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
-journal: |
+journal:
   3/8/2018:
     - reorganisation de l'interface MySql
   14/7/2018:

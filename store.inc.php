@@ -28,8 +28,8 @@ doc: |
   Les cas 2 et 3 fonctionnent en sapi=='cli' mais nécessite alors le fichier place.inc.php
   qui définit le lieu d'éxécution.
   
-journal: |
-  29/7/2018
+journal:
+  29/7/2018:
     création
     
 EOT;

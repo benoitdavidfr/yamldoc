@@ -13,11 +13,15 @@ doc: |
   La classe WfsServer expose différentes méthodes utilisant un serveur WFS.
   
   Outre les champs de métadonnées, le document doit définir les champs suivants:
+  
     - urlWfs: fournissant l'URL du serveur à compléter avec les paramètres,
+  
   Il peut aussi définir les champs suivants:
+  
     - referer: définissant le referer à transmettre à chaque appel du serveur.
 
   Liste des points d'entrée de l'API:
+  
     - /{document} : description du serveur
     - /{document}/getCapabilities : lecture des capacités du serveur et renvoi en XML, rafraichit le cache
     - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
@@ -33,7 +37,7 @@ doc: |
     
   Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester cette classe.
   
-journal: |
+journal:
   15/8/2018:
     - création
 EOT;

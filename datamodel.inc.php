@@ -14,15 +14,16 @@ doc: |
   il contient en outre un champ objectTypes qui est un dictionnaire de types d'objets de la classe ObjectType
 
   Version ultérieure:
+  
     - gestion:
       - codelist.(requirement|technicalguide|refdoc|docextract) -> source
       - codelist.extensibility
       - codelist.requirement -> scopeNote
       - scheme.exactMatch
       - objecttype.broadMatch
-    - lien vers la source du règlement: source ?
+    - lien vers la source du règlement: source ?  
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
-journal: |
+journal:
   17/7/2018:
     - ajout de la classe Attribute
   4-8/7/2018:

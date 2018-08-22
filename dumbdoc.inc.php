@@ -19,7 +19,7 @@ doc: |
   La classe DumbDocP implémente uniquement les méthodes abstraites de YamlDoc et PAS la méthode __get().
   Pour ne pas générer d'erreur elle doit définir les 6 propriétés utilisées dans les méthodes de YamlDoc.
   En ayant pour ces propriétés une valeur nulle, cela simule une absence de ces propriétés dans les documents.
-journal: |
+journal:
   19/7/2018:
   - création
 EOT;

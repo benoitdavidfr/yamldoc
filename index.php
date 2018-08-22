@@ -11,6 +11,7 @@ name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
   Le script utilise les variables de session suivantes:
+  
     - homeCatalog : uid du dernier catalogue d'accueil traversé ou absent si aucun ne l'a été
         identifie l'utilisateur
     - parents : graphe de navigation sous la forme d'un tableau docuid enfant vers docuid parent
@@ -25,19 +26,23 @@ doc: |
         permet d'afficher la liste des langues possibles dans le menu
     
   A REVOIR:
-  - les fichiers servreg devraient être considérés comme des catalogues
-  - un fichier protégé et non conforme Yaml n'est pas protégé
-  - le mécanisme de vérouillage semble complètement inutile
+  
+    - les fichiers servreg devraient être considérés comme des catalogues
+    - un fichier protégé et non conforme Yaml n'est pas protégé
+    - le mécanisme de vérouillage semble complètement inutile
   
   IDEES:
-  - intégrer la gestion de mot de passe
   
-journal: |
+    - intégrer la gestion de mot de passe
+  
+journal:
+  22/8/2018:
+    - affichage Yaml des phpDocs
   3/8/2018:
-  - modif utilisation MySql
+    - modif utilisation MySql
   17/7/2018:
-  - traitement des $phpDocs complexes
-  - remplacement des méthodes php() par asArray()
+    - traitement des $phpDocs complexes
+    - remplacement des méthodes php() par asArray()
   14/7/2018:
   - modif du titre de la page HTML
   7-10/7/2018:
@@ -273,7 +278,7 @@ ydunlockall();
 
 // action version - affichage Phpdoc
 if (isset($_GET['action']) && ($_GET['action']=='version')) {
-  if (!isset($_GET['name'])) {
+  if (!isset($_GET['name'])) { // affichage de la liste des scripts chacun désigné par le chmap title
     echo "<h2>Documentation des scripts Php</h2><ul>\n";
     foreach ($phpDocs as $name => $phpDoc) {
       try {
@@ -294,17 +299,22 @@ if (isset($_GET['action']) && ($_GET['action']=='version')) {
     }
   }
   elseif (!is_array($phpDocs[$_GET['name']])) {
-    echo "<pre>",str2html($phpDocs[$_GET['name']]),"</pre>\n";
+    //echo "<pre>",str2html($phpDocs[$_GET['name']]),"</pre>\n";
+    $phpDoc = Yaml::parse($phpDocs[$_GET['name']]);
+    showDoc('version', $phpDoc);
   }
   else {
     foreach ($phpDocs[$_GET['name']] as $field => $doc) {
       echo "<h2>$field</h2>";
-      if (is_string($doc))
-        echo "<pre>",str2html($doc),"</pre>\n";
+      if (is_string($doc)) {
+        //echo "<pre>",str2html($doc),"</pre>\n";
+        showDoc('version', Yaml::parse($doc));
+      }
       else {
         foreach ($doc as $sname => $sdoc) {
           echo "<h3>$sname</h3>";
-          echo "<pre>",str2html($sdoc),"</pre>\n";
+          //echo "<pre>",str2html($sdoc),"</pre>\n";
+          showDoc('version', Yaml::parse($sdoc));
         }
       }
     }

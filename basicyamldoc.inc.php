@@ -10,7 +10,7 @@ $phpDocs['basicyamldoc.inc.php'] = <<<'EOT'
 name: basicyamldoc.inc.php
 title: basicyamldoc.inc.php - classe BasicYamlDoc
 doc: |
-journal: |
+journal:
   18/7/2018:
   - première version par fork de yd.inc.php
   - chgt de nom de la classe
@@ -48,11 +48,3 @@ class BasicYamlDoc extends YamlDoc {
     echo "methode YamlDoc::checkSchemaConformity() non implémentée<br>\n";
   }
 };
-
-
-if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
-
-$str = 'code,title,(json-ld/geo),(depts/code,title)';
-echo "<pre>";
-echo "$str\n";
-print_r(YamlDoc::protexplode(',', $str));

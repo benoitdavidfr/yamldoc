@@ -13,7 +13,7 @@ doc: |
   La classe abstraite Doc correspondant à un document affichable.
   La classe abstraite YamlDoc correspond à un document Yaml.
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
-journal: |
+journal:
   28/7/2018:
   - ajout de la classe abstraite Doc
   26/7/2018:
@@ -33,7 +33,7 @@ use Symfony\Component\Yaml\Yaml;
 $phpDocs['yamldoc.inc.php']['classes']['Doc'] = <<<'EOT'
 title: classe abstraite Doc correspondant à un document affichable
 doc: |
-  La classe abstraite YamlDoc définit:
+  La classe abstraite Doc définit:
     - 2 méthodes abstraites que chaque sous-classe doit définir
     - des fonctions génériques utiles aux sous-classes
   En plus de définir les 2 méthodes abstraites, une classe héritant de Doc doit aussi
@@ -446,3 +446,12 @@ interface YamlDocElement {
   // pas implémenté avec la même signature par tous !!!
   //public function show(string $docuid, string $prefix='');
 };
+
+
+if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
+
+$str = 'code,title,(json-ld/geo),(depts/code,title)';
+echo "<pre>";
+echo "$str\n";
+print_r(YamlDoc::protexplode(',', $str));
+

@@ -113,10 +113,11 @@ doc: |
     
   A FAIRE:
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
+    - définir une interface OAI
+    - 
     - fabriquer une couche limite administrative pour la BD Parcellaire
-    - gérer des couches d'étiquettes associées ou remplacant certaines couches vecteur
   
-journal: |
+journal:
   20/8/2018:
     - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:

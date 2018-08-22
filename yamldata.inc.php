@@ -11,25 +11,28 @@ name: yamldata.inc.php
 title: yamldata.inc.php - sous-classes YamlData et YamlDataTable pour la gestion des données
 doc: |
   Pour gérer efficacement des tables assez volumineuses, il est préférable d'utiliser des clés d'accès aux
-  enregistrements plutôt qu'un numéro d'ordre comme prévu dans le YamlDoc de base.
+  enregistrements plutôt qu'un numéro d'ordre comme prévu dans le YamlDoc de base.  
     La classe YamlData permet de définir des documents contenant une ou plusieurs tables d'enregistrements
-  accessibles au travers d'une clé éventuellement composite.
+  accessibles au travers d'une clé éventuellement composite.  
   La clé est utilisée dans la structure Php ; pour une clé composite, plusieurs clés successives Php son utilisées.
-  Un document YamlData doit définir à la racine un champ yamlClass avec la valeur YamlData.
+  Un document YamlData doit définir à la racine un champ yamlClass avec la valeur YamlData.  
   Il peut alors:
+  
     - soit contenir une seule table stockée en Yaml dans le champ data
-    - soit contenir une liste de tables stockée dans une structure Yaml
-      tables:
-        {nomtable}:
-          title: titre de la table
-          yamlSchema: schema de la table
-          data: enregistrements contenus dans la table
+    - soit contenir une liste de tables stockée dans une structure Yaml  
+    
+          tables:  
+            {nomtable}:  
+              title: titre de la table  
+              yamlSchema: schema de la table  
+              data: enregistrements contenus dans la table  
+          
   Dans les 2 cas un YamlSchema pour chaque table est recommandé et nécessaire si une clé composite est utilisée.
   Le YamlSchema doit contenir un champ KEYS avec un sous champ ROOT et un sous-sous champ data contenant la liste
-  des clés sous la forme d'une chaine avec un nom de champ.
+  des clés sous la forme d'une chaine avec un nom de champ.  
   De plus une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
-journal: |
+journal:
   1/7/2018:
   - YamlDataTable implémente IteratorAggregate
   21/6/2018:

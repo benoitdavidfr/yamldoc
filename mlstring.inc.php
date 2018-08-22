@@ -11,15 +11,18 @@ name: mlstring.inc.php
 title:  mlstring.inc.php - class MLString définissant des chaines de caractères multi-lingues
 doc: |
   Un objet correspond à une chaine ou une liste de chaines dans différentes langues
-  Outre la liste des langues possibles, prend pour l'initialiser:
+  Outre la liste des langues possibles, prend pour l'initialiser :
+  
     - soit une chaine, on considère qu'elle est dans la langue 0
     - soit une liste de chaines, on considère qu'elles sont dans la langue 0
     - soit un dictionnaire langue -> chaine
     - soit un dictionnaire langue -> liste de chaines
+    
   Les langues sont soit les codes ISO 639-1 (sur 2 caractères), soit les codes ISO 639-2 (sur 3 caractères).
   Ajout du code 'n' correspondant au neutre (aucune langue).
   La conversion en string utilise s'il existe le paramètre lang, sinon l'ordre des langues défini dans la variable
   statique $default de la classe.
+  
 journal:
   18/7/2018:
   - améliorations: ajout de getStringsInLang(), renommage php() en asArray()

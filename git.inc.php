@@ -10,9 +10,9 @@ $phpDocs['git.inc.php'] = <<<EOT
 name: git.inc.php
 title: git.inc.php - commandes Git
 doc: |
-  ensemble de cmdes Git utilisées par YamlDoc
+  ensemble de cmdes Git utilisées par YamlDoc  
   git_synchro enchaine commit, pull et push
-journal: |
+journal:
   21/5/2018:
   - amélioration de git_commit_a()
   - ajout synchro

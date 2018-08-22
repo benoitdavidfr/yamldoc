@@ -3,26 +3,17 @@
 name: catalog.inc.php
 title: catalog.inc.php - classes des catalogues V2
 doc: |
-  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
-  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
-  En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
-journal: |
-  18/7/2018:
-    - prise en compte de la nouvelle classe YamlDoc
-  21/6/2018:
-    - V2
-  12/5/2018:
-    - scission de yd.inc.php
+  <a href='/yamldoc/?action=version&name=catalog.inc.php'>voir le code</a>
 */
 {
 $phpDocs['catalog.inc.php'] = <<<'EOT'
 name: catalog.inc.php
 title: catalog.inc.php - classes YamlCatalog des catalogues V2
 doc: |
-  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.
-  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]
+  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.  
+  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]  
   En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
-journal: |
+journal:
   18/7/2018:
     - prise en compte de la nouvelle classe YamlDoc
   21/6/2018:
