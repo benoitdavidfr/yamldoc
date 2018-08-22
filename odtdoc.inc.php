@@ -11,6 +11,8 @@ name: odtdoc.inc.php
 title: odtdoc.inc.php - gestion des fichiers ODT
 doc: |
 journal: |
+  22/8/2018:
+  - modif OdtDoc::checkReadAccess()
   28/7/2018:
   - création
 EOT;
@@ -36,5 +38,5 @@ class OdtDoc extends Doc  {
     echo odt2html($this->path);
   } 
   
-  function checkReadAccess(string $store, string $docuid): bool { return true; }
+  function checkReadAccess(string $docuid): bool { return true; }
 };

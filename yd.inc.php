@@ -14,9 +14,11 @@ doc: |
   Le format interne dépend de chaque document et est généré lors de la création du document.
   Typiquement un document peut créer des objets à la place de certains arrays pour simplifier la définition
   des traitements.
-  Le format interne est stocké dans les fichiers .pser
+  Le format interne peut être stocké dans les fichiers .pser
     
 journal: |
+  22/8/2018:
+  - réécriture de ydext()
   28/7/2018:
   - utilisation de la classe Store pour déterminer le store
   25/7/2018:
@@ -150,12 +152,18 @@ function ydread(string $uid) {
 }
 
 // retourne l'extension d'un document
+// cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
 function ydext(string $uid): string {
-  //echo "ydext(string $uid)";
+  //echo "ydext(string $uid)<br>\n";
   $storepath = Store::storepath();
-  foreach (['pser','yaml','php'] as $ext)
-    if (is_file(__DIR__."/$storepath/$uid.pser"))
+  foreach (['yaml','php'] as $ext)
+    if (is_file(__DIR__."/$storepath/$uid.$ext"))
       return $ext;
+  if (is_dir(__DIR__."/$storepath/$uid")) {
+    foreach (['yaml','php'] as $ext)
+      if (is_file(__DIR__."/$storepath/$uid/index.$ext"))
+        return $ext;
+  }
   return '';
 }
 

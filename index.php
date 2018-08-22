@@ -526,6 +526,7 @@ if ($_GET['action']=='reindex') {
 
 // action showPhpSrc - affiche le source Php d''une requête
 if ($_GET['action']=='showPhpSrc') {
+  //echo "ydext($_GET[doc])=",ydext($_GET['doc']);
   if (ydext($_GET['doc'])<>'php')
     die("Le document $_GET[doc] n'est pas une requête<br>\n");
   echo "<b>Code source Php de $_GET[doc]</b>\n";

@@ -11,6 +11,8 @@ name: pdfdoc.inc.php
 title: pdfdoc.inc.php - gestion des fichiers PDF
 doc: |
 journal: |
+  22/8/2018:
+  - modif OdtDoc::checkReadAccess()
   28/7/2018:
   - création
 EOT;
@@ -29,5 +31,5 @@ class PdfDoc extends Doc  {
     header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
   } 
   
-  function checkReadAccess(string $store, string $docuid): bool { return true; }
+  function checkReadAccess(string $docuid): bool { return true; }
 };
