@@ -51,12 +51,13 @@ class MarkerLib extends YamlDoc {
       showDoc($docid, $this->abstract);
     }
     echo "<pre>javaScriptVarName: ",$this->javaScriptVarName,"</pre>\n";
-    echo "<table border=1><th>id</th><th>url + source</th><th>img</th>",
+    echo "<table border=1><th>id</th><th>url + source éventuelle</th><th>img</th>",
          "<th>iconSize</th><th>iconAnchor</th><th>popupAnchor</th>\n";
     foreach ($this->markers as $id => $marker) {
       echo "<tr><td><b>$id</td>\n";
-      $url = $this->markerUrl($docid, $id); 
-      echo "<td>$url<br>$marker[source]</td><td><a href='$url'><img src='$url' alt='problème'></a></td>\n";
+      $url = $this->markerUrl($docid, $id);
+      $source = isset($marker['source']) ? "<br>$marker[source]" : '';
+      echo "<td>$url$source</td><td><a href='$url'><img src='$url' alt='problème'></a></td>\n";
       echo "<td>[",implode(' ,', $marker['iconSize']),"]";
       echo "<td>[",isset($marker['iconAnchor']) ? implode(' ,', $marker['iconAnchor']) : 'undef',"]</td>";
       echo "<td>[",isset($marker['popupAnchor']) ? implode(' ,', $marker['popupAnchor']) : 'undef',"]</td>";
