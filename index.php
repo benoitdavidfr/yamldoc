@@ -25,6 +25,14 @@ doc: |
     - language : pour chaque document multi-lingue (champ language) indique la liste des langues
         permet d'afficher la liste des langues possibles dans le menu
     
+  Chaque script inclus dans index.php définit une entrée de $PhpDocs indexére sur le nom du fichier
+  permettant aisni la visualisation de cette doc depuis le visualiseur YamlDoc.  
+  Cette entrée contient :
+  
+    - soit un texte définissant un document Yaml comme ici,
+    - soit un array définissant différents documents Yaml
+      comme [yamlskos.inc.php](?action=version&doc=index&name=yamlskos.inc.php).
+  
   A REVOIR:
   
     - les fichiers servreg devraient être considérés comme des catalogues

@@ -5,116 +5,19 @@ title: vectords.inc.php - document définissant une série de données géo cons
 functions:
 doc: <a href='/yamldoc/?action=version&name=vectords.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['vectords.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['vectords.inc.php']['file'] = <<<'EOT'
 name: vectords.inc.php
 title: vectords.inc.php - document définissant une série de données géo constituéen d'un ensemble de couches vecteur
 doc: |
   objectifs:
+  
     - offrir une API d'accès aux objets géographiques
 
-  Une SD vecteur (VectorDataset) est composée de couches vecteur, chacune correspondant à une FeatureCollection
-  [GeoJSON](https://tools.ietf.org/html/rfc7946) ;
-  chaque couche est composée d'objets vecteur, cad des Feature GeoJSON.  
-  Un document décrivant une SD vecteur, d'une part, peut s'afficher et, d'autre part, expose une API
-  constituée des 6 points d'entrée suivants :
-  
-    1. {docid} : description de la SD en JSON (ou en Yaml), y compris la liste de ses couches
-      ([exemple de Route500](id.php/geodata/route500),
-      [en Yaml](id.php/geodata/route500?format=yaml)),
-    2. {docid}/{lyrname} : description de la couche en JSON (ou en Yaml), cette URI identifie la couche
-      ([exemple de la couche commune de Route500](id.php/geodata/route500/commune)),
-    3. {docid}/{lyrname}?{query} : requête sur la couche renvoyant un FeatureCollection GeoJSON  
-      où {query} peut être:
-        - bbox={lngMin},{latMin},{lngMax},{latMax}&zoom={zoom}
-          ([exemple](id.php/geodata/route500/commune?bbox=-2.71,47.21,2.72,47.22&zoom=10)),
-        - where={critère SQL/CQL}
-          ([exemple des communes dont le nom commence par
-          BEAUN](id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%')),
-    4. {docid}/{lyrname}/id/{id} : renvoie l'objet d'id {id} (A FAIRE)
-    5. {docid}/map : renvoie le document JSON décrivant la carte standard affichant la SD
-      ([exemple de la carte Route500](id.php/geodata/route500/map)),
-    6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
-      ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
-
-  Un document VectorDataset contient:
-    - des métadonnées génériques
-    - des infos générales par exemple permettant de charger les SHP en base
-    - la description du dictionnaire de couches (layers)
-
-  Une couche vecteur peut être définie de 4 manières différentes:
-  
-    1. elle correspond à une (ou plusieurs) couche(s) OGR chargée(s) dans une table MySQL ;
-      dans ce cas la couche doit comporter un champ *ogrPath* définissant le (ou les) couche(s) OGR correspondante(s),
-      le(s) couche(s) OGR est(sont) chargée(s) dans MySQL dans la table ayant pour nom l'id de la couche ;
-      la SD doit définir un champ *dbpath* qui définit le répertoire des couches OGR.
-      Le prototype est la couche id.php/geodata/route500/limite_administrative
-      
-    2. elle peut aussi correspondre à une couche exposée par un service WFS ;
-      dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
-      la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS
-      et peut définir un champ referer qui sera utilisé dans l'appel WFS.
-      Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
-      
-      Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom plus éventuellement en fonction du bbox ;
-      la couche doit alors comporter un champ *onZoomGeo* qui est un dictionnaire
-          {zoomMin} : {filtre}
-        ou
-          {zoomMin} : 
-            {geoZone}: {filtre}
-        où:
-          {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
-      Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.
-      {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.
-      Un {filtre} retenu sera le premire pour lequel le bbox courant intersecte la {geoZone}.
-      
-      Le filtre peut prendre les valeurs suivantes:
-        - Si {filtre} == 'all' alors aucune sélection n'est effectuée.
-        - {where} est un critère SQL ou CQL, ex "nature in ('Limite côtière','Frontière internationale')",
-        - {select} est une sélection dans une autre couche de la SD de la forme "{lyrname} / {where}"
-        - {layerDefinition} est le chemin de définition d'une couche dans une autre SD commencant /,
-          ex /geodata/ne_10m/admin_0_boundary_lines_land.
-      Le prototype est la couche id.php/geodata/route500/limite_administrative
-    
-    3. elle peut être définie par une sélection dans une des couches précédentes définie dans la même SD ;  
-      dans ce cas la couche comporte un champ *select* de la forme "{lyrname} / {where}"
-      qui définit une sélection dans la couche {lyrname} définie dans la même SD ;
-      Le prototype est la couche id.php/geodata/route500/coastline
-    
-    4. elle peut enfin être définie en fonction du zoom d'affichage et de la zone géographique
-      par une des couches précédentes définie dans la même SD ou dans une autre ;
-      dans ce cas la couche comporte un champ *onZoomGeo* défini comme précédemment
-      en limitant les filtres possibles à {select} | {layerDefinition}
-      Le prototype est la couche id.php/geodata/mscale/coastline
-  
-  En outre, une couche:
-    - doit comporter un champ title qui fournit le titre de la couche pour un humain dans le contexte du document,
-    - peut comporter les champs:
-      - *abstract* qui fournit un résumé,
-      - *style* qui définit le style Leaflet de la couche soit en JSON soit en JavaScript,
-      - *conformsTo* qui fournit la spécification de la couche
-      - *minZoom*
-      - *maxZoom*
-
-  Dans un onZoomGeo {geoZone} est un des codes prédéfinis suivants de zone géographique :
-    - 'FXX' pour la métropole,
-    - 'ANF' pour les Antilles françaises (Guadeloupe, Martinique, Saint-Barthélémy, Saint-Martin),
-    - 'ASP' pour les îles Saint-Paul et Amsterdam,
-    - 'CRZ' pour îles Crozet,
-    - 'GUF' pour la Guyane,
-    - 'KER' pour les îles Kerguelen,
-    - 'MYT' pour Mayotte,
-    - 'NCL' pour la Nouvelle Calédonie,
-    - 'PYF' pour la Polynésie Française,
-    - 'REU' pour la Réunion,
-    - 'SPM' pour Saint-Pierre et Miquelon,
-    - 'WLF' pour Wallis et Futuna,
-    - 'WLD' pour le monde entier
-    
   A FAIRE:
+  
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
     - définir une interface OAI
-    - 
     - fabriquer une couche limite administrative pour la BD Parcellaire
   
 journal:
@@ -159,6 +62,115 @@ journal:
     - je pourrais optimiser en générant directement le GeoJSON à la volée sans construire le FeatureCollection
   2/8/2018:
     - création
+EOT;
+}
+{ // specs des docs 
+$phpDocs['vectords.inc.php']['docSpecs'] = <<<'EOT'
+title: spécification du document définissant une série de données géo constituéen d'un ensemble de couches vecteur
+doc: |
+  Une SD vecteur (VectorDataset) est composée de couches vecteur, chacune correspondant à une FeatureCollection
+  [GeoJSON](https://tools.ietf.org/html/rfc7946) ;
+  chaque couche est composée d'objets vecteur, cad des Feature GeoJSON.  
+  Un document décrivant une SD vecteur, d'une part, peut s'afficher et, d'autre part, expose une API
+  constituée des 6 points d'entrée suivants :
+  
+    1. {docid} : description de la SD en JSON (ou en Yaml), y compris la liste de ses couches
+      ([exemple de Route500](id.php/geodata/route500),
+      [en Yaml](id.php/geodata/route500?format=yaml)),
+    2. {docid}/{lyrname} : description de la couche en JSON (ou en Yaml), cette URI identifie la couche
+      ([exemple de la couche commune de Route500](id.php/geodata/route500/commune)),
+    3. {docid}/{lyrname}?{query} : requête sur la couche renvoyant un FeatureCollection GeoJSON  
+      où {query} peut être:
+        - bbox={lngMin},{latMin},{lngMax},{latMax}&zoom={zoom}
+          ([exemple](id.php/geodata/route500/commune?bbox=-2.71,47.21,2.72,47.22&zoom=10)),
+        - where={critère SQL/CQL}
+          ([exemple des communes dont le nom commence par
+          BEAUN](id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%')),
+    4. {docid}/{lyrname}/id/{id} : renvoie l'objet d'id {id} (A FAIRE)
+    5. {docid}/map : renvoie le document JSON décrivant la carte standard affichant la SD
+      ([exemple de la carte Route500](id.php/geodata/route500/map)),
+    6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
+      ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
+
+  Un document VectorDataset contient:
+  
+    - des métadonnées génériques
+    - des infos générales par exemple permettant de charger les SHP en base
+    - la description du dictionnaire de couches (layers)
+
+  Une couche vecteur peut être définie de 4 manières différentes:
+  
+    1. elle correspond à une (ou plusieurs) couche(s) OGR chargée(s) dans une table MySQL ;
+      dans ce cas la couche doit comporter un champ *ogrPath* définissant le (ou les) couche(s) OGR correspondante(s),
+      le(s) couche(s) OGR est(sont) chargée(s) dans MySQL dans la table ayant pour nom l'id de la couche ;
+      la SD doit définir un champ *dbpath* qui définit le répertoire des couches OGR.
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
+      
+    2. elle peut aussi correspondre à une couche exposée par un service WFS ;
+      dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
+      la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS
+      et peut définir un champ referer qui sera utilisé dans l'appel WFS.
+      Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
+      
+      Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom plus éventuellement en fonction du bbox ;
+      la couche doit alors comporter un champ *onZoomGeo* qui est un dictionnaire
+      
+          {zoomMin} : {filtre}
+          ou
+          {zoomMin} : 
+            {geoZone}: {filtre}
+          où:
+            {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
+      Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.  
+      {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.  
+      Un {filtre} retenu sera le premire pour lequel le bbox courant intersecte la {geoZone}.
+      
+      Le filtre peut prendre les valeurs suivantes:
+        - Si {filtre} == 'all' alors aucune sélection n'est effectuée.
+        - {where} est un critère SQL ou CQL, ex "nature in ('Limite côtière','Frontière internationale')",
+        - {select} est une sélection dans une autre couche de la SD de la forme "{lyrname} / {where}"
+        - {layerDefinition} est le chemin de définition d'une couche dans une autre SD commencant /,
+          ex /geodata/ne_10m/admin_0_boundary_lines_land.
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
+    
+    3. elle peut être définie par une sélection dans une des couches précédentes définie dans la même SD ;  
+      dans ce cas la couche comporte un champ *select* de la forme "{lyrname} / {where}"
+      qui définit une sélection dans la couche {lyrname} définie dans la même SD ;  
+      Le prototype est la couche id.php/geodata/route500/coastline
+    
+    4. elle peut enfin être définie en fonction du zoom d'affichage et de la zone géographique
+      par une des couches précédentes définie dans la même SD ou dans une autre ;  
+      dans ce cas la couche comporte un champ *onZoomGeo* défini comme précédemment
+      en limitant les filtres possibles à {select} | {layerDefinition}  
+      Le prototype est la couche id.php/geodata/mscale/coastline
+  
+  En outre, une couche:
+  
+    - doit comporter un champ title qui fournit le titre de la couche pour un humain dans le contexte du document,
+    - peut comporter les champs:
+      - *abstract* qui fournit un résumé,
+      - *style* qui définit, soit en JSON soit en JavaScript le style Leaflet de la couche linéaire ou surfacique,
+      - *pointToLayer* qui définit, en JavaScript, le symbole à afficher pour les couches ponctuelles,
+      - *conformsTo* qui fournit la spécification de la couche,
+      - *minZoom* qui définit le zoom minimum d'affichage de la couche,
+      - *maxZoom* qui définit le zoom maximum d'affichage de la couche.
+
+  Dans un onZoomGeo {geoZone} est un des codes prédéfinis suivants de zone géographique :
+  
+    - 'FXX' pour la métropole,
+    - 'ANF' pour les Antilles françaises (Guadeloupe, Martinique, Saint-Barthélémy, Saint-Martin),
+    - 'ASP' pour les îles Saint-Paul et Amsterdam,
+    - 'CRZ' pour îles Crozet,
+    - 'GUF' pour la Guyane,
+    - 'KER' pour les îles Kerguelen,
+    - 'MYT' pour Mayotte,
+    - 'NCL' pour la Nouvelle Calédonie,
+    - 'PYF' pour la Polynésie Française,
+    - 'REU' pour la Réunion,
+    - 'SPM' pour Saint-Pierre et Miquelon,
+    - 'WLF' pour Wallis et Futuna,
+    - 'WLD' pour le monde entier
+    
 EOT;
 }
 require_once __DIR__.'/../ogr2php/feature.inc.php';
