@@ -8,7 +8,7 @@ doc: <a href='/yamldoc/?action=version&name=vectords.inc.php'>doc intégrée en 
 { // doc 
 $phpDocs['vectords.inc.php']['file'] = <<<'EOT'
 name: vectords.inc.php
-title: vectords.inc.php - document définissant une série de données géo constituéen d'un ensemble de couches vecteur
+title: vectords.inc.php - document définissant une série de données géo constituée d'un ensemble de couches vecteur
 doc: |
   objectifs:
   
@@ -19,6 +19,7 @@ doc: |
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
     - définir une interface OAI
     - fabriquer une couche limite administrative pour la BD Parcellaire
+    - spécifier formellement (en JSON-Schema ?) le contenu d'un VectorDS
   
 journal:
   20/8/2018:

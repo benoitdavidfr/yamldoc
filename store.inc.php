@@ -21,7 +21,7 @@ doc: |
   3 cas d'utilisation de cette classe:
     1) le store et son instance sont déterminés par le nom du serveur
     2) une intialisation définit le store et l'instance (l'espace pysique) est déduite du nom du serveur
-    3) obtenir de l'URL de l'appli pour un storeid donné et pour l'instance déduite du nom du serveur
+    3) obtenir l'URL de l'appli pour un storeid donné et pour l'instance déduite du nom du serveur
        à la différence avec le cas 2, il n'y a pas d'initialisation
   
   Le cas 1 fonctionne en sapi<>'cli' car en cli le nom du serveur n'est pas défini.

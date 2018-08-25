@@ -15,6 +15,9 @@ doc: |
     -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
   Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
 journal: |
+  25/8/2018:
+    - ajout possibilité d'appel CLI
+    - correction bug sur la gestion du store
   28/7/2018:
     - ajout possibilité de sortie json
     - ajout log
@@ -29,7 +32,8 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 ini_set('memory_limit', '2048M');
-ini_set('max_execution_time', 600);
+if (php_sapi_name()<>'cli')
+  ini_set('max_execution_time', 600);
 
 //$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
 $verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
@@ -119,17 +123,30 @@ function error(int $code, string $docid, string $ypath='') {
   die();
 }
 
-//echo "<pre>_SERVER = "; print_r($_SERVER);
-$store = in_array($_SERVER['HTTP_HOST'], ['127.0.0.1','bdavid.alwaysdata.net']) ? 'docs' : 'pub';
-if (isset($_GET['uri']))
-  $uri = substr($_GET['uri'], strlen('http://id.georef.eu'));
+if (php_sapi_name()=='cli') {
+  //echo "argc=$argc\n";
+  //print_r($argv);
+  if ($argc < 3) {
+    echo "usage: php id.php {store} {uri}\n";
+    die();
+  }
+  Store::setStoreid($argv[1]);
+  $uri = $argv[2];
+  //die("Fin ligne ".__LINE__."\n");
+}
 else {
-  $uri = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
-  if ($_SERVER['QUERY_STRING'])
-    $uri = substr($uri, 0, strlen($uri)-strlen($_SERVER['QUERY_STRING'])-1);
+  //echo "<pre>_SERVER = "; print_r($_SERVER);
+  //$store = in_array($_SERVER['HTTP_HOST'], ['127.0.0.1','bdavid.alwaysdata.net']) ? 'docs' : 'pub';
+  if (isset($_GET['uri']))
+    $uri = substr($_GET['uri'], strlen('http://id.georef.eu'));
+  else {
+    $uri = substr($_SERVER['REQUEST_URI'], strlen($_SERVER['SCRIPT_NAME']));
+    if ($_SERVER['QUERY_STRING'])
+      $uri = substr($uri, 0, strlen($uri)-strlen($_SERVER['QUERY_STRING'])-1);
+  }
+  //echo "<pre>_SERVER = "; print_r($_SERVER);
 }
 //echo "uri=$uri<br>\n";
-//echo "<pre>_SERVER = "; print_r($_SERVER);
 if ($verbose) {
   file_put_contents('id.log.yaml', YamlDoc::syaml([
     'date'=> date(DateTime::ATOM),
@@ -147,12 +164,14 @@ if (in_array($uri,['','/'])) {
 }
 else {
   $ids = explode('/', $uri);
+  //echo "ids="; print_r($ids);
 
   $dirpath = ''; // vide ou se termine par /
   $id0 = array_shift($ids);
   $id0 = array_shift($ids);
   //echo "id0=$id0<br>\n";
-  while ($id0 && !is_doc($store, "$dirpath$id0") && is_dir(__DIR__."/$store/$dirpath$id0")) {
+  $storeRoot = __DIR__.'/'.Store::storepath();
+  while ($id0 && !is_doc("$dirpath$id0") && is_dir("$storeRoot/$dirpath$id0")) {
     $dirpath = "$dirpath$id0/";
     $id0 = array_shift($ids);
   }
@@ -160,7 +179,7 @@ else {
     $id0 = 'index';
   //echo "dirpath=$dirpath<br>\n";
   $docid = "$dirpath$id0";
-  //print_r($ids);
+  //echo "ids="; print_r($ids);
   $ypath = '/'.implode('/', $ids);
   //echo "docid avant test=$docid<br>\n";
   $index = [];
@@ -201,7 +220,7 @@ if (isset($_GET['format']) && ($_GET['format']=='yaml')) {
 }
 else {
   header('Content-type: application/json');
-  echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
 }
 if ($verbose) {
   file_put_contents(
