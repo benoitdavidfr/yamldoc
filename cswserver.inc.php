@@ -23,10 +23,12 @@ doc: |
   Liste des points d'entrée de l'API:
   
     - /{document} : description du serveur
+    - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
     - /{document}/getCapabilities : lecture des capacités du serveur et renvoi en XML, rafraichit le cache
     - /{document}/numberMatched : renvoi le nbre d'enregistrements
-    - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
-    
+    - /{document}/GetRecordsInIso/{startposition} : affiche en XML les enregistrements ISO à parir de {startposition}
+    - /{document}/GetRecordsInDC/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
+    - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
     
   Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
   

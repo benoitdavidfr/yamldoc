@@ -127,11 +127,14 @@ if (php_sapi_name()=='cli') {
   //echo "argc=$argc\n";
   //print_r($argv);
   if ($argc < 3) {
-    echo "usage: php id.php {store} {uri}\n";
+    echo "usage: php id.php {store} {uri} [format=yaml]\n";
     die();
   }
   Store::setStoreid($argv[1]);
   $uri = $argv[2];
+  if (($argc >= 4) && ($argv[3]=='format=yaml'))
+    $_GET['format'] = 'yaml';
+    
   //die("Fin ligne ".__LINE__."\n");
 }
 else {
