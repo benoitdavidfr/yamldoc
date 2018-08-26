@@ -10,9 +10,32 @@ $phpDocs['geocat.inc.php']['file'] = <<<'EOT'
 name: geocat.inc.php
 title: geocat.inc.php - document définissant un géocatalogue
 doc: |
-  
+  La classe Geocat étend CswServer et expose différentes méthodes utilisant un géocatalogue.
+
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+
+    - urlCsw: fournissant l'URL du serveur à compléter avec les paramètres,
+
+  Il peut aussi définir les champs suivants:
+
+    - referer: définissant le referer à transmettre à chaque appel du serveur.
+
+  Liste des points d'entrée de l'API:
+
+    - /{document} : description du serveur
+    - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
+      dans les fichiers /{document}/harvest/{startposition}.xml
+    - /{document}/buildDb : construit une base de données des métadonnées et l'enregistre
+      dans le fichier /{document}/db.yaml
+    - /{document}/listSubjects : liste les mots-clés
+    - /{document}/search?subject={subject} : recherche dans les MD le mot-clé {subject}
+    - /{document}/search?text={text} : recherche plein texte dans les MD le texte {text}
+    - /{document}/items/{id} : retourne la MD {id}
+
+  Le document http://localhost/yamldoc/?doc=geocats/sigloire permet de tester cette classe.
+
 journal:
-  24-25/8/2018:
+  24-26/8/2018:
     - création
 EOT;
 }
@@ -60,27 +83,15 @@ class Geocat extends CswServer {
       return;
     }
     elseif ($ypath == '/listSubjects') {
-      foreach ($this->listSubjects($docid) as $cvocid => $cvoc) {
-        echo "<h3>$cvocid</h3><ul>\n";
-        foreach ($cvoc['labelList'] as $label => $rec)
-          echo "<li><a href='?doc=$docid&amp;ypath=/search&amp;subject=",urlencode($label),"'>$label</a> ($rec[nbreOfOccurences])\n";
-        echo "</ul>\n";
-      }
-      //print_r($this->listSubjects($docid));
+      new_doc("$docid/db")->show("$docid/db", '/listSubjects');
       return;
     }
-    elseif (($ypath == '/search') && isset($_GET['subject'])) {
-      echo "<ul>\n";
-      foreach($this->searchOnSubject($docid, $_GET['subject'])['results'] as $md) {
-        echo "<li><a href='?doc=$docid&amp;ypath=/items/$md[id]'>$md[title]</a>\n";
-      }
-      echo "</ul>\n";
-      echo "<pre>"; print_r($this->searchOnSubject($docid, $_GET['subject']));
+    elseif ($ypath == '/search') {
+      new_doc("$docid/db")->show("$docid/db", '/search');
       return;
     }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
-      $mdid = $matches[1];
-      new_doc("$docid/db")->show("$docid/db", "/tables/data/data/$mdid");
+      new_doc("$docid/db")->show("$docid/db", $ypath);
     }
     else {
       showDoc($docid, $this->extract($ypath));
@@ -101,38 +112,43 @@ class Geocat extends CswServer {
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
+    //echo "Geocat::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
     elseif ($ypath == '/harvest') {
       $this->harvest($docuri);
-      die;
+      die("harvest ok\n");
     }
-    elseif ($ypath == '/build') {
-      return $this->build($docuri);
+    // crée la DB à partir de la moissson et l'enregistre comme fichier db.yaml
+    elseif ($ypath == '/buildDb') {
+      $db = $this->buildDb($docuri);
+      $db->buildOperatedBy($docuri);
+      $storepath = Store::storepath();
+      $filename = __DIR__."/$storepath/$docuri/db.yaml";
+      file_put_contents($filename, YamlDoc::syaml(self::replaceYDEltByArray($db->asArray())));
+      return "buildDb ok, fichier $filename créé\n";
+    }
+    elseif ($ypath == '/buildOperatedBy') {
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/buildOperatedBy');
     }
     elseif ($ypath == '/listSubjects') {
-      return $this->listSubjects($docuri);
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/listSubjects');
     }
     elseif ($ypath == '/search') {
-      if (isset($_GET['text']))
-        return FullTextSearch::search('geocats/sigloire/db', '', $_GET['text']);
-      elseif (isset($_GET['subject']))
-        return $this->searchOnSubject($docuri, $_GET['subject']);
-      else
-        return "search incompris";
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/search');
     }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
-      $mdid = $matches[1];
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", "/tables/data/data/$mdid");
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
     }
     else
       return null;
   }
 
-  // Fabrique une base de données
-  function build(string $docuri): array {
+  // Fabrique la base de données des MD, la renoie comme objet MetadataDb
+  function buildDb(string $docuri): MetadataDb {
     $database = [
       'title'=> "Métadonnées de $docuri",
+      'yamlClass'=> 'MetadataDb',
       'tables'=> [
         'data'=> [
           'title'=> "Métadonnées des données",
@@ -149,22 +165,22 @@ class Geocat extends CswServer {
       ],
     ];
     //$this->harvest($docuri);
-    $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
+    $dirpath = __DIR__.'/'.Store::id()."/$docuri/harvest";
     $dir = dir($dirpath);
+    // lecture des différents fichiers issus du moissonnage
     while (false !== ($entry = $dir->read())) {
       if (in_array($entry, ['.','..']))
         continue;
       //echo $entry."\n";
       $getrecord = file_get_contents("$dirpath/$entry");
-      if (!preg_match('!^<\?xml version="1.0" encoding="UTF-8"\?>\s+!', $getrecord, $matches))
-        throw new Exception("Geocat::build: no match en XML header");
+      if (!preg_match('!^<\?xml version="1.0" encoding="UTF-8"\?>\s+!', $getrecord, $matches)) {
+        echo substr($getrecord, 0, 300),"...\n";
+        throw new Exception("Geocat::buildDb: no match en XML header");
+      }
       $xmlheader = $matches[0];
-      //die($xmlheader);
-      //header('Content-type: application/xml');
-      //die($getrecord);
-      //die("Fin ligne ".__LINE__."\n");
       $start = 0;
       $no = 1;
+      // extraction des fiches de métadonnées contenues dans le getrecord
       while (true) {
         $start = strpos($getrecord, '<gmd:MD_Metadata', $start);
         if ($start === FALSE) {
@@ -196,10 +212,10 @@ class Geocat extends CswServer {
       }
     }
     $dir->close();
-    return $database;
+    return new MetadataDb($database);
   }
   
-  // retourne u array Php correspondant à un enregistrement de MD
+  // retourne un array Php correspondant à un enregistrement de MD
   function buildOne(string $entry, int $no, string $xmlheader, string $record): array {
     //echo "Geocat::buildOne($entry-$no)<br>\n";
     $record = IsoMetadata::simplify($record);
@@ -208,95 +224,5 @@ class Geocat extends CswServer {
     //echo '<pre>',YamlDoc::syaml($record),"\n\n";
     //die("Fin ligne ".__LINE__."\n");
     return $record;
-  }
-  
-  // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
-  function listSubjects(string $docuri) {
-    $db = new_doc("$docuri/db");
-    $subjects = new SubjectList;
-    foreach ($db->extractByUri("$docuri/db", '/tables/data/data') as $id => $metadata) {
-//      print_r($metadata['subject']); echo "<br>\n";
-      if (isset($metadata['subject'])) {
-        foreach ($metadata['subject'] as $subject) {
-          $subjects->add($subject);
-        }
-      }
-    }
-    return $subjects->asArray();
-  }
-  
-  function searchOnSubject($docuri, $searchedSubject) {
-    //echo "Geocat::searchOnSubject($docuri, $searchedSubject)<br>\n";
-    $results = [];
-    $db = new_doc("$docuri/db");
-    //$db->show("$docuri/db", '');
-    //var_dump($db->extractByUri("$docuri/db", '/tables/data/data'));
-    foreach ($db->extractByUri("$docuri/db", '/tables/data/data') as $id => $metadata) {
-//      print_r($metadata['subject']); echo "<br>\n";
-      if (isset($metadata['subject'])) {
-        foreach ($metadata['subject'] as $subject) {
-          if ($subject['value'] == $searchedSubject) {
-            //echo "<b>$metadata[title]</b><br>\n";
-            $results[] = ['id'=>$id, 'title'=> $metadata['title']];
-            break;
-          }
-        }
-      }
-    }
-    return [
-      'search'=> ['subject'=> $searchedSubject],
-      'nbreOfResults'=> count($results),
-      'results'=> $results,
-    ];
-  }
-};
-
-// Gestion des vocabulaires contrôlés
-class Cvoc {
-  private $id;
-  private $labelList = []; // [ label => [ 'nbre'=> nbre d''occurences ] ]
-    
-  function __construct(string $id) { $this->id = $id; }
-
-  // ajoute un mot-clé àà ce cvoc
-  function add(array $subject): void {
-    if (!isset($this->labelList[$subject['value']]))
-      $this->labelList[$subject['value']]['nbreOfOccurences'] = 1;
-    else
-      $this->labelList[$subject['value']]['nbreOfOccurences']++;
-    //echo "Cvoc::add($subject[value])<br>\n"; print_r($this); echo "<br>\n";
-  }
-  
-  // retourne la liste des étiquettes et leur occurence
-  function asArray(): array {
-    //echo "Cvoc::list()<br>\n"; print_r($this); echo "<br>\n";
-    return [
-      'nbreOflabels'=> count($this->labelList),
-      'labelList'=> $this->labelList,
-    ];
-  }
-};
-
-// contruction d'une liste structurée des mots-clés en vocabulaires contrôlés à partir des mots-clés du Geocat
-class SubjectList {
-  private $cvocs = []; // [ cvocid => Cvoc ]
-  
-  function __construct() { }
-  
-  // ajoute un mot-clé
-  function add(array $subject): void {
-    $cvocid = isset($subject['cvoc']) ? $subject['cvoc'] : 'none';
-    if (!isset($this->cvocs[$cvocid]))
-      $this->cvocs[$cvocid] = new Cvoc($cvocid);
-    $this->cvocs[$cvocid]->add($subject);
-  }
-  
-  // retourne la liste des vocabulaires contrôlés construits
-  function asArray(): array {
-    //print_r($this->cvocs);
-    $result = [];
-    foreach ($this->cvocs as $cvocid => $cvoc)
-      $result[$cvocid] = $cvoc->asArray();
-    return $result;
   }
 };

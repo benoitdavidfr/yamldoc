@@ -780,15 +780,10 @@ doc: |
 
 
 // Tests élémentaires de la classe
-if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
+if (basename(__FILE__)<>basename($_SERVER['SCRIPT_NAME'])) return;
 
-class Geocats {  
-  static function flatten() {
-    return [
-      'sigloire'=> [],
-    ];
-  } 
-};
+//echo "<pre>"; print_r($_SERVER); echo "</pre>\n";
+$server = $_SERVER['PATH_INFO'];
 
 /*PhpDoc: screens
 name:  main
@@ -803,17 +798,13 @@ doc: |
 */
 if (!isset($_GET['action'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>metadata</title></head><body>\n",
-       "<h2>Tests de la classe Metadata</h1><ul>\n",
+       "<h2>Tests de la classe IsoMetadata</h1><ul>\n",
        "<li><a href='?action=asHtml'>Affichage des éléments de MD en HTML</a>\n",
        "<li><a href='?action=asXsl'>Affichage du fichier XSL pour XML en texte</a>\n",
        "<li><a href='?action=asXml'>Affichage du fichier XSL pour XML en XML</a>\n",
        "<li><a href='?action=asXslForHtml'>Affichage du fichier XSL pour HTML en texte</a>\n",
        "<li><a href='?action=asXslForHtmlInXml'>Affichage du fichier XSL pour HTML en XML</a>\n",
-       "<li>Affichage des MD des serveurs :<ul>\n";
-  foreach (array_keys(Geocats::flatten()) as $name)
-    echo "<li><a href='?action=simplify&amp;server=$name'>$name</a>\n";
-  echo "</ul>\n";
-  //echo "<li><a href='?action=test'>test spécifique</a>\n";
+       "<li><a href='?action=simplify'>Affichage des MD du serveur $server</a>\n";
   echo "</ul>\n";
   die();
 }
@@ -868,7 +859,7 @@ if ($_GET['action']=='asXslForHtmlInXml') {
   die();
 }
 
-$geocatsPath = __DIR__.'/pub/geocats'; // chemin d'accès aux fichiers XML des getrecords
+$docsPath = __DIR__.'/pub'; // chemin d'accès aux fichiers XML des getrecords
 
 /*PhpDoc: screens
 name:  action=simplify
@@ -886,14 +877,14 @@ if ($_GET['action']=='simplify') {
        "Chaque page correspond au retour d'une requête CSW GetRecords<br>\n",
        "<table border=1><tr>",
        "<td><a href='?'>^</a></td>",
-       "<td>$_GET[server]</td>",
+       "<td>$server</td>",
        "<td>$startpos - ",$startpos+9,"</td>",
-       "<td><a href='file.php/geocats/$_GET[server]/$startpos.xml'>ISO XML</a></td>\n",
-       "<td><a href='?action=simplXml&amp;server=$_GET[server]&amp;startpos=$startpos'>simplXML</a></td>\n",
-       "<td><a href='?action=std&amp;server=$_GET[server]&amp;startpos=$startpos'>std</a></td>\n",
-       "<td><a href='?action=simplify&amp;server=$_GET[server]&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
+       "<td><a href='/yamldoc/file.php$server/harvest/$startpos.xml'>ISO XML</a></td>\n",
+       "<td><a href='?action=simplXml&amp;startpos=$startpos'>simplXML</a></td>\n",
+       "<td><a href='?action=std&amp;startpos=$startpos'>std</a></td>\n",
+       "<td><a href='?action=simplify&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n";
-  $simplified = IsoMetadata::simplify(file_get_contents("$geocatsPath/$_GET[server]/$startpos.xml"));
+  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"));
   echo '<pre>',
        json_encode($simplified,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   die();
@@ -905,7 +896,7 @@ title: Affichage en XML des MD simplifiées mais non standardisées
 */
 if ($_GET['action']=='simplXml') {
   header('Content-type: text/xml; charset="utf-8"');
-  $simplified = IsoMetadata::simplify(file_get_contents("$geocatsPath/$_GET[server]/$_GET[startpos].xml"));
+  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$_GET[startpos].xml"));
   echo $simplified->asXml();
   die();
 }
@@ -922,16 +913,16 @@ if ($_GET['action']=='std') {
        "Chaque page correspond au retour d'une requête CSW GetRecords<br>\n",
        "<table border=1><tr>",
        "<td><a href='?'>^</a></td>",
-       "<td>$_GET[server]</td>",
+       "<td>$server</td>",
        "<td>$startpos - ",$startpos+9,"</td>",
-       "<td><a href='?action=std&amp;server=$_GET[server]&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
+       "<td><a href='?action=std&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n",
        "<ul>\n";
-  $searchResults = IsoMetadata::simplify(file_get_contents("$geocatsPath/$_GET[server]/$startpos.xml"));
+  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"));
   $pos = 0;
   foreach ($searchResults->metadata as $md) {
     $std = IsoMetadata::standardize($md);
-    $href = "?action=stdone&amp;server=$_GET[server]&amp;start=$startpos&amp;pos=$pos";
+    $href = "?action=stdone&amp;start=$startpos&amp;pos=$pos";
     echo "<li><a href='$href'>",
                isset($std['title']) ? $std['title'] : 'NO TITLE',"</a></li>\n";
     $pos++;
@@ -942,31 +933,18 @@ if ($_GET['action']=='std') {
 
 /*PhpDoc: screens
 name:  action=stdone
-title: Affichage d'une fiche de MD standardisées
+title: Affichage en JSON d'une fiche de MD standardisées
 */
 if ($_GET['action']=='stdone') {
-  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>stdone</title></head><body>\n",
-       "<b>Affichage de la MD standardisée no ",$_GET['start']+$_GET['pos']," en JSON puis en Php</b>:\n";
-  $searchResults = IsoMetadata::simplify(file_get_contents("$geocatsPath/$_GET[server]/$_GET[start].xml"));
+  header('Content-type: application/json');
+  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$_GET[start].xml"));
   $pos = 0;
   foreach ($searchResults->metadata as $md) {
     if ($pos++==$_GET['pos']) {
       $std = IsoMetadata::standardize($md);
-      echo '<pre>JSON = ',
-           json_encode($std,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n\n";
-      echo "Php = ";
-      print_r($std);
+      echo json_encode($std,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n\n";
+      die();
     }
   }
   die();
-}
-
-if ($_GET['action']=='test') {
-  $simplified = IsoMetadata::simplify(file_get_contents("inspire-32481.xml"));
-  //header('Content-type: text/xml; charset="utf-8"'); echo $simplified->asXml(); die();
-  foreach ($simplified->metadata as $md) {
-    $std = IsoMetadata::standardize($md);
-    echo '<pre>JSON[locator] = ',
-         json_encode($std['locator'],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n\n";
-  }
 }

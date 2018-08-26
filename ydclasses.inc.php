@@ -23,3 +23,4 @@ require_once __DIR__.'/vectords.inc.php';
 require_once __DIR__.'/markerlib.inc.php';
 require_once __DIR__.'/cswserver.inc.php';
 require_once __DIR__.'/geocat.inc.php';
+require_once __DIR__.'/mddb.inc.php';

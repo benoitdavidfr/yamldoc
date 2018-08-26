@@ -24,11 +24,13 @@ doc: |
   
     - /{document} : description du serveur
     - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
-    - /{document}/getCapabilities : lecture des capacités du serveur et renvoi en XML, rafraichit le cache
+    - /{document}/getCapabilities : lecture des capacités du serveur, le renvoi en XML et l'enregistre
+      dans le fichier /{document}/capabilities.xml
     - /{document}/numberMatched : renvoi le nbre d'enregistrements
     - /{document}/GetRecordsInIso/{startposition} : affiche en XML les enregistrements ISO à parir de {startposition}
     - /{document}/GetRecordsInDC/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
     - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
+      dans les fichiers /{document}/harvest/{startposition}.xml
     
   Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
   
@@ -88,11 +90,13 @@ class CswServer extends YamlDoc {
       die();
     }
     elseif ($ypath == '/getCapabilities') {
-      $filepath = __DIR__.'/'.Store::id().'/'.$docuri.'.xml';
       $result = $this->query(['request'=> 'GetCapabilities']);
       header('Content-type: application/xml');
       echo $result;
-      file_put_contents($filepath, $result);
+      $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
+      if (!is_dir($dirpath))
+        mkdir($dirpath);
+      file_put_contents("$dirpath/capabilities.xml", $result);
       die();
     }
     elseif ($ypath == '/numberMatched') {
@@ -202,6 +206,9 @@ class CswServer extends YamlDoc {
   // Probablement des enregistrements qui ne sont pas compatibles avec le format de sortie ISO demandé
   function harvest(string $docuri): void {
     $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
+    if (!is_dir($dirpath))
+      mkdir($dirpath);
+    $dirpath .= '/harvest';
     if (!is_dir($dirpath))
       mkdir($dirpath);
     $numberOfRecordsMatched = 0;
