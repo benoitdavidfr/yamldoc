@@ -17,6 +17,7 @@ journal:
 EOT;
 }
 require_once __DIR__.'/yamldoc.inc.php';
+require_once __DIR__.'/search.inc.php';
 require_once __DIR__.'/isometadata.inc.php';
 
 class Geocat extends CswServer {
@@ -58,9 +59,28 @@ class Geocat extends CswServer {
       showDoc($docid, $this->_c);
       return;
     }
-    elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
-      $this->showLayer($docid, $matches[1]);
+    elseif ($ypath == '/listSubjects') {
+      foreach ($this->listSubjects($docid) as $cvocid => $cvoc) {
+        echo "<h3>$cvocid</h3><ul>\n";
+        foreach ($cvoc['labelList'] as $label => $rec)
+          echo "<li><a href='?doc=$docid&amp;ypath=/search&amp;subject=",urlencode($label),"'>$label</a> ($rec[nbreOfOccurences])\n";
+        echo "</ul>\n";
+      }
+      //print_r($this->listSubjects($docid));
       return;
+    }
+    elseif (($ypath == '/search') && isset($_GET['subject'])) {
+      echo "<ul>\n";
+      foreach($this->searchOnSubject($docid, $_GET['subject'])['results'] as $md) {
+        echo "<li><a href='?doc=$docid&amp;ypath=/items/$md[id]'>$md[title]</a>\n";
+      }
+      echo "</ul>\n";
+      echo "<pre>"; print_r($this->searchOnSubject($docid, $_GET['subject']));
+      return;
+    }
+    elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
+      $mdid = $matches[1];
+      new_doc("$docid/db")->show("$docid/db", "/tables/data/data/$mdid");
     }
     else {
       showDoc($docid, $this->extract($ypath));
@@ -89,6 +109,21 @@ class Geocat extends CswServer {
     }
     elseif ($ypath == '/build') {
       return $this->build($docuri);
+    }
+    elseif ($ypath == '/listSubjects') {
+      return $this->listSubjects($docuri);
+    }
+    elseif ($ypath == '/search') {
+      if (isset($_GET['text']))
+        return FullTextSearch::search('geocats/sigloire/db', '', $_GET['text']);
+      elseif (isset($_GET['subject']))
+        return $this->searchOnSubject($docuri, $_GET['subject']);
+      else
+        return "search incompris";
+    }
+    elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
+      $mdid = $matches[1];
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", "/tables/data/data/$mdid");
     }
     else
       return null;
@@ -173,5 +208,95 @@ class Geocat extends CswServer {
     //echo '<pre>',YamlDoc::syaml($record),"\n\n";
     //die("Fin ligne ".__LINE__."\n");
     return $record;
+  }
+  
+  // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
+  function listSubjects(string $docuri) {
+    $db = new_doc("$docuri/db");
+    $subjects = new SubjectList;
+    foreach ($db->extractByUri("$docuri/db", '/tables/data/data') as $id => $metadata) {
+//      print_r($metadata['subject']); echo "<br>\n";
+      if (isset($metadata['subject'])) {
+        foreach ($metadata['subject'] as $subject) {
+          $subjects->add($subject);
+        }
+      }
+    }
+    return $subjects->asArray();
+  }
+  
+  function searchOnSubject($docuri, $searchedSubject) {
+    //echo "Geocat::searchOnSubject($docuri, $searchedSubject)<br>\n";
+    $results = [];
+    $db = new_doc("$docuri/db");
+    //$db->show("$docuri/db", '');
+    //var_dump($db->extractByUri("$docuri/db", '/tables/data/data'));
+    foreach ($db->extractByUri("$docuri/db", '/tables/data/data') as $id => $metadata) {
+//      print_r($metadata['subject']); echo "<br>\n";
+      if (isset($metadata['subject'])) {
+        foreach ($metadata['subject'] as $subject) {
+          if ($subject['value'] == $searchedSubject) {
+            //echo "<b>$metadata[title]</b><br>\n";
+            $results[] = ['id'=>$id, 'title'=> $metadata['title']];
+            break;
+          }
+        }
+      }
+    }
+    return [
+      'search'=> ['subject'=> $searchedSubject],
+      'nbreOfResults'=> count($results),
+      'results'=> $results,
+    ];
+  }
+};
+
+// Gestion des vocabulaires contrôlés
+class Cvoc {
+  private $id;
+  private $labelList = []; // [ label => [ 'nbre'=> nbre d''occurences ] ]
+    
+  function __construct(string $id) { $this->id = $id; }
+
+  // ajoute un mot-clé àà ce cvoc
+  function add(array $subject): void {
+    if (!isset($this->labelList[$subject['value']]))
+      $this->labelList[$subject['value']]['nbreOfOccurences'] = 1;
+    else
+      $this->labelList[$subject['value']]['nbreOfOccurences']++;
+    //echo "Cvoc::add($subject[value])<br>\n"; print_r($this); echo "<br>\n";
+  }
+  
+  // retourne la liste des étiquettes et leur occurence
+  function asArray(): array {
+    //echo "Cvoc::list()<br>\n"; print_r($this); echo "<br>\n";
+    return [
+      'nbreOflabels'=> count($this->labelList),
+      'labelList'=> $this->labelList,
+    ];
+  }
+};
+
+// contruction d'une liste structurée des mots-clés en vocabulaires contrôlés à partir des mots-clés du Geocat
+class SubjectList {
+  private $cvocs = []; // [ cvocid => Cvoc ]
+  
+  function __construct() { }
+  
+  // ajoute un mot-clé
+  function add(array $subject): void {
+    $cvocid = isset($subject['cvoc']) ? $subject['cvoc'] : 'none';
+    if (!isset($this->cvocs[$cvocid]))
+      $this->cvocs[$cvocid] = new Cvoc($cvocid);
+    $this->cvocs[$cvocid]->add($subject);
+  }
+  
+  // retourne la liste des vocabulaires contrôlés construits
+  function asArray(): array {
+    //print_r($this->cvocs);
+    $result = [];
+    foreach ($this->cvocs as $cvocid => $cvoc)
+      $result[$cvocid] = $cvoc->asArray();
+    return $result;
   }
 };

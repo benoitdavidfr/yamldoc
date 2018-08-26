@@ -44,7 +44,7 @@ class FullTextSearch {
   static $currentDocs = []; // en mode incrémental liste des docs avec leur date de mise à jour en base
   
   // fonction de recherche sur un pattern de docid, un pattern de ypath et un critère de recherche de plein texte 
-  static function search(string $docid, string $ypath, string $value) {
+  static function search(string $docid, string $ypath, string $value, $options=[]) {
     $where = [];
     // solution simplifiée: si je suis benoit alors je cherche dans les différents stores,
     // sinon je ne cherche que dans pub
@@ -63,7 +63,8 @@ class FullTextSearch {
       $sql = "select store, fragid, text from fragment\n"
         ."where ".implode(' and ', $where);
   
-    echo "<pre>sql=$sql</pre>\n";
+    if (isset($options['verbose']) && $options['verbose'])
+      echo "<pre>sql=$sql</pre>\n";
     $results = [];
     MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
     foreach (MySql::query($sql) as $tuple) {

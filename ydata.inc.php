@@ -113,7 +113,7 @@ class YData extends YamlDoc {
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   // implémnte un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
   function extractByUri(string $docuri, string $ypath) {
-    echo "YData::extractByUri($docuri, $ypath)<br>\n";
+    //echo "YData::extractByUri($docuri, $ypath)<br>\n";
     $fragment = $this->extract($ypath);
     $fragment = self::replaceYDEltByArray($fragment);
     if ($fragment)
