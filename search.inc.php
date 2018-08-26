@@ -14,6 +14,10 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal:
+  26/8/2018:
+    - correction d'un bug dans scanfiles()
+    - ajout de la méthode search()
+    - renommage de la classe de Search en FullTextSearch
   3/8/2018:
     - reorganisation de l'interface MySql
   14/7/2018:
@@ -36,8 +40,43 @@ require_once __DIR__.'/../phplib/mysql.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-class Search {
+class FullTextSearch {
   static $currentDocs = []; // en mode incrémental liste des docs avec leur date de mise à jour en base
+  
+  // fonction de recherche sur un pattern de docid, un pattern de ypath et un critère de recherche de plein texte 
+  static function search(string $docid, string $ypath, string $value) {
+    $where = [];
+    // solution simplifiée: si je suis benoit alors je cherche dans les différents stores,
+    // sinon je ne cherche que dans pub
+    if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']<>'benoit'))
+      $where[] = "store='pub'";
+    if ($docid)
+      $where[] = "docid like \"$docid%\"";
+    if ($ypath)
+      $where[] = "ypath like \"$ypath%\"";
+    if ($value)
+      $where[] = "match (text) against (\"$value\" in boolean mode)";
+    if ($value)
+      $sql = "select store, match (text) against (\"$value\" in boolean mode) relevance, docid, ypath, text from fragment\n"
+        ."where ".implode(' and ', $where);
+    else
+      $sql = "select store, fragid, text from fragment\n"
+        ."where ".implode(' and ', $where);
+  
+    echo "<pre>sql=$sql</pre>\n";
+    $results = [];
+    MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+    foreach (MySql::query($sql) as $tuple) {
+      $results[] = [
+        'relevance'=> $tuple['relevance'],
+        'viewerUrl'=> Store::viewerUrl($tuple['store']),
+        'docid'=> $tuple['docid'],
+        'ypath'=> $tuple['ypath'],
+        'text'=> $tuple['text'],
+      ];
+    }
+    return $results;
+  }
   
   // indexe un fragment élémentaire ($docid, $val)
   static function indexstring(string $docid, string $ypath, string $val) {
@@ -130,16 +169,15 @@ class Search {
     return ($interval->format('%R')=='-');
   }
 
-  // scanne récursiveme,nt le répertoire et appelle indexMainDoc() pour chaque fichier concerné
+  // scanne récursivement le répertoire et appelle indexMainDoc() pour chaque fichier concerné
   // $global vaut true si 'global' ou false si 'incremental'
-  // $$store est le nom du store
   // $ssdir est le chemin relatif d'un répertoire
   // $fileNamePattern est un éventuel motif de nom de fichier
   static function scanfiles(bool $global, string $ssdir, string $fileNamePattern) {
     echo "scanfiles(global=",$global?'true':'false',", ssdir=$ssdir, pattern=$fileNamePattern)<br>\n";
     $storepath = Store::storepath();
     $dirpath = __DIR__.'/'.$storepath.($ssdir ? '/'.$ssdir : ''); // chemin du répertoire
-    if (($wd = opendir($dirpath))===FALSE) {
+    if (($wd = opendir($dirpath)) === FALSE) {
       echo "Erreur ouverture de $dirpath<br>\n";
       return;
     }
@@ -147,7 +185,7 @@ class Search {
       //echo "$entry a traiter<br>\n";
       if (in_array($entry, ['.','..','.git','.gitignore','.htaccess','.DS_Store']))
         continue;
-      elseif (is_dir("$storepath/$entry"))
+      elseif (is_dir("$storepath/".($ssdir ? "$ssdir/$entry" : $entry)))
         self::scanfiles($global, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
       elseif (preg_match('!^(.*)\.(php|pser)$!', $entry))
         continue;

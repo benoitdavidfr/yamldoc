@@ -40,45 +40,16 @@ echo "</table></form>\n<br>\n";
 if (!$docid && !$ypath && !$value)
   die();
 
-$where = [];
-// solution simplifiée: si je suis benoit alors je cherche dans les différents stores,
-// sinon je ne cherche que dans pub
-if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']<>'benoit'))
-  $where[] = "store='pub'";
-if ($docid)
-  $where[] = "docid like \"$docid%\"";
-if ($ypath)
-  $where[] = "ypath like \"$ypath%\"";
-if ($value)
-  $where[] = "match (text) against (\"$value\" in boolean mode)";
-if ($value)
-  $sql = "select store, match (text) against (\"$value\" in boolean mode) relevance, docid, ypath, text from fragment\n"
-    ."where ".implode(' and ', $where);
-else
-  $sql = "select store, fragid, text from fragment\n"
-    ."where ".implode(' and ', $where);
-
-/*
-SELECT MATCH('Content') AGAINST ('keyword1
-keyword2') as Relevance FROM table WHERE MATCH
-('Content') AGAINST('+keyword1 +keyword2' IN
-BOOLEAN MODE) HAVING Relevance > 0.2 ORDER
-BY Relevance DESC
-*/
-  
-echo "<pre>sql=$sql</pre>\n";
 echo "<table border=1>\n";
-MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
-foreach (MySql::query($sql) as $tuple) {
+foreach (FullTextSearch::search($docid, $ypath, $value) as $result) {
   //print_r($tuple); echo "<br>\n";
   echo "<tr>";
   if ($value)
-    printf('<td>%.2f</td>', $tuple['relevance']);
-  $viewerUrl = Store::viewerUrl($tuple['store']);
-  echo "<td><a href='$viewerUrl?doc=$tuple[docid]&amp;ypath=$tuple[ypath]'>",
-       "$tuple[docid]$tuple[ypath]</a></td>";
+    printf('<td>%.2f</td>', $result['relevance']);
+  echo "<td><a href='$result[viewerUrl]?doc=$result[docid]&amp;ypath=$result[ypath]'>",
+       "$result[docid]$result[ypath]</a></td>";
   echo "<td>";
-  showDoc($tuple['docid'], $tuple['text']);
+  showDoc($result['docid'], $result['text']);
   echo "</td></tr>\n";
 }
 echo "</table>\n";

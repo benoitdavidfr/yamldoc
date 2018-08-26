@@ -44,6 +44,8 @@ doc: |
     - intégrer la gestion de mot de passe
   
 journal:
+  26/8/2018:
+    - renommage de la classe Search en FullTextSearch
   22/8/2018:
     - affichage Yaml des phpDocs
   3/8/2018:
@@ -538,7 +540,7 @@ if ($_GET['action']=='checkIntegrity') {
 if ($_GET['action']=='reindex') {
   if (!file_exists(__DIR__.'/mysqlparams.inc.php'))
     die("reindex impossible, MySql non disponible<br>\n");
-  Search::incrIndex();
+  FullTextSearch::incrIndex();
   die("reindex OK<br>\n");
 }
 

@@ -7,6 +7,8 @@ doc: |
   La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
   Pour la ré-indexation incrémentale il faut aussi vérifier que tous les docs indexés existent encore.
 journal: |
+  26/8/2018:
+    - renommage de la classe Search en FullTextSearch
   28/7/2018:
     - ajout possibilité d'utiliser en CLI
   1-2/7/2018:
@@ -54,11 +56,11 @@ elseif ((php_sapi_name()<>'cli') && !isset($_GET['action'])) {
 //print_r($argv);
 
 if (php_sapi_name()=='cli' ? $argv[1]=='global' : $_GET['action']=='global')
-  Search::globalIndex($storeids);
+  FullTextSearch::globalIndex($storeids);
 else {
   foreach ($storeids as $storeid) {
     Store::setStoreid($storeid);
-    Search::incrIndex();
+    FullTextSearch::incrIndex();
   }
 }
 die("FIN OK<br>\n");
