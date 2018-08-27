@@ -140,6 +140,9 @@ class Geocat extends CswServer {
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
     }
+    elseif (preg_match('!^/items/([^/]+)/download$!', $ypath, $matches)) {
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
+    }
     else
       return null;
   }

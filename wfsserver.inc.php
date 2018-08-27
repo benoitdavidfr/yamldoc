@@ -53,6 +53,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 // classe simplifiant l'envoi de requêtes WFS
 class WfsServer extends YamlDoc {
   static $log = __DIR__.'/wfs.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $capCache = __DIR__.'/wfscapcache'; // nom du répertoire dans lequel sont stockés les fichiers de capacités
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -204,7 +205,7 @@ class WfsServer extends YamlDoc {
           FILE_APPEND
       );
     }
-    $url = $this->urlWfs.'?SERVICE=WFS&VERSION=2.0.0';
+    $url = $this->urlWfs.'?SERVICE=WFS';
     foreach($params as $key => $value)
       $url .= "&$key=$value";
     $referer = $this->referer;
@@ -212,7 +213,7 @@ class WfsServer extends YamlDoc {
     $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
     if (($result = file_get_contents($url, false, $context)) === false) {
       var_dump($http_response_header);
-      throw new Exception("Erreur dans WfsServer::request() : sur url=$url");
+      throw new Exception("Erreur dans WfsServer::query() : sur url=$url");
     }
     if (self::$log) { // log
       file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
@@ -220,8 +221,8 @@ class WfsServer extends YamlDoc {
     //die($result);
     if (substr($result, 0, 17) == '<ExceptionReport>') {
       if (!preg_match('!^<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
-        throw new Exception("Erreur dans WfsServer::request() : message d'erreur non détecté");
-      throw new Exception ("Erreur dans WfsServer::request() : $matches[1]");
+        throw new Exception("Erreur dans WfsServer::query() : message d'erreur non détecté");
+      throw new Exception ("Erreur dans WfsServer::query() : $matches[1]");
     }
     return $result;
   }
@@ -229,6 +230,7 @@ class WfsServer extends YamlDoc {
   // retourne le nbre d'objets correspondant au résultat de la requête
   function getNumberMatched(string $typename, array $bbox=[], string $where=''): int {
     $request = [
+      'VERSION'=> '2.0.0',
       'REQUEST'=> 'GetFeature',
       'TYPENAMES'=> $typename,
       'SRSNAME'=> 'CRS:84', // système de coordonnées nécessaire pour du GeoJSON
@@ -256,6 +258,7 @@ class WfsServer extends YamlDoc {
   // retourne le résultat de la requête en GeoJSON
   function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
     $request = [
+      'VERSION'=> '2.0.0',
       'REQUEST'=> 'GetFeature',
       'TYPENAMES'=> $typename,
       'OUTPUTFORMAT'=> 'application/json',
@@ -300,5 +303,35 @@ class WfsServer extends YamlDoc {
       //die(']}');
     }
     echo "\n]}\n";
+  }
+
+  // liste les couches exposées evt filtré par le paramètre
+  function featureTypeList(string $metadataUrl=null) {
+    //echo "WfsServer::featureTypeList()<br>\n";
+    if (!is_dir(self::$capCache))
+      mkdir(self::$capCache);
+    $capCacheFilename = self::$capCache.'/'.md5($this->urlWfs).'.xml';
+    if (is_file($capCacheFilename)) {
+      $cap = file_get_contents($capCacheFilename);
+    }
+    else {
+      $cap = $this->query(['REQUEST'=> 'GetCapabilities']);
+      $cap = str_replace(['xlink:href'], ['xlink_href'], $cap);
+      file_put_contents($capCacheFilename, $cap);
+    }
+    //echo "<a href='/yamldoc/wfscapcache/",md5($this->urlWfs),".xml'>capCache</a><br>\n";
+    $featureTypeList = [];
+    $cap = new SimpleXMLElement($cap);
+    foreach ($cap->FeatureTypeList->FeatureType as $featureType) {
+      $name = (string)$featureType->Name;
+      $featureTypeRec = [
+        'Title'=> (string)$featureType->Title,
+        'MetadataURL'=> (string)$featureType->MetadataURL['xlink_href'],
+      ];
+      if (!$metadataUrl || ($featureTypeRec['MetadataURL'] == $metadataUrl))
+        $featureTypeList[$name] = $featureTypeRec;
+    }
+    //echo '<pre>$featureTypeList = '; print_r($featureTypeList);
+    return $featureTypeList;
   }
 };

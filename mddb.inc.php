@@ -126,7 +126,17 @@ class MetadataDb extends YData {
     }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
       $mdid = $matches[1];
-      return parent::extractByUri($docuri, "/tables/data/data/$mdid");
+      if ($md = parent::extractByUri($docuri, "/tables/data/data/$mdid"))
+        return $md;
+      elseif ($md = parent::extractByUri($docuri, "/tables/services/data/$mdid"))
+        return $md;
+      elseif ($md = parent::extractByUri($docuri, "/tables/maps/data/$mdid"))
+        return $md;
+      else
+        return null;
+    }
+    elseif (preg_match('!^/items/([^/]+)/download$!', $ypath, $matches)) {
+      return $this->download($docuri, $matches[1])->asArray();
     }
     else
       return null;
@@ -172,24 +182,78 @@ class MetadataDb extends YData {
   // part de la base de données et complète les fiches de MD de données avec un champ operatedBy 
   function buildOperatedBy(string $docuri) {
     $fileIdentifiers = []; // [ fileIdentifier => id ]
+    // fabrication d'une table temporaire $fileIdentifiers pour accéder efficament aux datasets par leur fileIdentifier
     foreach ($this->tables['data']['data'] as $id => $metadata) {
       $fileIdentifiers[$metadata['fileIdentifier']] = $id;
     }
+    // Parcours de la table fes services pour fabriquer le lien inverse de operatesOn
     foreach ($this->tables['services']['data'] as $serviceId => $metadata) {
       //echo "<b>$metadata[title]</b><br>\n";
+      $serviceType = isset($metadata['serviceType']) ? $metadata['serviceType'] : 'noServiceType';
       if (isset($metadata['operatesOn'])) {
         //echo "<pre>"; print_r($metadata['operatesOn']); echo "</pre>\n";
         foreach ($metadata['operatesOn'] as $n => $operatesOn) {
           if (isset($operatesOn['uuidref']) && isset($fileIdentifiers[$operatesOn['uuidref']])) {
             //echo "uuidref $n matches fileIdentifier<br>\n";
             $dataId = $fileIdentifiers[$operatesOn['uuidref']];
-            $this->_c['tables']['data']['data'][$dataId]['operatedBy'][] = $serviceId;
+            if (!isset($this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType]))
+              $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType] = [$serviceId];
+            elseif (!in_array($serviceId, $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType]))
+              $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType][] = $serviceId;
           }
         }
       }
     }
     //die("buildOperatedBy ok\n");
     return "buildOperatedBy ok\n";
+  }
+  
+  // renvoie la VectorDataset correspondant à la fiche de MDD $$dsid ou génère une exception si cela n'est pas possible
+  function download(string $docuri, string $dsid): VectorDataset {
+    $dataset = parent::extractByUri($docuri, "/tables/data/data/$dsid");
+    //echo "<pre> dataset = "; print_r($dataset);
+    if (!isset($dataset['operatedBy']['download']))
+      throw new Exception("Aucun service download");
+    foreach ($dataset['operatedBy']['download'] as $serviceId) {
+      //echo "serviceId=$serviceId<br>\n";
+      $service = parent::extractByUri($docuri, "/tables/services/data/$serviceId");
+      //echo "<pre>"; print_r($service);
+      if (!isset($service['relation']))
+        continue;
+      $urlWfs = null;
+      foreach ($service['relation'] as $relation) {
+        if (isset($relation['protocol'])
+             && preg_match('!^OGC:WFS-1.0.0-http-get-capabilities$!', $relation['protocol'])) {
+          $urlWfs = $relation['url'];
+          break 2;
+        }
+      }
+    }
+    if (!$urlWfs)
+      throw new Exception("Aucun service WFS");
+    $urlWfs = str_replace('&amp;', '&', $urlWfs);
+    //echo "urlWfs=$urlWfs<br>\n";
+    if (!preg_match('!^([^?]+)\?(service=WFS&?|version=.\..\..&?|request=GetCapabilities&?)*$!i', $urlWfs, $matches))
+      throw new Exception("Impossible d'interpréter l'URL du service WFS : $urlWfs");
+    //print_r($matches);
+    $urlWfs = $matches[1];
+    //echo "urlWfs=$urlWfs<br>\n";
+    $params = ['urlWfs'=> $urlWfs];
+    $wfsServer = new WfsServer($params);
+    $featureTypeList = $wfsServer->featureTypeList($dataset['identifier'][0]['code']);
+    // Si aucun featureType n'est trouvé alors le filtre est supprimé
+    if (!$featureTypeList)
+      $featureTypeList = $wfsServer->featureTypeList();
+    //echo '<pre>$featureTypeList = '; print_r($featureTypeList); echo "</pre>\n";
+    $dataset['urlWfs'] = $urlWfs;
+    foreach ($featureTypeList as $typename => $featureType) {
+      $dataset['layers'][$typename] = [
+        'title'=> $featureType['Title'],
+        'typename'=> $typename,
+      ];
+    }
+    //die("FIN ligne ".__LINE__."\n");
+    return new VectorDataset($dataset);
   }
 };
 
