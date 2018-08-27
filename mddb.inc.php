@@ -245,6 +245,7 @@ class MetadataDb extends YData {
     if (!$featureTypeList)
       $featureTypeList = $wfsServer->featureTypeList();
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList); echo "</pre>\n";
+    $dataset['yamlClass'] = 'VectorDataset';
     $dataset['urlWfs'] = $urlWfs;
     foreach ($featureTypeList as $typename => $featureType) {
       $dataset['layers'][$typename] = [
