@@ -23,14 +23,20 @@ doc: |
   Liste des points d'entrée de l'API:
 
     - /{document} : description du serveur
-    - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
-      dans les fichiers /{document}/harvest/{startposition}.xml
+    - /{document}/csw/xxx : appelle /xxx sur le serveur Csw sous-jacent
     - /{document}/buildDb : construit une base de données des métadonnées et l'enregistre
       dans le fichier /{document}/db.yaml
-    - /{document}/listSubjects : liste les mots-clés
+    - /{document}/buildSubjects : construit le sous-objet de la liste les mots-clés
     - /{document}/search?subject={subject} : recherche dans les MD le mot-clé {subject}
     - /{document}/search?text={text} : recherche plein texte dans les MD le texte {text}
     - /{document}/items/{id} : retourne la MD {id}
+
+  Un objet Geocat peut contenir les différents sous-objets suivants dont l'accès est effectué au travers du Geocat:
+    
+    - un objet MetadataDb, correspondant à l'uri {docid}/db, qui contient une base de données des MD
+      composée de différentes tables: data, services, maps, ...
+    - un objet Subjects, correspondant à l'uri {docid}/subjects, qui contient la liste des mot-clés organisée
+      par vocabulaire contrôlé
 
   Le document http://localhost/yamldoc/?doc=geocats/sigloire permet de tester cette classe.
 
@@ -115,24 +121,36 @@ class Geocat extends CswServer {
     //echo "Geocat::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
-    elseif ($ypath == '/harvest') {
-      $this->harvest($docuri);
-      die("harvest ok\n");
+    // exécute une requête sur le seveur CSW correspondant
+    elseif (preg_match('!^/csw(/.+)$!', $ypath, $matches)) {
+      return parent::extractByUri($docuri, $matches[1]);
     }
     // crée la DB à partir de la moissson et l'enregistre comme fichier db.yaml
     elseif ($ypath == '/buildDb') {
       $db = $this->buildDb($docuri);
       $db->buildOperatedBy($docuri);
       $storepath = Store::storepath();
-      $filename = __DIR__."/$storepath/$docuri/db.yaml";
-      file_put_contents($filename, YamlDoc::syaml(self::replaceYDEltByArray($db->asArray())));
-      return "buildDb ok, fichier $filename créé\n";
+      //$filename = __DIR__."/$storepath/$docuri/db.yaml";
+      //file_put_contents($filename, YamlDoc::syaml(self::replaceYDEltByArray($db->asArray())));
+      $db->writePser("$docuri/db");
+      return "buildDb ok, document $docuri/db créé en pser\n";
     }
     elseif ($ypath == '/buildOperatedBy') {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", '/buildOperatedBy');
     }
-    elseif ($ypath == '/listSubjects') {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/listSubjects');
+    elseif ($ypath == '/db') {
+      return new_doc("$docuri/db")->extractByUri("$docuri/db", '');
+    }
+    elseif ($ypath == '/buildSubjects') {
+      $subjects = new_doc("$docuri/db")->listSubjects("$docuri/db");
+      $subjects->writePser("$docuri/subjects");
+      return "buildSubjects ok, document $docuri/subjects créé en pser\n";
+    }
+    elseif ($ypath == '/subjects') {
+      return new_doc("$docuri/subjects")->extractByUri("$docuri/subjects", '');
+    }
+    elseif (preg_match('!^/subjects(/.*)$!', $ypath, $matches)) {
+      return new_doc("$docuri/subjects")->extractByUri("$docuri/subjects", $matches[1]);
     }
     elseif ($ypath == '/search') {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", '/search');
@@ -149,6 +167,98 @@ class Geocat extends CswServer {
 
   // Fabrique la base de données des MD, la renoie comme objet MetadataDb
   function buildDb(string $docuri): MetadataDb {
+    $logfilename = __DIR__.'/'.Store::id()."/$docuri/build.log.yaml";
+    file_put_contents(
+        $logfilename,
+        YamlDoc::syaml([
+          'date'=> date(DateTime::ATOM),
+          'appel'=> 'Geocat::buildDb',
+          'docuri'=> $docuri,
+        ]),
+        FILE_APPEND
+    );
+    file_put_contents($logfilename, "logs:\n", FILE_APPEND);
+    
+    $database = [
+      'title'=> "Métadonnées de $docuri",
+      'yamlClass'=> 'MetadataDb',
+      'tables'=> [
+        'data'=> [
+          'title'=> "Métadonnées des données",
+          'data'=> [],
+        ],
+        'services'=> [
+          'title'=> "Métadonnées des services",
+          'data'=> [],
+        ],
+        'maps'=> [
+          'title'=> "Métadonnées des cartes",
+          'data'=> [],
+        ],
+        'nonGeographicDataset'=> [
+          'title'=> "Métadonnées de données non géographiques (nonGeographicDataset)",
+          'data'=> [],
+        ],
+        'others'=> [
+          'title'=> "Autres métadonnées",
+          'data'=> [],
+        ],
+      ],
+    ];
+    $dirpath = __DIR__.'/'.Store::id()."/$docuri/harvest";
+    $dir = dir($dirpath);
+    // lecture des différents fichiers issus du moissonnage
+    while (false !== ($entry = $dir->read())) {
+      if (in_array($entry, ['.','..']))
+        continue;
+      echo $entry."\n";
+      $getrecord = file_get_contents("$dirpath/$entry");
+      try {
+        $searchResults = IsoMetadata::simplify($getrecord, $entry);
+      } catch (Exception $e) {
+        echo $e->getMessage(),"<br>\n";
+        file_put_contents($logfilename, "  - ".$e->getMessage()."\n", FILE_APPEND);
+        continue;
+      }
+      $no = 0; // no dans le getrecord
+      foreach ($searchResults->metadata as $md) {
+        $record = IsoMetadata::standardize($md);
+        $id = md5($record['fileIdentifier']);
+        //echo "type=$record[type]<br>\n";
+        if (!isset($record['type'])) {
+          $message = "erreur champ type absent dans l'enregistrement $entry $no";
+          echo "$message<br>\n";
+          file_put_contents($logfilename, "  - $message\n", FILE_APPEND);
+          $database['tables']['others']['data'][$id] = $record;
+          //throw new Exception("erreur champ type absent dans l'enregistrement");
+        }
+        elseif (in_array($record['type'], ['dataset','series']))
+          $database['tables']['data']['data'][$id] = $record;
+        elseif (in_array($record['type'], ['map']))
+          $database['tables']['maps']['data'][$id] = $record;
+        elseif (in_array($record['type'], ['nonGeographicDataset']))
+          $database['tables']['nonGeographicDataset']['data'][$id] = $record;
+        elseif ($record['type'] <> 'service') {
+          $message = "type '$record[type]' non prévu";
+          echo "$message<br>\n";
+          file_put_contents($logfilename, "  - $message\n", FILE_APPEND);
+          $database['tables']['others']['data'][$id] = $record;
+          //throw new Exception("Erreur type $record[type] non accepté");
+        }
+        elseif ($record['serviceType'] == 'invoke')
+          $database['tables']['maps']['data'][$id] = $record;
+        else
+          $database['tables']['services']['data'][$id] = $record;
+        $no++;
+      }
+    }
+    $dir->close();
+    return new MetadataDb($database);
+  }
+  
+  // version périmée, la standardisation fonctionne sur un getrecord !
+  // Fabrique la base de données des MD, la renoie comme objet MetadataDb
+  function buildDbOld(string $docuri): MetadataDb {
     $database = [
       'title'=> "Métadonnées de $docuri",
       'yamlClass'=> 'MetadataDb',
@@ -200,18 +310,27 @@ class Geocat extends CswServer {
             '<gmd:MD_Metadata '.'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ',
             $record);
         //die("$xmlheader$record\n");
-        $record = $this->buildOne($entry, $no++, $xmlheader, $record);
+        $record = $this->buildOne($entry, $no, $xmlheader, $record);
         $id = md5($record['fileIdentifier']);
         //echo "type=$record[type]<br>\n";
-        if (in_array($record['type'], ['dataset','series']))
+        if (!isset($record['type'])) {
+          echo "erreur champ type absent dans l'enregistrement $entry $no:<br>\n";
+          echo "Enregistrement non traité<br>\n";
+          //echo "<pre>"; print_r($record); echo "</pre>\n";
+          //throw new Exception("erreur champ type absent dans l'enregistrement");
+        }
+        elseif (in_array($record['type'], ['dataset','series']))
           $database['tables']['data']['data'][$id] = $record;
-        elseif ($record['type'] <> 'service')
-          throw new Exception("Erreur type $record[type] non accepté");
+        elseif ($record['type'] <> 'service') {
+          echo "type '$record[type]' non prévu, enregistrement non traita<br>\n";
+          //throw new Exception("Erreur type $record[type] non accepté");
+        }
         elseif ($record['serviceType'] == 'invoke')
           $database['tables']['maps']['data'][$id] = $record;
         else
           $database['tables']['services']['data'][$id] = $record;
         $start = $end + 18;
+        $no++;
       }
     }
     $dir->close();
@@ -219,9 +338,9 @@ class Geocat extends CswServer {
   }
   
   // retourne un array Php correspondant à un enregistrement de MD
-  function buildOne(string $entry, int $no, string $xmlheader, string $record): array {
+  function buildOneOld(string $entry, int $no, string $xmlheader, string $record): array {
     //echo "Geocat::buildOne($entry-$no)<br>\n";
-    $record = IsoMetadata::simplify($record);
+    $record = IsoMetadata::simplify($record, "$entry-$no");
     //echo "<pre>"; var_dump($record); echo "</pre>\n";
     $record = IsoMetadata::standardize($record->metadata);
     //echo '<pre>',YamlDoc::syaml($record),"\n\n";

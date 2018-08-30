@@ -700,7 +700,7 @@ doc: |
   En entrée: un document XML transmis comme chaine de caractères
   En sortie: le document XML renvoyé comme objet SimpleXML
 */
-  static function simplify($xmlstr) {
+  static function simplify(string $xmlstr, string $recid): SimpleXMLElement {
     trim($xmlstr);
     if (!self::$xsltProcessor) {
       $stylesheet = new DOMDocument();
@@ -710,8 +710,8 @@ doc: |
     }
     $getrecords = new DOMDocument();
     if (!$getrecords->loadXML($xmlstr)) {
-      echo "xml=",$xmlstr,"\n";
-      throw new Exception ("Erreur dans loadXML dans ".__FILE__." ligne ".__LINE__);
+      //echo "xml=",$xmlstr,"\n";
+      throw new Exception("Erreur dans loadXML() sur l'enregistrement $recid, enregistrement sauté<br>\n");
     }
     $searchResults = new SimpleXMLElement(self::$xsltProcessor->transformToXML($getrecords));
     return $searchResults;
@@ -734,7 +734,7 @@ doc: |
   
   L'utilisation de json_encode() sur un SimpleXml n'est pas fiable et donc abandonnée
 */
-  static function standardize($xml) {
+  static function standardize(SimpleXMLElement $xml): array {
     $php = [];
     //echo "xml="; var_dump($xml);
     foreach (self::$metadata as $eltname => $mdelt) {
@@ -884,7 +884,7 @@ if ($_GET['action']=='simplify') {
        "<td><a href='?action=std&amp;startpos=$startpos'>std</a></td>\n",
        "<td><a href='?action=simplify&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n";
-  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"));
+  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos);
   echo '<pre>',
        json_encode($simplified,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   die();
@@ -896,7 +896,9 @@ title: Affichage en XML des MD simplifiées mais non standardisées
 */
 if ($_GET['action']=='simplXml') {
   header('Content-type: text/xml; charset="utf-8"');
-  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$_GET[startpos].xml"));
+  $simplified = IsoMetadata::simplify(
+      file_get_contents("$docsPath/$server/harvest/$_GET[startpos].xml"),
+      $_GET['startpos']);
   echo $simplified->asXml();
   die();
 }
@@ -918,7 +920,7 @@ if ($_GET['action']=='std') {
        "<td><a href='?action=std&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n",
        "<ul>\n";
-  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"));
+  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos);
   $pos = 0;
   foreach ($searchResults->metadata as $md) {
     $std = IsoMetadata::standardize($md);

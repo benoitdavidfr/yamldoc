@@ -10,11 +10,13 @@ $phpDocs['mddb.inc.php']['file'] = <<<'EOT'
 name: mddb.inc.php
 title: mddb.inc.php - base de données de Metadata
 doc: |
-  Une BD de MD est une base YData composé des 3 tables suivantes :
+  Une BD de MD est une base YData composé des 4 tables suivantes :
   
   - une table data des MD de données
   - une table services des MD de service
   - une table maps des MD de cartes
+  - une table nonGeographicDataset des MD de SD non géographiques (nonGeographicDataset)
+  - une table others des autres MD
 journal:
   26/8/2018:
     - création
@@ -112,28 +114,23 @@ class MetadataDb extends YData {
       // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
       return $this->buildOperatedBy($docuri);
     }
-    elseif ($ypath == '/listSubjects') {
-      // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
-      return $this->listSubjects($docuri);
-    }
+    // recherche full text ou par mot-clé
     elseif ($ypath == '/search') {
       if (isset($_GET['text']))
-        return FullTextSearch::search('geocats/sigloire/db', '', $_GET['text']);
+        return FullTextSearch::search($docuri, '', $_GET['text']);
       elseif (isset($_GET['subject']))
         return $this->searchOnSubject($docuri, $_GET['subject']);
       else
         return "search incompris";
     }
+    // accès à une MD par son id
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
       $mdid = $matches[1];
-      if ($md = parent::extractByUri($docuri, "/tables/data/data/$mdid"))
-        return $md;
-      elseif ($md = parent::extractByUri($docuri, "/tables/services/data/$mdid"))
-        return $md;
-      elseif ($md = parent::extractByUri($docuri, "/tables/maps/data/$mdid"))
-        return $md;
-      else
-        return null;
+      foreach(['data','services','maps','nonGeographicDataset','others'] as $table) {
+        if ($md = parent::extractByUri($docuri, "/tables/$table/data/$mdid"))
+          return $md;
+      }
+      return null;
     }
     elseif (preg_match('!^/items/([^/]+)/download$!', $ypath, $matches)) {
       return $this->download($docuri, $matches[1])->asArray();
@@ -143,9 +140,9 @@ class MetadataDb extends YData {
   }
   
   // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
-  function listSubjects(string $docuri) {
-    //echo "MetadataDb::listSubjects($docuri)<br>\n";
-    $subjects = new SubjectList;
+  function listSubjects(string $docuri): SubjectList {
+    $yaml = [];
+    $subjects = new SubjectList($yaml);
     foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
 //      print_r($metadata['subject']); echo "<br>\n";
       if (isset($metadata['subject'])) {
@@ -154,7 +151,8 @@ class MetadataDb extends YData {
         }
       }
     }
-    return $subjects->asArray();
+    $subjects->sortVocs();
+    return $subjects;
   }
   
   function searchOnSubject($docuri, $searchedSubject) {
@@ -166,7 +164,7 @@ class MetadataDb extends YData {
         foreach ($metadata['subject'] as $subject) {
           if ($subject['value'] == $searchedSubject) {
             //echo "<b>$metadata[title]</b><br>\n";
-            $results[] = ['id'=>$id, 'title'=> $metadata['title']];
+            $results[] = ['id'=> $id, 'title'=> $metadata['title']];
             break;
           }
         }
@@ -191,10 +189,10 @@ class MetadataDb extends YData {
       //echo "<b>$metadata[title]</b><br>\n";
       $serviceType = isset($metadata['serviceType']) ? $metadata['serviceType'] : 'noServiceType';
       if (isset($metadata['operatesOn'])) {
-        //echo "<pre>"; print_r($metadata['operatesOn']); echo "</pre>\n";
+        echo "<pre>"; print_r($metadata['operatesOn']); echo "</pre>\n";
         foreach ($metadata['operatesOn'] as $n => $operatesOn) {
           if (isset($operatesOn['uuidref']) && isset($fileIdentifiers[$operatesOn['uuidref']])) {
-            //echo "uuidref $n matches fileIdentifier<br>\n";
+            echo "uuidref $n matches fileIdentifier<br>\n";
             $dataId = $fileIdentifiers[$operatesOn['uuidref']];
             if (!isset($this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType]))
               $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType] = [$serviceId];
@@ -255,55 +253,5 @@ class MetadataDb extends YData {
     }
     //die("FIN ligne ".__LINE__."\n");
     return new VectorDataset($dataset);
-  }
-};
-
-// Gestion des vocabulaires contrôlés
-class Cvoc {
-  private $id;
-  private $labelList = []; // [ label => [ 'nbre'=> nbre d''occurences ] ]
-    
-  function __construct(string $id) { $this->id = $id; }
-
-  // ajoute un mot-clé àà ce cvoc
-  function add(array $subject): void {
-    if (!isset($this->labelList[$subject['value']]))
-      $this->labelList[$subject['value']]['nbreOfOccurences'] = 1;
-    else
-      $this->labelList[$subject['value']]['nbreOfOccurences']++;
-    //echo "Cvoc::add($subject[value])<br>\n"; print_r($this); echo "<br>\n";
-  }
-  
-  // retourne la liste des étiquettes et leur occurence
-  function asArray(): array {
-    //echo "Cvoc::list()<br>\n"; print_r($this); echo "<br>\n";
-    return [
-      'nbreOflabels'=> count($this->labelList),
-      'labelList'=> $this->labelList,
-    ];
-  }
-};
-
-// contruction d'une liste structurée des mots-clés en vocabulaires contrôlés à partir des mots-clés du Geocat
-class SubjectList {
-  private $cvocs = []; // [ cvocid => Cvoc ]
-  
-  function __construct() { }
-  
-  // ajoute un mot-clé
-  function add(array $subject): void {
-    $cvocid = isset($subject['cvoc']) ? $subject['cvoc'] : 'none';
-    if (!isset($this->cvocs[$cvocid]))
-      $this->cvocs[$cvocid] = new Cvoc($cvocid);
-    $this->cvocs[$cvocid]->add($subject);
-  }
-  
-  // retourne la liste des vocabulaires contrôlés construits
-  function asArray(): array {
-    //print_r($this->cvocs);
-    $result = [];
-    foreach ($this->cvocs as $cvocid => $cvoc)
-      $result[$cvocid] = $cvoc->asArray();
-    return $result;
   }
 };

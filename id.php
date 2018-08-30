@@ -96,12 +96,15 @@ function error(int $code, string $docid, string $ypath='') {
   ];
   $storeid = Store::id();
   if (!isset($codeErrorLabels[$code])) {
-    header('Content-type: text/plain');
+    if (php_sapi_name() <> 'cli')
+      header('Content-type: text/plain');
     echo "code d'erreur $code inconnu sur $store/$docid/$ypath\n";
     die();
   }
-  header("HTTP/1.1 $code $codeErrorLabels[$code]");
-  header('Content-type: text/plain');
+  if (php_sapi_name()<>'cli') {
+    header("HTTP/1.1 $code $codeErrorLabels[$code]");
+    header('Content-type: text/plain');
+  }
   if ($code == 500)
     echo "Erreur: le document $docid du store $storeid a généré une erreur d'analyse Yaml\n";
   elseif ($ypath)
@@ -170,7 +173,7 @@ else {
   //echo "ids="; print_r($ids);
 
   $dirpath = ''; // vide ou se termine par /
-  $id0 = array_shift($ids);
+  $id0 = array_shift($ids); // uri commencant par /, je saute le premier élément
   $id0 = array_shift($ids);
   //echo "id0=$id0<br>\n";
   $storeRoot = __DIR__.'/'.Store::storepath();
@@ -216,13 +219,16 @@ if (!$fragment) {
   else
     error(404, $index['docid'], $index['ypath']);
 }
-header('Access-Control-Allow-Origin: *');
+if (php_sapi_name() <> 'cli')
+  header('Access-Control-Allow-Origin: *');
 if (isset($_GET['format']) && ($_GET['format']=='yaml')) {
-  header('Content-type: text/plain');
+  if (php_sapi_name() <> 'cli')
+    header('Content-type: text/plain');
   echo YamlDoc::syaml($fragment);
 }
 else {
-  header('Content-type: application/json');
+  if (php_sapi_name() <> 'cli')
+    header('Content-type: application/json');
   echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
 }
 if ($verbose) {

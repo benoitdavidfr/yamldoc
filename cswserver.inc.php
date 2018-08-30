@@ -24,7 +24,7 @@ doc: |
   
     - /{document} : description du serveur
     - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
-    - /{document}/getCapabilities : lecture des capacités du serveur, le renvoi en XML et l'enregistre
+    - /{document}/getCapabilities : lecture des capacités du serveur, les renvoi en XML et les enregistre
       dans le fichier /{document}/capabilities.xml
     - /{document}/numberMatched : renvoi le nbre d'enregistrements
     - /{document}/GetRecordsInIso/{startposition} : affiche en XML les enregistrements ISO à parir de {startposition}
@@ -175,26 +175,28 @@ class CswServer extends YamlDoc {
     return (int)$matches[1];
   }
   
-  // retourne le résultat de la requête en XML
+  // retourne en XML le résultat d'une requête GetRecords en format ISO
   function GetRecordsInIso(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
-      'TYPENAMES'=> 'csw:Record',
+      'TYPENAMES'=> 'gmd:MD_Metadata',
       'RESULTTYPE'=> 'results',
-      'OUTPUTSCHEMA'=> urlencode('http://www.isotc211.org/2005/gmd'),
+      //'OUTPUTSCHEMA'=> urlencode('http://www.isotc211.org/2005/gmd'), // semble faux
+      'OUTPUTSCHEMA'=> 'http://www.isotc211.org/2005/gmd',
       'ELEMENTSETNAME'=> 'full',
       'startposition'=> $startposition,
     ];
     return $this->query($query);
   }
   
-  // retourne le résultat de la requête en XML
+  // retourne en XML le résultat d'une requête GetRecords en format DC
   function GetRecordsInDC(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'csw:Record',
       'RESULTTYPE'=> 'results',
-      'OUTPUTSCHEMA'=> urlencode('http://www.opengis.net/cat/csw/2.0.2'),
+      //'OUTPUTSCHEMA'=> urlencode('http://www.opengis.net/cat/csw/2.0.2'),
+      'OUTPUTSCHEMA'=> 'http://www.opengis.net/cat/csw/2.0.2',
       'ELEMENTSETNAME'=> 'full',
       'startposition'=> $startposition,
     ];
@@ -234,6 +236,11 @@ class CswServer extends YamlDoc {
         }
         $numberOfRecordsMatched = $matches[1];
         echo "numberOfRecordsMatched=$numberOfRecordsMatched<br>\n";
+      }
+      // A value of 0 means all records have been returned.
+      if ($nextRecord == 0) {
+        echo "nextRecord==0, tous les enregistrements ont été moissonnés<br>\n";
+        return;
       }
       echo "nextRecord=$nextRecord / numberOfRecordsMatched=$numberOfRecordsMatched<br>\n";
       if ($nextRecord <= $startposition) {

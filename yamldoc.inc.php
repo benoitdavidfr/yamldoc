@@ -111,7 +111,8 @@ abstract class YamlDoc extends Doc {
     $filename = __DIR__."/$storepath/$docuid";
     if (!is_file("$filename.pser")
         || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
-        || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))) {
+        || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))
+        || (!is_file("$filename.yaml") && !is_file("$filename.yaml"))) {
       file_put_contents("$filename.pser", serialize($this));
     }
   }

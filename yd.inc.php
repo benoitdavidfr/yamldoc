@@ -461,7 +461,8 @@ function new_doc(string $docuid): ?Doc {
   //echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
-          || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php"))))) {
+          || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php")))
+          || (!file_exists("$filename.yaml") && !file_exists("$filename.php")))) {
       //echo "unserialize()<br>\n";
       return unserialize(@file_get_contents(__DIR__."/$storepath/$docuid.pser"));
   }
