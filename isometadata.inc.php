@@ -22,8 +22,8 @@ doc: |
   - identifier les MD Inspire qui ne sont pas extraites
 
 journal: |
-  30/8/2018:
-    besoin d'améliorer le mapping pour traiter les MD multi-lingues comme celles de Sextant
+  30/8-2/9/2018:
+    traitement des MD multi-lingues comme celles de Sextant
   24/8/2018:
     fork de gcatas/cswharv/metadata.inc.php pour yamldoc
     modification des champs pour correspondre au JSON-schema
@@ -107,6 +107,9 @@ doc: |
       {subname} => {subpath}
     ]
   ]
+  
+  La feuille de style de l'élément subject est définie dans le champ xsl
+  Lorsqu'un xpath se termine par gco:CharacterString, l'existence d'un gmd:PT_FreeText est prise en compte.
 
   Référence: <a href='http://cnig.gouv.fr/wp-content/uploads/2014/07/Guide-de-saisie-des-%C3%A9l%C3%A9ments-de-m%C3%A9tadonn%C3%A9es-INSPIRE-v1.1.1.pdf'>
   Guide de saisie des éléments de métadonnées INSPIRE Appliqué aux données</a>
@@ -144,14 +147,14 @@ doc: |
       'noInspire' => '1.1',
       'title-fr' => "Intitulé de la ressource",
       'title-en' => "Resource title",
-      'xpath' => 'gmd:identificationInfo/*/gmd:citation/*/gmd:title/*',
+      'xpath' => 'gmd:identificationInfo/*/gmd:citation/*/gmd:title/gco:CharacterString',
       'multiplicity' => [ 'data' => 1, 'service' => 1 ],
     ],
   // alternative (hors règlement INSPIRE)
     'alternative' => [
       'title-fr' => "Intitulé alternatif de la ressource",
       'title-en' => "Alternate resource title",
-      'xpath' => 'gmd:identificationInfo/*/gmd:citation/*/gmd:alternateTitle/*',
+      'xpath' => 'gmd:identificationInfo/*/gmd:citation/*/gmd:alternateTitle/gco:CharacterString',
       'multiplicity' => [ 'data' => '0..*', 'service' => '0..*' ],
     ],
   // 1.2. Résumé de la ressource - 1.2. Resource abstract
@@ -159,7 +162,7 @@ doc: |
       'noInspire' => '1.2',
       'title-fr' => "Résumé de la ressource",
       'title-en' => "Resource abstract",
-      'xpath' => 'gmd:identificationInfo/*/gmd:abstract/*',
+      'xpath' => 'gmd:identificationInfo/*/gmd:abstract/gco:CharacterString',
       'multiplicity' => [ 'data' => 1, 'service' => 1 ],
     ],
   // 1.3. Type de la ressource - 1.3. Resource type
@@ -278,12 +281,62 @@ doc: |
       'noInspire' => '3.',
       'title-fr' => "Mot-clé",
       'title-en' => "Keyword",
-      'xpath' => 'gmd:identificationInfo/*/gmd:descriptiveKeywords/*/gmd:keyword/*',
+      'xpath' => 'gmd:identificationInfo/*/gmd:descriptiveKeywords/*/gmd:keyword/gco:CharacterString',
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
       'subfields'=> [
         'value' => '.',
-        'cvoc' => '../../gmd:thesaurusName/*/gmd:title/*',
+        'cvocIdentifier' => '../../gmd:thesaurusName/*/gmd:identifier/*/gmd:code/*',
+        'cvocTitle' => '../../gmd:thesaurusName/*/gmd:title/gco:CharacterString',
+        'cvocReferenceDate' => '../../gmd:thesaurusName/*/gmd:date/*',
       ],
+      // feuille de style pour extraire les mots-clés multi-ligues
+      'xslml'=> <<<EOT
+        <!-- élément subject -->
+        <xsl:if test="gmd:identificationInfo/*/gmd:descriptiveKeywords/*/gmd:keyword">
+          <xsl:for-each select="gmd:identificationInfo/*/gmd:descriptiveKeywords/*/gmd:keyword">
+            <subject>
+              <xsl:if test="gco:CharacterString">
+                <value><xsl:value-of select="gco:CharacterString" /></value>
+              </xsl:if>
+              <xsl:if test="gmd:PT_FreeText">
+                <xsl:for-each select="gmd:PT_FreeText/gmd:textGroup">
+                  <localised>
+                    <locale><xsl:value-of select="gmd:LocalisedCharacterString/@locale"/></locale>
+                    <value><xsl:value-of select="gmd:LocalisedCharacterString" /></value>
+                  </localised>
+                </xsl:for-each>
+              </xsl:if>
+              <xsl:if test="../gmd:thesaurusName/*/gmd:identifier/*/gmd:code/*">
+                <cvocIdentifier><value>
+                  <xsl:value-of select="../gmd:thesaurusName/*/gmd:identifier/*/gmd:code/*" />
+                </value></cvocIdentifier>
+              </xsl:if>
+              <xsl:if test="../gmd:thesaurusName/*/gmd:title">
+                <cvocTitle>
+                  <xsl:if test="../gmd:thesaurusName/*/gmd:title/gco:CharacterString">
+                    <value>
+                      <xsl:value-of select="../gmd:thesaurusName/*/gmd:title/gco:CharacterString" />
+                    </value>
+                  </xsl:if>
+                  <xsl:if test="../gmd:thesaurusName/*/gmd:title/gmd:PT_FreeText">
+                    <localised>
+                      <xsl:for-each select="../gmd:thesaurusName/*/gmd:title/gmd:PT_FreeText/gmd:textGroup">
+                        <locale><xsl:value-of select="gmd:LocalisedCharacterString/@locale"/></locale>
+                        <value><xsl:value-of select="gmd:LocalisedCharacterString" /></value>
+                      </xsl:for-each>
+                    </localised>
+                  </xsl:if>
+                </cvocTitle>
+              </xsl:if>
+              <xsl:if test="../gmd:thesaurusName/*/gmd:date/*">
+                <cvocReferenceDate><value>
+                  <xsl:value-of select="../gmd:thesaurusName/*/gmd:date/*" />
+                </value></cvocReferenceDate>
+              </xsl:if>
+            </subject>
+          </xsl:for-each>
+        </xsl:if>\n
+EOT
     ],
   
   // 4. SITUATION GÉOGRAPHIQUE - 4. GEOGRAPHIC LOCATION
@@ -346,7 +399,7 @@ doc: |
       'noInspire' => '6.1',
       'title-fr' => "Généalogie",
       'title-en' => "Lineage",
-      'xpath' => 'gmd:dataQualityInfo/*/gmd:lineage/*/gmd:statement/*',
+      'xpath' => 'gmd:dataQualityInfo/*/gmd:lineage/*/gmd:statement/gco:CharacterString',
       'multiplicity' => [ 'data' => 1 ],
     ],
   // 6.2. Résolution spatiale - 6.2. Spatial resolution
@@ -379,7 +432,7 @@ doc: |
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
       'subfields'=> [
         'referenceDate' => '*/gmd:specification/*/gmd:date/*/gmd:date/*',
-        'title' => '*/gmd:specification/*/gmd:title/*',
+        'title' => '*/gmd:specification/*/gmd:title/gco:CharacterString',
   // 7.2. Degré - 7.2. Degree
         'degreeOfConformity' => '*/gmd:pass/*',
       ],
@@ -391,7 +444,7 @@ doc: |
       'noInspire' => '8.1',
       'title-fr' => "Conditions d'utilisation",
       'title-en' => "Use conditions",
-      'xpath' => 'gmd:identificationInfo/*/gmd:resourceConstraints/*/gmd:useLimitation/*',
+      'xpath' => 'gmd:identificationInfo/*/gmd:resourceConstraints/*/gmd:useLimitation/gco:CharacterString',
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
     ],
 
@@ -407,7 +460,7 @@ doc: |
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
       'subfields'=> [
         'code' => 'gmd:accessConstraints/gmd:MD_RestrictionCode/@codeListValue',
-        'others' => 'gmd:otherConstraints/*',
+        'others' => 'gmd:otherConstraints/gco:CharacterString',
       ],
     ],
     'classification' => [
@@ -428,8 +481,8 @@ doc: |
       'xpath' => 'gmd:identificationInfo/*/gmd:pointOfContact',
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
       'subfields' => [
-        'name' => '*/gmd:organisationName/*',
-        'email' => '*/gmd:contactInfo/*/gmd:address/*/gmd:electronicMailAddress/*',
+        'name' => '*/gmd:organisationName/gco:CharacterString',
+        'email' => '*/gmd:contactInfo/*/gmd:address/*/gmd:electronicMailAddress/gco:CharacterString',
   // 9.2. Rôle de la partie responsable - 9.2. Responsible party role
         'role' => '*/gmd:role/gmd:CI_RoleCode/@codeListValue',
       ],
@@ -444,8 +497,8 @@ doc: |
       'xpath' => 'gmd:contact',
       'multiplicity' => [ 'data' => '1..*', 'service' => '1..*' ],
       'subfields' => [
-        'name' => '*/gmd:organisationName/*',
-        'email' => '*/gmd:contactInfo/*/gmd:address/*/gmd:electronicMailAddress/*',
+        'name' => '*/gmd:organisationName/gco:CharacterString',
+        'email' => '*/gmd:contactInfo/*/gmd:address/*/gmd:electronicMailAddress/gco:CharacterString',
       ],
     ],
   // 10.2. Date des métadonnées - 10.2. Metadata date
@@ -634,41 +687,91 @@ EOT;
 
     $result = $header;
     foreach (self::$metadata as $name => $elt) {
-// cas simple: élément unaire atomique
-      if (self::unary($elt['multiplicity']) and !isset($elt['subfields'])) {
-        if (isset($elt['xpath'])) {
-          $result .= "        <xsl:if test=\"$elt[xpath]\">\n";
-          $result .= "          <$name><xsl:value-of select=\"$elt[xpath]\" /></$name>\n";
-          $result .= "        </xsl:if>\n";
+      //if (!in_array($name, ['title','conditionsToAccessAndUse'])) continue;
+      $result .= "        <!-- element $name -->\n";
+      if (isset($elt['xslml'])) // cas d'un XSL adhoc pour l'élément, eg: subject
+        $result .= $elt['xslml'];
+      // cas simple: élément unaire atomique, eg: title
+      elseif (self::unary($elt['multiplicity']) && !isset($elt['subfields'])) {
+        if (isset($elt['xpath'])) { // 1 xpath
+          if (preg_match('!/gco:CharacterString$!', $elt['xpath'])) { // Multi-lingue
+            $xpath = substr($elt['xpath'], 0, strlen($elt['xpath'])-strlen('/gco:CharacterString'));
+            $result .= <<<EOT
+        <$name>
+          <xsl:if test="$xpath/gco:CharacterString">
+            <value><xsl:value-of select="$xpath" /></value>
+          </xsl:if>
+          <xsl:if test="$xpath/gmd:PT_FreeText/gmd:textGroup">
+            <xsl:for-each select="$xpath/gmd:PT_FreeText/gmd:textGroup">
+              <localised>
+                <locale><xsl:value-of select="gmd:LocalisedCharacterString/@locale"/></locale>
+                <value><xsl:value-of select="gmd:LocalisedCharacterString" /></value>
+              </localised>
+            </xsl:for-each>
+          </xsl:if>\n
+        </$name>\n
+EOT;
+          }
+          else { // Mono-lingue
+            $result .= "        <xsl:if test=\"$elt[xpath]\">\n";
+            $result .= "          <$name><value><xsl:value-of select=\"$elt[xpath]\" /></value></$name>\n";
+            $result .= "        </xsl:if>\n";
+          }
         }
-        else {
+        else { // plusieurs xpath alternatifs
           $result .= "        <xsl:choose>\n";
           foreach ($elt['xpaths'] as $xpath) {
             $result .= "        <xsl:when test=\"$xpath\">\n";
-            $result .= "          <$name><xsl:value-of select=\"$xpath\" /></$name>\n";
+            $result .= "          <$name><value><xsl:value-of select=\"$xpath\" /></value></$name>\n";
             $result .= "        </xsl:when>\n";
           }
           $result .= "          <xsl:otherwise></xsl:otherwise>\n";
           $result .= "        </xsl:choose>\n";
         }
       }
-// cas : élément n-aire atomique
+      // cas : élément n-aire atomique 
       elseif (!isset($elt['subfields'])) {
-        if (isset($elt['xpath'])) {
-          $result .= <<<EOT
+        if (isset($elt['xpath'])) { // 1 xpath, ex: conditionsToAccessAndUse
+          if (preg_match('!/gco:CharacterString$!', $elt['xpath'])) { // Multi-lingue
+            $xpath = substr($elt['xpath'], 0, strlen($elt['xpath'])-strlen('/gco:CharacterString'));
+            $result .= <<<EOT
+        <xsl:if test="$xpath">
+          <xsl:for-each select="$xpath">
+            <$name>
+            <xsl:if test="gco:CharacterString">
+              <xsl:for-each select="gco:CharacterString">
+                <value><xsl:value-of select="." /></value>
+              </xsl:for-each>
+            </xsl:if>
+            <xsl:if test="gmd:PT_FreeText/gmd:textGroup">
+              <xsl:for-each select="gmd:PT_FreeText/gmd:textGroup">
+                <localised>
+                  <locale><xsl:value-of select="gmd:LocalisedCharacterString/@locale"/></locale>
+                  <value><xsl:value-of select="gmd:LocalisedCharacterString" /></value>
+                </localised>
+              </xsl:for-each>
+            </xsl:if>\n
+            </$name>
+            </xsl:for-each>
+          </xsl:if>\n
+EOT;
+          }
+          else { // 1 xpath mono-lingue
+            $result .= <<<EOT
         <xsl:if test="$elt[xpath]">
           <xsl:for-each select="$elt[xpath]">
-            <$name><xsl:value-of select="." /></$name>
+            <$name><value><xsl:value-of select="." /></value></$name>
           </xsl:for-each>
         </xsl:if>\n
 EOT;
+          }
         }
-        else {
+        else { // n-aire atomique, plusieurs xpath, ex: language
           $result .= "        <xsl:choose>\n";
           foreach ($elt['xpaths'] as $xpath) {
             $result .= "        <xsl:when test=\"$xpath\">\n";
             $result .= "          <xsl:for-each select=\"$xpath\">\n";
-            $result .= "            <$name><xsl:value-of select=\".\" /></$name>\n";
+            $result .= "            <$name><value><xsl:value-of select=\".\" /></value></$name>\n";
             $result .= "          </xsl:for-each>\n";
             $result .= "        </xsl:when>\n";
           }
@@ -676,13 +779,38 @@ EOT;
           $result .= "        </xsl:choose>\n";
         }
       }
-// cas : élément n-aire structuré
+      // cas : élément n-aire structuré
+      // gestion du multi-lingue des sous-champs
       else {
         $result .= "        <xsl:if test=\"$elt[xpath]\">\n";
         $result .= "          <xsl:for-each select=\"$elt[xpath]\">\n";
         $result .= "            <$name>\n";
         foreach ($elt['subfields'] as $sfname => $xpath) {
-          $result .= "              <$sfname><xsl:value-of select=\"$xpath\" /></$sfname>\n";
+          if (preg_match('!/gco:CharacterString$!', $xpath)) { // Multi-lingue
+            $xpath = substr($xpath, 0, strlen($xpath)-strlen('/gco:CharacterString'));
+            $result .= <<<EOT
+        <xsl:if test="$xpath">
+          <$sfname>
+            <xsl:if test="$xpath/gco:CharacterString">
+              <value><xsl:value-of select="$xpath/gco:CharacterString" /></value>
+            </xsl:if>
+            <xsl:if test="$xpath/gmd:PT_FreeText">
+              <xsl:for-each select="$xpath/gmd:PT_FreeText/gmd:textGroup">
+                <localised>
+                  <locale><xsl:value-of select="gmd:LocalisedCharacterString/@locale"/></locale>
+                  <value><xsl:value-of select="gmd:LocalisedCharacterString" /></value>
+                </localised>
+              </xsl:for-each>
+            </xsl:if>
+          </$sfname>
+        </xsl:if>\n
+EOT;
+          }
+          else {
+            $result .= "              <xsl:if test=\"$xpath\">\n";
+            $result .= "                <$sfname><value><xsl:value-of select=\"$xpath\" /></value></$sfname>\n";
+            $result .= "              </xsl:if>\n";
+          }
         }
         $result .= "            </$name>\n";
         $result .= "          </xsl:for-each>\n";
@@ -890,6 +1018,171 @@ doc: |
     //die("EN COURS ligne ".__LINE__);
     return $php;
   }
+    
+/*PhpDoc: methods
+name: function standardizeMl
+title: static function standardize(SimpleXMLElement $xml): array - Standardise une fiche de métadonnées
+doc: |
+  La standardisation a pour objectif de faciliter les traitements consommant les données JSON
+  en générant une structure JSON homogène ce qui n'est pas le cas en sortie de la simplification.
+  Le principe de la standardisation est le suivant:
+  - une fiche de MD est un dictionnaire JSON : nom_élément => valeur_élément
+  - valeur_élément est:
+    - une chaine de caractères si l'élément est défini comme unaire
+    - un tableau de chaine de caractères si l'élément est défini comme n-aire atomique
+    - un tableau de dictionnaires de chaine de caractères si l'élément est défini comme n-aire structuré
+  - quand un élément ou un sous élément est absent, il n'apparait pas dans le dictionnaire correspondant.
+  La méthode prend en entrée une fiche de MD en SimpleXml et renvoie une structure de tableaux Php
+
+  L'utilisation de json_encode() sur un SimpleXml n'est pas fiable et donc abandonnée
+*/
+  static function standardizeMl(SimpleXMLElement $xml): array {
+    $php = [];
+    $mdLanguage = trim((string)$xml->mdLanguage->value);
+    $locales = [];
+    if ($xml->locale) {
+      foreach ($xml->locale as $localeElt) {
+        $id = trim((string)$localeElt->id);
+        $langCode = trim((string)$localeElt->languageCode);
+        $locales["#$id"] = $langCode;
+      }
+    }
+    // return [ 'mdLanguage'=> $mdLanguage, 'locales'=> $locales ]; // verif mdLanguage & locales 
+    foreach (self::$metadata as $eltname => $mdelt) {
+      if (!$xml->$eltname)
+        continue;
+      elseif ($eltname == 'subject') { // cas spécifique
+        //continue;
+        $subjects = [];
+        foreach ($xml->subject as $subjectElt) {
+          $subject = [];
+          if ($subjectElt->value)
+            $vals[''] = trim((string)$subjectElt->value);
+          if ($subjectElt->localised) {
+            foreach ($subjectElt->localised as $localised) {
+              $locale = trim((string)$localised->locale);
+              $vals[$locale] = trim((string)$localised->value);
+            }
+          }
+          if ($vals[''])
+            $subject['value'][$mdLanguage] = $vals[''];
+          foreach ($vals as $locale => $val) {
+            if ($locale && ($locales[$locale]<>$mdLanguage))
+              $subject['value'][$locales[$locale]] = $val;
+          }
+          if ($subjectElt->cvocIdentifier)
+            $subject['cvocIdentifier'] = trim((string)$subjectElt->cvocIdentifier->value);
+          if ($subjectElt->cvocTitle) {
+            $vals = [];
+            if ($subjectElt->cvocTitle->value)
+              $vals[''] = trim((string)$subjectElt->cvocTitle->value);
+            if ($subjectElt->cvocTitle->localised) {
+              foreach ($subjectElt->cvocTitle->localised as $localised) {
+                $locale = trim((string)$localised->locale);
+                $vals[$locale] = trim((string)$localised->value);
+              }
+            }
+            if ($vals[''])
+              $subject['cvocTitle'][$mdLanguage] = $vals[''];
+            foreach ($vals as $locale => $val) {
+              if ($locale && ($locales[$locale]<>$mdLanguage))
+                $subject['cvocTitle'][$locales[$locale]] = $val;
+            }
+          }
+          if ($subjectElt->cvocReferenceDate)
+            $subject['cvocReferenceDate'] = trim((string)$subjectElt->cvocReferenceDate->value);
+          $subjects[] = $subject;
+        }
+        $php['subject'] = $subjects;
+      }
+      // elt unaire atomique
+      elseif (self::unary($mdelt['multiplicity']) && !isset($mdelt['subfields'])) {
+        $vals = [];
+        if ($xml->$eltname->value)
+          $vals[''] = trim((string)$xml->$eltname->value);
+        if ($xml->$eltname->localised) {
+          foreach ($xml->$eltname->localised as $localised) {
+            $locale = trim((string)$localised->locale);
+            $vals[$locale] = trim((string)$localised->value);
+          }
+        }
+        //var_dump($vals);
+        if ((count($vals)==1) && !array_keys($vals)[0])
+          $php[$eltname] = array_values($vals)[0];
+        else {
+          if ($vals[''])
+            $php[$eltname][$mdLanguage] = $vals[''];
+          foreach ($vals as $locale => $val) {
+            if ($locale && ($locales[$locale]<>$mdLanguage))
+              $php[$eltname][$locales[$locale]] = $val;
+          }
+        }
+      }
+      // elt n-aire atomique, ex: alternative, valid
+      elseif (!isset($mdelt['subfields'])) {
+        //continue;
+        foreach ($xml->$eltname as $eltVal) {
+          $vals = [];
+          if ($eltVal->value)
+            $vals[''] = trim((string)$eltVal->value);
+          if ($eltVal->localised) {
+            foreach ($eltVal->localised as $localised) {
+              $locale = trim((string)$localised->locale);
+              $vals[$locale] = trim((string)$localised->value);
+            }
+          }
+          if ((count($vals)==1) && !array_keys($vals)[0])
+            $php[$eltname][] = array_values($vals)[0];
+          else {
+            $elt = [];
+            if ($vals[''])
+              $elt[$mdLanguage] = $vals[''];
+            foreach ($vals as $locale => $val) {
+              if ($locale && ($locales[$locale]<>$mdLanguage))
+                $elt[$locales[$locale]] = $val;
+            }
+            $php[$eltname][] = $elt;
+          }
+        }
+      }
+      // elt composé, ex: conformsTo
+      else {
+        //continue;
+        foreach ($xml->$eltname as $eltVal) {
+          $phpselt = [];
+          foreach (array_keys($mdelt['subfields']) as $sfname) {
+            $vals = [];
+            if ($eltVal->$sfname->value) {
+              $vals[''] = trim((string)$eltVal->$sfname->value);
+            }
+            if ($eltVal->$sfname->localised) {
+              foreach ($eltVal->$sfname->localised as $localised) {
+                $locale = trim((string)$localised->locale);
+                $vals[$locale] = trim((string)$localised->value);
+              }
+            }
+            //var_dump($vals);
+            if ((count($vals)==1) && !array_keys($vals)[0])
+              $phpselt[$sfname] = array_values($vals)[0];
+            else {
+              if (isset($vals['']))
+                $phpselt[$sfname][$mdLanguage] = $vals[''];
+              foreach ($vals as $locale => $val) {
+                if ($locale && ($locale<>$mdLanguage))
+                  $phpelt[$sfname][$locales[$locale]] = $val;
+              }
+            }
+          }
+          if ($phpselt)
+            $php[$eltname][] = $phpselt;
+        }
+      }
+    }
+    //echo "php="; var_dump($php);
+    //echo "<pre>php="; print_r($php);
+    //die("EN COURS ligne ".__LINE__);
+    return $php;
+  }
 };
 
 
@@ -922,7 +1215,7 @@ if (!isset($_GET['action'])) {
        "<li><a href='/yamldoc/stylesheettest.xml'>Affichage du fichier XSL Test pour XML en XML</a>\n",
        "<li>Affichage du fichier XSL pour HTML en <a href='?action=xslHtml&fmt=txt'>texte</a>, \n",
        "en <a href='?action=xslHtml'>XML</a>\n",
-       "<li><a href='?action=simplify'>Affichage des MD du serveur $server</a>\n";
+       "<li><a href='?action=titles'>Affichage des MD du serveur $server</a>\n";
   echo "</ul>\n";
   die();
 }
@@ -974,11 +1267,10 @@ name:  action=simplify
 title: Affichage en JSON des MD simplifiées mais non standardisées
 hrefs:
   - ?main
-  - ?action=simplify
   - ?action=simplXml
-  - ?action=std
+  - ?action=titles
 */
-if ($_GET['action']=='simplify') {
+if ($_GET['action']=='titles') {
   $startpos = (isset($_GET['startpos'])? $_GET['startpos'] : 1);
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>simplify</title></head><body>\n";
   echo "<h2>Affichage des MD simplifiées mais non standardisées</h2>\n",
@@ -989,14 +1281,21 @@ if ($_GET['action']=='simplify') {
        "<td>$startpos - ",$startpos+9,"</td>",
        "<td><a href='/yamldoc/file.php$server/harvest/$startpos.xml'>ISO XML</a></td>\n",
        "<td><a href='?action=simplXml&amp;startpos=$startpos'>simplXML</a></td>\n",
-       "<td><a href='?action=std&amp;startpos=$startpos'>std</a></td>\n",
        "<td><a href='?action=simplXml&amp;xsl=test&amp;startpos=$startpos'>simplXML test</a></td>\n",
        "<td><a href='?action=simplXml&amp;xsl=ML&amp;startpos=$startpos'>simplXML ML</a></td>\n",
-       "<td><a href='?action=simplify&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
+       "<td><a href='?action=titles&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n";
-  $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos);
-  echo '<pre>',
-       json_encode($simplified,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos, 'ML');
+  $pos = 0;
+  echo "<ul>\n";
+  foreach ($searchResults->metadata as $md) {
+   $std = IsoMetadata::standardizeMl($md);
+   $href = "?action=stdone&amp;start=$startpos&amp;pos=$pos";
+   echo "<li><a href='$href'>",
+              isset($std['title']) ? $std['title'] : 'NO TITLE',"</a> (<a href='$href&amp;dump=1'>dump</a>)</li>\n";
+   $pos++;
+  }
+  echo "</ul>\n";
   die();
 }
 
@@ -1016,48 +1315,27 @@ if ($_GET['action']=='simplXml') {
 }
 
 /*PhpDoc: screens
-name:  action=std
-title: Affichage par leur titre de la liste des MD standardisées
-hrefs: [ ?action=stdone ]
-*/
-if ($_GET['action']=='std') {
-  $startpos =  (isset($_GET['startpos'])? $_GET['startpos'] : 1);
-  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>std</title></head><body>\n";
-  echo "<h2>Affichage des titres des MD standardisées</h2>\n",
-       "Chaque page correspond au retour d'une requête CSW GetRecords<br>\n",
-       "<table border=1><tr>",
-       "<td><a href='?'>^</a></td>",
-       "<td>$server</td>",
-       "<td>$startpos - ",$startpos+9,"</td>",
-       "<td><a href='?action=std&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
-       "</tr></table>\n",
-       "<ul>\n";
-  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos);
-  $pos = 0;
-  foreach ($searchResults->metadata as $md) {
-    $std = IsoMetadata::standardize($md);
-    $href = "?action=stdone&amp;start=$startpos&amp;pos=$pos";
-    echo "<li><a href='$href'>",
-               isset($std['title']) ? $std['title'] : 'NO TITLE',"</a></li>\n";
-    $pos++;
-  }
-  echo "</ul>\n";
-  die();
-}
-
-/*PhpDoc: screens
 name:  action=stdone
 title: Affichage en JSON d'une fiche de MD standardisées
 */
 if ($_GET['action']=='stdone') {
-  header('Content-type: application/json');
-  $searchResults = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$_GET[start].xml"));
+  $searchResults = IsoMetadata::simplify(
+      file_get_contents("$docsPath/$server/harvest/$_GET[start].xml"),
+      $_GET['start'], 'ML');
   $pos = 0;
   foreach ($searchResults->metadata as $md) {
     if ($pos++==$_GET['pos']) {
-      $std = IsoMetadata::standardize($md);
-      echo json_encode($std,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n\n";
-      die();
+      if (isset($_GET['dump'])) {
+        header('Content-type: text/plain');
+        echo "<pre>xml="; var_dump($md); echo "</pre>";
+        die();
+      }
+      else {
+        header('Content-type: application/json');
+        $std = IsoMetadata::standardizeMl($md);
+        echo json_encode($std,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n\n";
+        die();
+      }
     }
   }
   die();
