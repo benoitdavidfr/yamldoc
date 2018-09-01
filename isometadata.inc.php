@@ -22,6 +22,8 @@ doc: |
   - identifier les MD Inspire qui ne sont pas extraites
 
 journal: |
+  30/8/2018:
+    besoin d'améliorer le mapping pour traiter les MD multi-lingues comme celles de Sextant
   24/8/2018:
     fork de gcatas/cswharv/metadata.inc.php pour yamldoc
     modification des champs pour correspondre au JSON-schema
@@ -51,12 +53,12 @@ journal: |
     première version
 */
 /*PhpDoc: classes
-name:  class Metadata
-title: class Metadata - simplification des MD ISO 19115/19139
+name:  class IsoMetadata
+title: class IsoMetadata - simplification des MD ISO 19115/19139
 privateproperties:
 methods:
 doc: |
-  La classe statique Metadata:
+  La classe statique IsoMetadata:
   - définit dans la variable statique metadata une structure simplifiée pour les métadonnées,
   - simplifie un document XML ISO 19115/19139 au moyen d'un processus XSLT fondé sur une feuille de styles
     générée à partir de la définition de la structure simplifiée,
@@ -64,6 +66,10 @@ doc: |
   Les principales méthodes externes sont :
   - la méthode simplify() qui prend une chaine XML et renvoie un SimpleXMLElement correspondant à la structure
     simplifiée.
+  - la méthode standardize() qui prend un SimpleXMLElement et renvoie un tableau Php correspondant à la structure
+    standardisée.
+
+  Test ML sur http://localhost/yamldoc/isometadata.inc.php/geocats/sextant?action=simplify&startpos=3781
 */
 class IsoMetadata {
 /*PhpDoc: privateproperties
@@ -95,6 +101,7 @@ doc: |
     'title-fr'=> // titre le l'élément en français
     'title-en'=> // titre le l'élément en anglais
     'xpath'=> // xpath de l'élément par rapport à gmd:MD_Metadata
+    'xpaths'=> // liste de xpath possibles de l'élément par rapport à gmd:MD_Metadata
     'multiplicity'=> ['data'=>{m}, 'service'=>{m}] où {m} dans (1,'0..1','0..*','1..*')
     'subfields' => [
       {subname} => {subpath}
@@ -459,13 +466,13 @@ doc: |
       'multiplicity' => [ 'data' => 1, 'service' => 1 ],
     ],
   ];
-  private static $xsltProcessor=null; // processeur XSLT
+  private static $xsltProcessors=[]; // processeurs XSLT en fonction de la feuille de style
   
 /*PhpDoc: methods
 name: function version
 title: static function version() - La version des métadonnées et du processus de simplification et de normalisation
 */
-  static function version() { return '20170822'; }
+  static function version() { return '201809'; }
   
 /*PhpDoc: methods
 name: function asHtml
@@ -590,6 +597,102 @@ EOT;
   }
   
 /*PhpDoc: methods
+name: function asXslMl
+title: static function asXslMl() - Génère la feuille de style simplifiant un document XML getrecords multi-ligue en XML
+*/
+  static function asXslMl() {
+    $header = <<<EOT
+<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0"
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:gmd="http://www.isotc211.org/2005/gmd"
+  xmlns:gco="http://www.isotc211.org/2005/gco"
+  xmlns:srv="http://www.isotc211.org/2005/srv"
+  xmlns:xlink="http://www.w3.org/1999/xlink">
+<xsl:template match="/">
+  <SearchResults>
+    <xsl:for-each select="//gmd:MD_Metadata">
+      <metadata>
+        <!-- locales -->
+        <xsl:if test="gmd:locale">
+          <xsl:for-each select="gmd:locale/gmd:PT_Locale">
+            <locale>
+              <id><xsl:value-of select="@id" /></id>
+              <languageCode><xsl:value-of select="gmd:languageCode/gmd:LanguageCode/@codeListValue" /></languageCode>
+            </locale>
+          </xsl:for-each>
+        </xsl:if>\n
+EOT;
+
+    $footer = <<<EOT
+      </metadata>
+    </xsl:for-each>
+  </SearchResults>
+</xsl:template>
+</xsl:stylesheet>\n
+EOT;
+
+    $result = $header;
+    foreach (self::$metadata as $name => $elt) {
+// cas simple: élément unaire atomique
+      if (self::unary($elt['multiplicity']) and !isset($elt['subfields'])) {
+        if (isset($elt['xpath'])) {
+          $result .= "        <xsl:if test=\"$elt[xpath]\">\n";
+          $result .= "          <$name><xsl:value-of select=\"$elt[xpath]\" /></$name>\n";
+          $result .= "        </xsl:if>\n";
+        }
+        else {
+          $result .= "        <xsl:choose>\n";
+          foreach ($elt['xpaths'] as $xpath) {
+            $result .= "        <xsl:when test=\"$xpath\">\n";
+            $result .= "          <$name><xsl:value-of select=\"$xpath\" /></$name>\n";
+            $result .= "        </xsl:when>\n";
+          }
+          $result .= "          <xsl:otherwise></xsl:otherwise>\n";
+          $result .= "        </xsl:choose>\n";
+        }
+      }
+// cas : élément n-aire atomique
+      elseif (!isset($elt['subfields'])) {
+        if (isset($elt['xpath'])) {
+          $result .= <<<EOT
+        <xsl:if test="$elt[xpath]">
+          <xsl:for-each select="$elt[xpath]">
+            <$name><xsl:value-of select="." /></$name>
+          </xsl:for-each>
+        </xsl:if>\n
+EOT;
+        }
+        else {
+          $result .= "        <xsl:choose>\n";
+          foreach ($elt['xpaths'] as $xpath) {
+            $result .= "        <xsl:when test=\"$xpath\">\n";
+            $result .= "          <xsl:for-each select=\"$xpath\">\n";
+            $result .= "            <$name><xsl:value-of select=\".\" /></$name>\n";
+            $result .= "          </xsl:for-each>\n";
+            $result .= "        </xsl:when>\n";
+          }
+          $result .= "          <xsl:otherwise></xsl:otherwise>\n";
+          $result .= "        </xsl:choose>\n";
+        }
+      }
+// cas : élément n-aire structuré
+      else {
+        $result .= "        <xsl:if test=\"$elt[xpath]\">\n";
+        $result .= "          <xsl:for-each select=\"$elt[xpath]\">\n";
+        $result .= "            <$name>\n";
+        foreach ($elt['subfields'] as $sfname => $xpath) {
+          $result .= "              <$sfname><xsl:value-of select=\"$xpath\" /></$sfname>\n";
+        }
+        $result .= "            </$name>\n";
+        $result .= "          </xsl:for-each>\n";
+        $result .= "        </xsl:if>\n";
+      }
+    }
+    return $result.$footer;
+  }
+
+/*PhpDoc: methods
 name: function asXslForHtml
 title: static function asXslForHtml() - Génère la feuille de style simplifiant un document XML getrecords en HTML
 */
@@ -695,28 +798,39 @@ EOT;
   
 /*PhpDoc: methods
 name: function simplify
-title: static function simplify($xmlstr) - Simplifie un document XML retourné par GetRecords
+title: static function simplify(string $xmlstr, string $recid, string $xsl='') - Simplifie un document XML retourné par GetRecords
 doc: |
-  En entrée: un document XML transmis comme chaine de caractères
+  En entrée:
+    - le document XML à simplifier transmis comme chaine de caractères
+    - l'identfiant du document utilisé en cas d'erreur
+    - un identifiant de la feuille de style à utiliser qui peut être:
+      - 'test' pour utiliser le fichier de feuille de style de test (stylesheettest.xsl)
+      - 'ML' pour utiliser self::asXslMl()
+      - 'html' pour utiliser self::asXslForHtml()
+      - par défaut utilisation de self::asXsl()
   En sortie: le document XML renvoyé comme objet SimpleXML
+  ou une exception en cas d'erreur sur le fichier XML en entrée
 */
-  static function simplify(string $xmlstr, string $recid): SimpleXMLElement {
+  static function simplify(string $xmlstr, string $recid, string $xsl=''): SimpleXMLElement {
     trim($xmlstr);
-    if (!self::$xsltProcessor) {
+    if (!isset(self::$xsltProcessors[$xsl])) {
       $stylesheet = new DOMDocument();
-      $stylesheet->loadXML(self::asXsl());
-      self::$xsltProcessor = new XSLTProcessor;
-      self::$xsltProcessor->importStylesheet($stylesheet);
+      $xslFile = ($xsl=='test' ? file_get_contents(__DIR__.'/stylesheettest.xsl')
+          : ($xsl=='ML' ? self::asXslMl()
+            : ($xsl=='html' ? self::asXslForHtml()
+              : self::asXsl())));
+      $stylesheet->loadXML($xslFile);
+      self::$xsltProcessors[$xsl] = new XSLTProcessor;
+      self::$xsltProcessors[$xsl]->importStylesheet($stylesheet);
     }
     $getrecords = new DOMDocument();
     if (!$getrecords->loadXML($xmlstr)) {
       //echo "xml=",$xmlstr,"\n";
-      throw new Exception("Erreur dans loadXML() sur l'enregistrement $recid, enregistrement sauté<br>\n");
+      throw new Exception("Erreur dans IsoMetadata::simplify sur loadXML() sur l'enregistrement $recid");
     }
-    $searchResults = new SimpleXMLElement(self::$xsltProcessor->transformToXML($getrecords));
-    return $searchResults;
+    return new SimpleXMLElement(self::$xsltProcessors[$xsl]->transformToXML($getrecords));
   }
-  
+    
 /*PhpDoc: methods
 name: function standardize
 title: static function standardize($xml) - Standardise une fiche de métadonnées
@@ -789,9 +903,10 @@ $server = $_SERVER['PATH_INFO'];
 name:  main
 title: Exécution principale du script
 hrefs:
-  - ?action=asHtml
-  - ?action=asXsl
-  - ?action=asXml
+  - ?action=eltsHtml
+  - ?action=xslXml
+  - ?action=xslXmlMl
+  - ?action=xslHtml
   - ?action=simplify
 doc: |
   Menu de choix
@@ -799,64 +914,57 @@ doc: |
 if (!isset($_GET['action'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>metadata</title></head><body>\n",
        "<h2>Tests de la classe IsoMetadata</h1><ul>\n",
-       "<li><a href='?action=asHtml'>Affichage des éléments de MD en HTML</a>\n",
-       "<li><a href='?action=asXsl'>Affichage du fichier XSL pour XML en texte</a>\n",
-       "<li><a href='?action=asXml'>Affichage du fichier XSL pour XML en XML</a>\n",
-       "<li><a href='?action=asXslForHtml'>Affichage du fichier XSL pour HTML en texte</a>\n",
-       "<li><a href='?action=asXslForHtmlInXml'>Affichage du fichier XSL pour HTML en XML</a>\n",
+       "<li><a href='?action=eltsHtml'>Affichage des éléments de MD en HTML</a>\n",
+       "<li>Affichage du fichier XSL pour XML en <a href='?action=xslXml&amp;fmt=txt'>texte</a>,\n",
+       "en <a href='?action=xslXml'>XML</a>\n",
+       "<li>Affichage du fichier XSL ML pour XML en <a href='?action=xslXmlMl&amp;fmt=txt'>texte</a>,\n",
+       "en <a href='?action=xslXmlMl'>XML</a>\n",
+       "<li><a href='/yamldoc/stylesheettest.xml'>Affichage du fichier XSL Test pour XML en XML</a>\n",
+       "<li>Affichage du fichier XSL pour HTML en <a href='?action=xslHtml&fmt=txt'>texte</a>, \n",
+       "en <a href='?action=xslHtml'>XML</a>\n",
        "<li><a href='?action=simplify'>Affichage des MD du serveur $server</a>\n";
   echo "</ul>\n";
   die();
 }
 
 /*PhpDoc: screens
-name:  action=asHtml
+name:  action=eltsHtml
 title: Affichage en HTML des éléments de MD définissant le format simplifié
 */
-if ($_GET['action']=='asHtml') {
+if ($_GET['action']=='eltsHtml') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>metadata</title></head><body>\n";
   echo IsoMetadata::asHtml();
   die();
 }
 
 /*PhpDoc: screens
-name:  action=asXsl
-title: Affichage en texte du fichier XSL
+name:  action=asXml
+title: Affichage du fichier XSL pour XML
 */
-if ($_GET['action']=='asXsl') {
-  header('Content-type: text/plain; charset="utf-8"');
-  echo IsoMetadata::asXsl();
-  die();
+if ($_GET['action']=='xslXml') {
+  $fmt = (isset($_GET['fmt']) && ($_GET['fmt']=='txt')) ? 'plain' : 'xml';
+  header("Content-type: text/$fmt; charset=\"utf-8\"");
+  die(IsoMetadata::asXsl());
 }
 
 /*PhpDoc: screens
 name:  action=asXml
-title: Affichage en XML du fichier XSL
+title: Affichage du fichier XSL ML pour XML
 */
-if ($_GET['action']=='asXml') {
-  header('Content-type: text/xml; charset="utf-8"');
-  echo IsoMetadata::asXsl();
-  die();
+if ($_GET['action']=='xslXmlMl') {
+  $fmt = (isset($_GET['fmt']) && ($_GET['fmt']=='txt')) ? 'plain' : 'xml';
+  header("Content-type: text/$fmt; charset=\"utf-8\"");
+  die(IsoMetadata::asXslMl());
 }
 
 /*PhpDoc: screens
-name:  action=asXslForHtml
-title: Affichage en texte du fichier XSL pour HTML
+name:  action=xslHtml
+title: Affichage du fichier XSL pour HTML
 */
-if ($_GET['action']=='asXslForHtml') {
-  header('Content-type: text/plain; charset="utf-8"');
-  echo IsoMetadata::asXslForHtml();
-  die();
-}
-
-/*PhpDoc: screens
-name:  action=asXslForHtmlInXml
-title: Affichage en XML du fichier XSL pour HTML
-*/
-if ($_GET['action']=='asXslForHtmlInXml') {
-  header('Content-type: text/xml; charset="utf-8"');
-  echo IsoMetadata::asXslForHtml();
-  die();
+if ($_GET['action']=='xslHtml') {
+  $fmt = (isset($_GET['fmt']) && ($_GET['fmt']=='txt')) ? 'plain' : 'xml';
+  header("Content-type: text/$fmt; charset=\"utf-8\"");
+  die(IsoMetadata::asXslForHtml());
 }
 
 $docsPath = __DIR__.'/pub'; // chemin d'accès aux fichiers XML des getrecords
@@ -882,6 +990,8 @@ if ($_GET['action']=='simplify') {
        "<td><a href='/yamldoc/file.php$server/harvest/$startpos.xml'>ISO XML</a></td>\n",
        "<td><a href='?action=simplXml&amp;startpos=$startpos'>simplXML</a></td>\n",
        "<td><a href='?action=std&amp;startpos=$startpos'>std</a></td>\n",
+       "<td><a href='?action=simplXml&amp;xsl=test&amp;startpos=$startpos'>simplXML test</a></td>\n",
+       "<td><a href='?action=simplXml&amp;xsl=ML&amp;startpos=$startpos'>simplXML ML</a></td>\n",
        "<td><a href='?action=simplify&amp;startpos=",$startpos+10,"'>&gt;</a></td>",
        "</tr></table>\n";
   $simplified = IsoMetadata::simplify(file_get_contents("$docsPath/$server/harvest/$startpos.xml"), $startpos);
@@ -898,7 +1008,9 @@ if ($_GET['action']=='simplXml') {
   header('Content-type: text/xml; charset="utf-8"');
   $simplified = IsoMetadata::simplify(
       file_get_contents("$docsPath/$server/harvest/$_GET[startpos].xml"),
-      $_GET['startpos']);
+      $_GET['startpos'],
+      isset($_GET['xsl']) ? $_GET['xsl'] : ''
+    );
   echo $simplified->asXml();
   die();
 }
