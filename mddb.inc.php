@@ -114,6 +114,11 @@ class MetadataDb extends YData {
       // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
       return $this->buildOperatedBy($docuri);
     }
+    // projection sur certains champs
+    elseif (preg_match('!^/proj/(.*)$!', $ypath, $matches)) {
+      $fields = explode(',', $matches[1]);
+      return $this->proj($docuri, $fields);
+    }
     // recherche full text ou par mot-clé
     elseif ($ypath == '/search') {
       if (isset($_GET['text']))
@@ -144,15 +149,29 @@ class MetadataDb extends YData {
     $yaml = [];
     $subjects = new SubjectList($yaml);
     foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
-//      print_r($metadata['subject']); echo "<br>\n";
+      //echo "subjects = "; print_r($metadata['subject']); echo "<br>\n";
+      $mainMdLanguage = (is_string($metadata['mdLanguage']) ? $metadata['mdLanguage'] : $metadata['mdLanguage'][0]);
       if (isset($metadata['subject'])) {
         foreach ($metadata['subject'] as $subject) {
-          $subjects->add($subject);
+          //echo "subject = "; print_r($subject); echo "<br>\n";
+          $subjects->add($subject, $mainMdLanguage);
         }
       }
     }
     $subjects->sortVocs();
     return $subjects;
+  }
+  
+  function proj(string $docuri, array $fields) {
+    $proj = [];
+    foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+      $eltproj = [];
+      foreach ($fields as $field)
+        if (isset($metadata[$field]))
+          $eltproj[$field] = $metadata[$field];
+      $proj[] = $eltproj;
+    }
+    return $proj;
   }
   
   function searchOnSubject($docuri, $searchedSubject) {

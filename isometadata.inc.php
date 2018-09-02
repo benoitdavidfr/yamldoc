@@ -170,7 +170,10 @@ doc: |
       'noInspire' => '1.3',
       'title-fr' => "Type de la ressource",
       'title-en' => "Resource type",
-      'xpath' => 'gmd:hierarchyLevel/*/@codeListValue',
+      'xpaths' => [
+        'gmd:hierarchyLevel/*/@codeListValue',
+        'gmd:hierarchyLevelName/gco:CharacterString',
+      ],
       'valueDomain' => ['dataset','series','services','...'],
       'multiplicity' => [ 'data' => 1, 'service' => 1 ],
     ],
@@ -1036,10 +1039,36 @@ doc: |
 
   L'utilisation de json_encode() sur un SimpleXml n'est pas fiable et donc abandonnée
 */
+  // fonction interne à standardizeMl, fabrique un MLString à partir d'un tableau vals
+  static function buildMLString(array $vals, string $mdLanguage, array $locales) {
+    static $defLocales = ['#EN'=>'eng','#FR'=>'fre','#locale-eng'=>'eng','#locale-fre'=>'fre'];
+    
+    if ((count($vals)==1) && !array_keys($vals)[0])
+      return array_values($vals)[0];
+    
+    $mlStr = [];
+    if (isset($vals['']))
+      $mlStr[$mdLanguage] = $vals[''];
+    foreach ($vals as $locale => $val) {
+      if (!$val) continue;
+      if ($locale) {
+        if (isset($locales[$locale]))
+          $mlStr[$locales[$locale]] = $val;
+        elseif (isset($defLocales[$locale]))
+          $mlStr[$defLocales[$locale]] = $val;
+        else {
+          echo "locale $locale non défini<br>\n";
+          $mlStr[$locale] = $val;
+        }
+      }
+    }
+    return $mlStr;
+  }  
+  
   static function standardizeMl(SimpleXMLElement $xml): array {
     $php = [];
     $mdLanguage = trim((string)$xml->mdLanguage->value);
-    $locales = [];
+    $locales = []; // [ localeid => langCode ]
     if ($xml->locale) {
       foreach ($xml->locale as $localeElt) {
         $id = trim((string)$localeElt->id);
@@ -1064,12 +1093,7 @@ doc: |
               $vals[$locale] = trim((string)$localised->value);
             }
           }
-          if ($vals[''])
-            $subject['value'][$mdLanguage] = $vals[''];
-          foreach ($vals as $locale => $val) {
-            if ($locale && ($locales[$locale]<>$mdLanguage))
-              $subject['value'][$locales[$locale]] = $val;
-          }
+          $subject['value'] = self::buildMLString($vals, $mdLanguage, $locales);
           if ($subjectElt->cvocIdentifier)
             $subject['cvocIdentifier'] = trim((string)$subjectElt->cvocIdentifier->value);
           if ($subjectElt->cvocTitle) {
@@ -1082,12 +1106,7 @@ doc: |
                 $vals[$locale] = trim((string)$localised->value);
               }
             }
-            if ($vals[''])
-              $subject['cvocTitle'][$mdLanguage] = $vals[''];
-            foreach ($vals as $locale => $val) {
-              if ($locale && ($locales[$locale]<>$mdLanguage))
-                $subject['cvocTitle'][$locales[$locale]] = $val;
-            }
+            $subject['cvocTitle'] = self::buildMLString($vals, $mdLanguage, $locales);
           }
           if ($subjectElt->cvocReferenceDate)
             $subject['cvocReferenceDate'] = trim((string)$subjectElt->cvocReferenceDate->value);
@@ -1107,16 +1126,7 @@ doc: |
           }
         }
         //var_dump($vals);
-        if ((count($vals)==1) && !array_keys($vals)[0])
-          $php[$eltname] = array_values($vals)[0];
-        else {
-          if ($vals[''])
-            $php[$eltname][$mdLanguage] = $vals[''];
-          foreach ($vals as $locale => $val) {
-            if ($locale && ($locales[$locale]<>$mdLanguage))
-              $php[$eltname][$locales[$locale]] = $val;
-          }
-        }
+        $php[$eltname] = self::buildMLString($vals, $mdLanguage, $locales);
       }
       // elt n-aire atomique, ex: alternative, valid
       elseif (!isset($mdelt['subfields'])) {
@@ -1131,18 +1141,7 @@ doc: |
               $vals[$locale] = trim((string)$localised->value);
             }
           }
-          if ((count($vals)==1) && !array_keys($vals)[0])
-            $php[$eltname][] = array_values($vals)[0];
-          else {
-            $elt = [];
-            if ($vals[''])
-              $elt[$mdLanguage] = $vals[''];
-            foreach ($vals as $locale => $val) {
-              if ($locale && ($locales[$locale]<>$mdLanguage))
-                $elt[$locales[$locale]] = $val;
-            }
-            $php[$eltname][] = $elt;
-          }
+          $php[$eltname][] = self::buildMLString($vals, $mdLanguage, $locales);
         }
       }
       // elt composé, ex: conformsTo
@@ -1161,26 +1160,19 @@ doc: |
                 $vals[$locale] = trim((string)$localised->value);
               }
             }
-            //var_dump($vals);
-            if ((count($vals)==1) && !array_keys($vals)[0])
-              $phpselt[$sfname] = array_values($vals)[0];
-            else {
-              if (isset($vals['']))
-                $phpselt[$sfname][$mdLanguage] = $vals[''];
-              foreach ($vals as $locale => $val) {
-                if ($locale && ($locale<>$mdLanguage))
-                  $phpelt[$sfname][$locales[$locale]] = $val;
-              }
-            }
+            $phpselt[$sfname] = self::buildMLString($vals, $mdLanguage, $locales);
           }
           if ($phpselt)
             $php[$eltname][] = $phpselt;
         }
       }
     }
-    //echo "php="; var_dump($php);
-    //echo "<pre>php="; print_r($php);
-    //die("EN COURS ligne ".__LINE__);
+    $mdLanguages = [ $php['mdLanguage'] ];
+    if ($locales)
+      foreach ($locales as $langCode)
+        if (!in_array($langCode, $mdLanguages))
+          $mdLanguages[] = $langCode;
+    $php['mdLanguage'] = $mdLanguages;
     return $php;
   }
 };
@@ -1291,8 +1283,17 @@ if ($_GET['action']=='titles') {
   foreach ($searchResults->metadata as $md) {
    $std = IsoMetadata::standardizeMl($md);
    $href = "?action=stdone&amp;start=$startpos&amp;pos=$pos";
-   echo "<li><a href='$href'>",
-              isset($std['title']) ? $std['title'] : 'NO TITLE',"</a> (<a href='$href&amp;dump=1'>dump</a>)</li>\n";
+   if (!isset($std['title']))
+     $title = 'NO TITLE';
+   elseif (is_string($std['title']))
+     $title = $std['title'];
+   elseif (isset($std['title']['fre']))
+     $title = $std['title']['fre'];
+   elseif (isset($std['title']['eng']))
+     $title = $std['title']['eng'];
+   else
+     $title = array_values($std['title'][0]);
+   echo "<li><a href='$href'>$title</a> (<a href='$href&amp;dump=1'>dump</a>)</li>\n";
    $pos++;
   }
   echo "</ul>\n";
