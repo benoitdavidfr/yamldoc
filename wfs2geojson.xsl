@@ -11,12 +11,18 @@
     <xsl:for-each select="//wfs:member">
 - Feature:
     properties:{xslProperties}
-    <xsl:if test="*/ms:msGeometry/gml:MultiCurve">
+    <xsl:choose>
+    <xsl:when test="*/ms:msGeometry/gml:MultiCurve">
     MultiCurve:<xsl:for-each select="*/ms:msGeometry/gml:MultiCurve/gml:curveMember/gml:LineString/gml:posList">
       - LineString<xsl:value-of select="@srsDimension"/>: <xsl:value-of select="."/>
         </xsl:for-each>
-      </xsl:if>
-      <xsl:if test="*/ms:msGeometry/gml:MultiSurface">
+      </xsl:when>
+    <xsl:when test="*/ms:msGeometry/gml:LineString">
+    MultiCurve:<xsl:for-each select="*/ms:msGeometry/gml:LineString/gml:posList">
+      - LineString<xsl:value-of select="@srsDimension"/>: <xsl:value-of select="."/>
+        </xsl:for-each>
+      </xsl:when>
+      <xsl:when test="*/ms:msGeometry/gml:MultiSurface">
     MultiSurface:<xsl:for-each select="*/ms:msGeometry/gml:MultiSurface/gml:surfaceMember/gml:Polygon">
       - Polygon<xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList/@srsDimension"/>:
           exterior: <xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList"/>
@@ -26,7 +32,8 @@
               </xsl:for-each>
             </xsl:if>
           </xsl:for-each>
-        </xsl:if>
+        </xsl:when>
+      </xsl:choose>
     </xsl:for-each>
   </xsl:template>
 </xsl:stylesheet>

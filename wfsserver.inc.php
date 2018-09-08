@@ -601,6 +601,8 @@ class WfsServerGml extends WfsServer {
       $possep = strpos($pseudo, ':', $pos);
       $name = substr($pseudo, $pos, $possep - $pos);
       $posret = strpos($pseudo, "\n", $possep);
+      if ($posret === false)
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
       $value = substr($pseudo, $possep + 2, $posret - $possep - 2);
       if ($format == 'verbose')
         echo "property: name=$name, value=$value\n";
@@ -640,7 +642,7 @@ class WfsServerGml extends WfsServer {
       return $pos;
     }
     else {
-      die("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
+      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
     }
   }
   
@@ -842,7 +844,7 @@ class WfsServerGml extends WfsServer {
     echo "action $_GET[action] inconnue\n";
   }
   
-  // retourne le résultat de la requête en GeoJSON
+  // affiche le résultat de la requête en GeoJSON
   function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
     $request = [
       'VERSION'=> '2.0.0',
@@ -855,9 +857,21 @@ class WfsServerGml extends WfsServer {
     ];
     $bbox4326 = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en EPSG:4326
     $request['BBOX'] = implode(',',$bbox4326);
-    return $this->query($request);
+    //die($this->query($request)); // affichage du GML
+    echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
+    $this->wfs2GeoJson($typename, $this->query($request));
+    echo "]}\n";
+    return '';
   }
   
+  function getFeatureTest() {
+    header('Content-type: application/json');
+    //header('Content-type: application/xml');
+    //header('Content-type: text/plain');
+    $this->_c['urlWfs'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+    $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51]);
+  }
+
   // affiche le résultat de la requête en GeoJSON
   function printAllFeatures(string $typename, array $bbox=[], string $where=''): void {
     $numberMatched = $this->getNumberMatched($typename, $bbox, $where);
@@ -896,13 +910,19 @@ ini_set('max_execution_time', 300);
 if (!isset($_SERVER['PATH_INFO'])) {
   echo "<h3>Tests unitaires</h3><ul>\n";
   echo "<li><a href='$_SERVER[SCRIPT_NAME]/wfs2GeoJsonTest'>Test de la méthode WfsServerGml::wfs2GeoJson()</a>\n";
+  echo "<li><a href='$_SERVER[SCRIPT_NAME]/getFeatureTest'>Test de la méthode WfsServerGml::getFeature()</a>\n";
   echo "</ul>\n";
   die();
 }
-
 
 if ($_SERVER['PATH_INFO'] == '/wfs2GeoJsonTest') {
   $wfsDoc = [];
   $wfsServer = new WfsServerGml($wfsDoc);
   $wfsServer->wfs2GeoJsonTest();
+}
+
+if ($_SERVER['PATH_INFO'] == '/getFeatureTest') {
+  $wfsDoc = [];
+  $wfsServer = new WfsServerGml($wfsDoc);
+  $wfsServer->getFeatureTest();
 }
