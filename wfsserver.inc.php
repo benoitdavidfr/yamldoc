@@ -844,8 +844,8 @@ class WfsServerGml extends WfsServer {
     echo "action $_GET[action] inconnue\n";
   }
   
-  // affiche le résultat de la requête en GeoJSON
-  function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
+  // n'affiche pas le header/tailer GeoJSON
+  function getFeatureWoHd(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): void {
     $request = [
       'VERSION'=> '2.0.0',
       'REQUEST'=> 'GetFeature',
@@ -857,9 +857,14 @@ class WfsServerGml extends WfsServer {
     ];
     $bbox4326 = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en EPSG:4326
     $request['BBOX'] = implode(',',$bbox4326);
+    $this->wfs2GeoJson($typename, $this->query($request));
+  }
+
+  // affiche le résultat de la requête en GeoJSON
+  function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
     //die($this->query($request)); // affichage du GML
     echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
-    $this->wfs2GeoJson($typename, $this->query($request));
+    $this->getFeatureWoHd($typename, $bbox, $where, $count, $startindex);
     echo "]}\n";
     return '';
   }
@@ -876,7 +881,7 @@ class WfsServerGml extends WfsServer {
   function printAllFeatures(string $typename, array $bbox=[], string $where=''): void {
     $numberMatched = $this->getNumberMatched($typename, $bbox, $where);
     if ($numberMatched <= 100) {
-      echo self::gml2GeoJson($this->getFeature($typename, $bbox, $where));
+      $this->getFeature($typename, $bbox, $where);
       return;
     }
     //$numberMatched = 12; POUR TESTS
@@ -884,14 +889,10 @@ class WfsServerGml extends WfsServer {
     $startindex = 0;
     $count = 100;
     while ($startindex < $numberMatched) {
-      $gml = $this->getFeature($typename, $bbox, $where, $count, $startindex);
-      echo self::gml2GeoJson($gml);
-      // affichage de la liste des features sans les []
+      $this->getFeatureWoHd($typename, $bbox, $where, $count, $startindex);
       if ($startindex<>0)
         echo ",\n";
-      echo substr($fc, 40, $pos-40);
       $startindex += $count;
-      //die(']}');
     }
     echo "\n]}\n";
   }
