@@ -140,7 +140,7 @@ class SubjectList extends YamlDoc {
   // tri chaque vocabulaire sur les mots-clés
   function sortVocs() {
     foreach ($this->cvocs as $cvoc)
-      $cvoc->sort(['fre','fr','eng','en']);
+      $cvoc->sort(['fre','fra','fr','eng','en']);
   }
 };
 

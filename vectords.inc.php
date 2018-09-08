@@ -22,6 +22,11 @@ doc: |
     - spécifier formellement (en JSON-Schema ?) le contenu d'un VectorDS
   
 journal:
+  4/9/2018:
+    - WfsServer remplacé par WfsServerJson
+  3/9/2018:
+    - VectorDataset n'hérite plus de WfsServer mais référence un objet WfsServer
+      afin permettre de référencer différents types d'objets
   20/8/2018:
     - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:
@@ -178,9 +183,10 @@ require_once __DIR__.'/../ogr2php/feature.inc.php';
 require_once __DIR__.'/../phplib/mysql.inc.php';
 require_once __DIR__.'/yamldoc.inc.php';
 
-class VectorDataset extends WfsServer {
+class VectorDataset extends YamlDoc {
   static $log = __DIR__.'/vectords.log.yaml'; // nom du fichier de log ou '' pour pas de log
-  protected $_c; // contient les champs
+  protected $_c; // contient les champs du document
+  protected $wfsServer = null;
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
@@ -201,6 +207,13 @@ class VectorDataset extends WfsServer {
         }
       }
     }
+    $wfsdoc = ['urlWfs'=> $this->urlWfs];
+    if ($this->wfsOptions && isset($this->wfsOptions['Gml4326']))
+      $wfsdoc['yamlClass'] = 'WfsServerGml';
+    else
+      $wfsdoc['yamlClass'] = 'WfsServerJson';
+    $this->wfsServer = new $wfsdoc['yamlClass']($wfsdoc);
+    
     //unset($this->_c['layersByTheme']);
     //echo "<pre>"; print_r($this);
     if (self::$log) {
@@ -384,6 +397,10 @@ class VectorDataset extends WfsServer {
       $this->map($docuri)->display($docuri, $latlon, $zoom);
       die();
     }
+    elseif (preg_match('!^/wfs(/.*)$!', $ypath, $matches)) {
+      //print_r($this);
+      return $this->wfsServer->extractByUri("$docuri/wfs", $matches[1]);
+    }
     // fragment /{lyrname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
@@ -424,7 +441,7 @@ class VectorDataset extends WfsServer {
           die("Exception ".$e->getMessage());
         }
         header('Content-type: application/json');
-        $bbox = parent::decodeBbox($params['bbox']);
+        $bbox = WfsServerJson::decodeBbox($params['bbox']);
         $errorFeatureColl = [
           'type'=> 'FeatureCollection',
           'features'=> [
@@ -538,7 +555,7 @@ class VectorDataset extends WfsServer {
   function queryFeaturesPrep(string $lyrname, string $bboxstr, string $zoom) {
     if (($zoom<>'') && !is_numeric($zoom))
       throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : zoom '$zoom' incorrect");
-    $bbox = parent::decodeBbox($bboxstr);
+    $bbox = WfsServerJson::decodeBbox($bboxstr);
     
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
@@ -626,7 +643,7 @@ class VectorDataset extends WfsServer {
       }
       header('Access-Control-Allow-Origin: *');
       header('Content-type: application/json');
-      $this->printAllFeatures($typename, $bbox, $where);
+      $this->wfsServer->printAllFeatures($typename, $bbox, $where);
       if (self::$log) {
         global $t0;
         file_put_contents(self::$log, YamlDoc::syaml(['duration'=> microtime(true) - $t0]), FILE_APPEND);

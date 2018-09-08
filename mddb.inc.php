@@ -119,6 +119,57 @@ class MetadataDb extends YData {
       $fields = explode(',', $matches[1]);
       return $this->proj($docuri, $fields);
     }
+    // retourne les MDD ayant une relation avec protocole WFS
+    elseif (preg_match('!^/wfs$!', $ypath, $matches)) {
+      $result = [];
+      foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+        if (isset($metadata['relation'])) {
+          foreach ($metadata['relation'] as $relation) {
+            //print_r($relation);
+            if (isset($relation['protocol'])
+                && is_string($relation['protocol'])
+                && preg_match('!WFS!', $relation['protocol'])) {
+              $result[] = [
+                'id'=> $id,
+                'title'=> $metadata['title'],
+                'relation'=> $metadata['relation'],
+              ];
+              break;
+            }
+          }
+        }
+      }
+      return $result;
+    }
+    // retourne les relation ayant un protocole WFS
+    elseif (preg_match('!^/wfs2$!', $ypath, $matches)) {
+      $result = [];
+      foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+        if (isset($metadata['relation'])) {
+          foreach ($metadata['relation'] as $relation) {
+            //print_r($relation);
+            if (isset($relation['protocol'])
+                && is_string($relation['protocol'])
+                && preg_match('!WFS!', $relation['protocol'])) {
+              $result[] = $relation;
+            }
+          }
+        }
+      }
+      $wfsServers = []; // url => ['protocol'=>protocol, 'names'=> [name]
+      foreach ($result as $relation) {
+        if (!isset($relation['url']) || !$relation['url']) continue;
+        if (!isset($wfsServers[$relation['url']]))
+          $wfsServers[$relation['url']] = ['protocol'=> $relation['protocol'], 'names'=> [$relation['name']]];
+        else
+          $wfsServers[$relation['url']]['names'][] = $relation['name'];
+      }
+      ksort($wfsServers);
+      return [[
+        'title'=> "liste des serveurs WFS recensés dans les MDD Sextant",
+        'wfsservers'=> $wfsServers,
+      ]];
+    }
     // recherche full text ou par mot-clé
     elseif ($ypath == '/search') {
       if (isset($_GET['text']))
@@ -166,9 +217,12 @@ class MetadataDb extends YData {
     $proj = [];
     foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
       $eltproj = [];
-      foreach ($fields as $field)
-        if (isset($metadata[$field]))
+      foreach ($fields as $field) {
+        if ($field=='id')
+          $eltproj[$field] = $id;
+        elseif (isset($metadata[$field]))
           $eltproj[$field] = $metadata[$field];
+      }
       $proj[] = $eltproj;
     }
     return $proj;
