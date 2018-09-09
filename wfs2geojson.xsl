@@ -33,6 +33,23 @@
             </xsl:if>
           </xsl:for-each>
         </xsl:when>
+        <xsl:when test="*/ms:msGeometry/gml:Polygon">
+    MultiSurface:<xsl:for-each select="*/ms:msGeometry/gml:Polygon">
+      - Polygon<xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList/@srsDimension"/>:
+          exterior: <xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList"/>
+            <xsl:if test="gml:interior">
+          interior:<xsl:for-each select="gml:interior">
+          - <xsl:value-of select="gml:LinearRing/gml:posList"/>
+              </xsl:for-each>
+            </xsl:if>
+          </xsl:for-each>
+        </xsl:when>
+      <xsl:when test="*/ms:msGeometry/gml:Point">
+    Point: <xsl:value-of select="*/ms:msGeometry/gml:Point/gml:pos"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="*/ms:msGeometry"/>
+        </xsl:otherwise>
       </xsl:choose>
     </xsl:for-each>
   </xsl:template>

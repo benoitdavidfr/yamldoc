@@ -500,21 +500,20 @@ function new_doc(string $docuid): ?Doc {
     throw $exception;
   }
   // si le doc correspond à un texte alors création d'un YamlDoc avec le texte
-  if (!is_array($data))
+  if (!is_array($data)) {
     $doc = new BasicYamlDoc($text);
+  }
   // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
   elseif (!isset($data['yamlClass'])) {
     // si pas de YamlClass c'est un YamlDoc de base
     $doc = new BasicYamlDoc($data);
   }
+  elseif (class_exists($data['yamlClass'])) {
+    $doc = new $data['yamlClass'] ($data);
+  }
   else {
-    $yamlClass = $data['yamlClass'];
-    if (class_exists($yamlClass))
-      $doc = new $yamlClass ($data);
-    else {
-      echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
-      $doc = new BasicYamlDoc($data);
-    }
+    echo "<b>Erreur: la classe $data[yamlClass] n'est pas définie</b><br>\n";
+    $doc = new BasicYamlDoc($data);
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
   ydsetWriteAccess($docuid, $doc->authorizedWriter());
@@ -522,4 +521,3 @@ function new_doc(string $docuid): ?Doc {
   $doc->writePser($docuid);
   return $doc;
 }
-
