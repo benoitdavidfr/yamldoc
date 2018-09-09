@@ -404,7 +404,7 @@ class VectorDataset extends YamlDoc {
     // fragment /{lyrname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       $lyrname = $matches[1];
-      $params = ((isset($_POST) && $_POST) ? $_POST : (isset($_GET) ? $_GET : []));
+      $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
       $where = isset($params['where']) ? $params['where'] : '';
       $selfUri = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$_SERVER[PATH_INFO]";
       try {
@@ -441,7 +441,7 @@ class VectorDataset extends YamlDoc {
           die("Exception ".$e->getMessage());
         }
         header('Content-type: application/json');
-        $bbox = WfsServerJson::decodeBbox($params['bbox']);
+        $bbox = WfsServer::decodeBbox($params['bbox']);
         $errorFeatureColl = [
           'type'=> 'FeatureCollection',
           'features'=> [
@@ -555,7 +555,7 @@ class VectorDataset extends YamlDoc {
   function queryFeaturesPrep(string $lyrname, string $bboxstr, string $zoom) {
     if (($zoom<>'') && !is_numeric($zoom))
       throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : zoom '$zoom' incorrect");
-    $bbox = WfsServerJson::decodeBbox($bboxstr);
+    $bbox = WfsServer::decodeBbox($bboxstr);
     
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
@@ -610,14 +610,14 @@ class VectorDataset extends YamlDoc {
       if ($bbox) {
         if ($bbox[2] > 180.0) { // la requête coupe l'antiméridien
           $bbox2 = [$bbox[0] - 360.0, $bbox[1], $bbox[2] - 360.0, $bbox[3]];
-          $bboxwkt2 = parent::bboxWktLngLat($bbox2);
+          $bboxwkt2 = WfsServer::bboxWktLngLat($bbox2);
           $sql = "select $props ST_AsText(geom) geom from $dbname.$lyrname\n";
           $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt2'))";
           $sqls[1] = $sql;
         }
         if ($bbox[0] < -180.0) { // la requête coupe l'antiméridien
           $bbox2 = [$bbox[0] + 360.0, $bbox[1], $bbox[2] + 360.0, $bbox[3]];
-          $bboxwkt2 = parent::bboxWktLngLat($bbox2);
+          $bboxwkt2 = WfsServer::bboxWktLngLat($bbox2);
           $sql = "select $props ST_AsText(geom) geom from $dbname.$lyrname\n";
           $sql .= " where ".($where?"$where and ":'')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt2'))";
           $sqls[2] = $sql;
@@ -634,16 +634,27 @@ class VectorDataset extends YamlDoc {
         file_put_contents(self::$log,
             YamlDoc::syaml([
               'method'=> 'VectorDataset::queryFeatures',
+              'zoom'=> $zoom,
+            ]),
+            FILE_APPEND
+        );
+      }
+      $zoom = is_numeric($zoom) ? (int)$zoom : -1;
+      if (self::$log) {
+        file_put_contents(self::$log,
+            YamlDoc::syaml([
+              'method'=> 'VectorDataset::queryFeatures',
               'typename'=> $typename,
-              'where'=> $where,
               'bbox'=> $bbox,
+              'zoom'=> $zoom,
+              'where'=> $where,
             ]),
             FILE_APPEND
         );
       }
       header('Access-Control-Allow-Origin: *');
       header('Content-type: application/json');
-      $this->wfsServer->printAllFeatures($typename, $bbox, $where);
+      $this->wfsServer->printAllFeatures($typename, $bbox, $zoom, $where);
       if (self::$log) {
         global $t0;
         file_put_contents(self::$log, YamlDoc::syaml(['duration'=> microtime(true) - $t0]), FILE_APPEND);

@@ -12,7 +12,7 @@ title: wfsserver.inc.php - document correspondant à un serveur WFS
 doc: |
   La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de retour du JSON.
   
-  3 évolutions à réaliser:
+  2 évolutions à réaliser:
   
     - faire un new_doc sur WfsServer et ne pas avoir à choisr entre les sous-classes
     - revoir le filtrage en fonction d'une résolution dépendant du zoom
@@ -36,12 +36,21 @@ doc: |
     - /{document}/ft/{typeName}/geomPropertyName : nom de la propriété géométrique
     - /{document}/ft/{typeName}/numberMatched?bbox={bbox}&where={where} : renvoi du nbre d'objets
       correspondant à la requête définie par bbox et where, where est encodé en UTF-8
-    - /{document}/ft/{typeName}/getFeature?bbox={bbox}&where={where} : affiche en GeoJSON les objets
-      correspondant à la requête définie par bbox et where, limité à 1000 objets
-    - /{document}/ft/{typeName}/getAllFeatures?bbox={bbox}&where={where} : affiche en GeoJSON les objets
-      correspondant à la requête définie par bbox et where, utilise la pagination si plus de 100 objets
+    - /{document}/ft/{typeName}/getFeature?bbox={bbox}&zoom={zoom}&where={where} : affiche en GeoJSON les objets
+      correspondant à la requête définie par bbox, where et zoom, limité à 1000 objets
+    - /{document}/ft/{typeName}/getAllFeatures?bbox={bbox}&zoom={zoom}&where={where} : affiche en GeoJSON les objets
+      correspondant à la requête définie par bbox, where et zoom, utilise la pagination si plus de 100 objets
     
-  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester cette classe.
+  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
+      
+  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml.
+      
+  Résolution:
+    zoom = 0, image 256x256
+    resolution(zoom=0) Lng à l'équateur = 360/256
+    A chaque zoom supérieur, division par 2 de la résolution
+    256 = 2 ** 8
+    => resolution = 360 / 2**(zoom+8) degrés
   
   Sur le serveur WFS IGN:
   
@@ -52,6 +61,8 @@ doc: |
       - la solution retenue consiste à effectuer un appel JSON par typename et à le bufferiser en JSON 
   
 journal:
+  5-9/9/2018:
+    - développement de la classe WfsServerGml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
   4/9/2018:
     - remplacement du prefixe t par ft pour featureType
     - refonte de la gestion du cache indépendamment du stockage du document car le doc peut être volatil
@@ -111,8 +122,8 @@ abstract class WfsServer extends YamlDoc {
       return [];
     $bbox = explode(',', $bboxstr);
     if ((count($bbox)<>4) || !is_numeric($bbox[0]) || !is_numeric($bbox[1]) || !is_numeric($bbox[2]) || !is_numeric($bbox[3]))
-      throw new Exception("Erreur dans WfsServerJson::decodeBbox() : bbox '$bboxstr' incorrect");
-    return $bbox;
+      throw new Exception("Erreur dans WfsServer::decodeBbox() : bbox '$bboxstr' incorrect");
+    return [(float)$bbox[0], (float)$bbox[1], (float)$bbox[2], (float)$bbox[3]];
   }
   
   // retourne un polygon WKT LatLng à partir d'un bbox [lngMin, latMin, lngMax, latMax]
@@ -131,12 +142,12 @@ abstract class WfsServer extends YamlDoc {
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
-    //echo "WfsLayers::extractByUri($docuri, $ypath)<br>\n";
+    //echo "WfsServer::extractByUri($docuri, $ypath)<br>\n";
+    $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
     elseif ($ypath == '/query') {
       //$params = isset($_GET) ? $_GET : (isset($_POST) ? $_POST : []);
-      $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
       if (isset($params['OUTPUTFORMAT']) && ($params['OUTPUTFORMAT']=='application/json'))
         header('Content-type: application/json');
       else
@@ -177,28 +188,30 @@ abstract class WfsServer extends YamlDoc {
     // accès à /t/{typeName}/numberMatched
     elseif (preg_match('!^/ft/([^/]+)/num(berMatched)?$!', $ypath, $matches)) {
       $typeName = $matches[1];
-      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = isset($params['bbox']) ? $params['bbox'] : '';
       $bbox = self::decodeBbox($bbox);
-      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
+      $where = isset($params['where']) ? $params['where'] : '';
       return [ 'numberMatched'=> $this->getNumberMatched($typeName, $bbox, $where) ];
     }
     elseif (preg_match('!^/ft/([^/]+)/getFeature$!', $ypath, $matches)) {
       $typeName = $matches[1];
       header('Content-type: application/json');
-      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = isset($params['bbox']) ? $params['bbox'] : '';
       $bbox = self::decodeBbox($bbox);
-      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
+      $zoom = isset($params['zoom']) ? $params['zoom'] : -1;
+      $where = isset($params['where']) ? $params['where'] : '';
       //echo "where=$where\n";
-      echo $this->getFeature($typeName, $bbox, $where);
+      echo $this->getFeature($typeName, $bbox, $zoom, $where);
       die();
     }
     elseif (preg_match('!^/ft/([^/]+)/getAllFeatures$!', $ypath, $matches)) {
       $typeName = $matches[1];
       header('Content-type: application/json');
-      $bbox = isset($_GET['bbox']) ? $_GET['bbox'] : (isset($_POST['bbox']) ? $_POST['bbox'] : '');
+      $bbox = isset($params['bbox']) ? $params['bbox'] : '';
       $bbox = self::decodeBbox($bbox);
-      $where = isset($_GET['where']) ? $_GET['where'] : (isset($_POST['where']) ? $_POST['where'] : '');
-      $this->printAllFeatures($typeName, $bbox, $where);
+      $zoom = isset($params['zoom']) ? $params['zoom'] : -1;
+      $where = isset($params['where']) ? $params['where'] : '';
+      $this->printAllFeatures($typeName, $bbox, $zoom, $where);
       die();
     }
     else
@@ -284,12 +297,22 @@ abstract class WfsServer extends YamlDoc {
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList);
     return $featureTypeList;
   }
+  
+  abstract function describeFeatureType(string $typeName): array;
+  
+  abstract function geomPropertyName(string $typeName): ?string;
+  
+  abstract function getNumberMatched(string $typename, array $bbox=[], string $where=''): int;
+  
+  abstract function getFeature(string $typename, array $bbox=[], int $zoom=-1, string $where='', int $count=100, int $startindex=0): string;
+
+  abstract function printAllFeatures(string $typename, array $bbox=[], int $zoom=-1, string $where=''): void;
 };
 
 // classe simplifiant l'envoi de requêtes WFS capable de fournir des données GeoJSON
 class WfsServerJson extends WfsServer {
   
-  function describeFeatureType(string $typeName) {
+  function describeFeatureType(string $typeName): array {
     $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl."/$typeName").'-ft.json';
     if (is_file($filepath)) {
       $featureType = file_get_contents($filepath);
@@ -351,7 +374,7 @@ class WfsServerJson extends WfsServer {
   }
   
   // retourne le résultat de la requête en GeoJSON
-  function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
+  function getFeature(string $typename, array $bbox=[], int $zoom=-1, string $where='', int $count=100, int $startindex=0): string {
     $geomPropertyName = $this->geomPropertyName($typename);
     $request = [
       'VERSION'=> '2.0.0',
@@ -377,10 +400,10 @@ class WfsServerJson extends WfsServer {
   }
   
   // affiche le résultat de la requête en GeoJSON
-  function printAllFeatures(string $typename, array $bbox=[], string $where=''): void {
+  function printAllFeatures(string $typename, array $bbox=[], int $zoom=-1, string $where=''): void {
     $numberMatched = $this->getNumberMatched($typename, $bbox, $where);
     if ($numberMatched <= 100) {
-      echo $this->getFeature($typename, $bbox, $where);
+      echo $this->getFeature($typename, $bbox, $zoom, $where);
       return;
     }
     //$numberMatched = 12; POUR TESTS
@@ -388,7 +411,7 @@ class WfsServerJson extends WfsServer {
     $startindex = 0;
     $count = 100;
     while ($startindex < $numberMatched) {
-      $fc = $this->getFeature($typename, $bbox, $where, $count, $startindex);
+      $fc = $this->getFeature($typename, $bbox, $zoom, $where, $count, $startindex);
       // recherche de la position de la fin du dernier Feature dans la FeatureCollection
       $pos = strpos($fc, '],"crs":{"type":"EPSG","properties":{"code":');
       // affichage de la liste des features sans les []
@@ -406,7 +429,7 @@ class WfsServerJson extends WfsServer {
 class WfsServerGml extends WfsServer {
   private $xsltProcessors=[];
   
-  function describeFeatureType(string $typeName) {
+  function describeFeatureType(string $typeName): array {
     $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl."/$typeName").'-ft.xml';
     if (is_file($filepath)) {
       $ftXml = file_get_contents($filepath);
@@ -506,8 +529,23 @@ class WfsServerGml extends WfsServer {
   }
   
   // effectue la transformation de pseudo GeoJSON en un GeoJSON
-  function pseudo2GeoJson(string $pseudo, string $format, array $bbox) {
+  function pseudo2GeoJson(string $pseudo, string $format, array $bbox, int $zoom): void {
     //die($pseudo);
+    $res = 0;
+    if ($zoom <> -1) {
+      $res = 360.0 / (2 ** ($zoom+8)); // resolution en fonction du zoom
+    }
+    if (self::$log) { // log
+      file_put_contents(
+          self::$log,
+          YamlDoc::syaml([
+            'call'=> 'pseudo2GeoJson',
+            'zoom'=> $zoom,
+            'res'=> $res,
+          ]),
+          FILE_APPEND
+      );
+    }
     $pos = 0;
     $nofeature = 0;
     while ($pos != -1) {
@@ -520,7 +558,7 @@ class WfsServerGml extends WfsServer {
         $pos += 11;
         if ($format=='json')
           echo $nofeature?",\n":'',"{ \"type\":\"Feature\",\n";
-        $pos = $this->decodeFeature($pseudo, $pos, $format, $bbox);
+        $pos = $this->decodeFeature($pseudo, $pos, $format, $bbox, $res);
         if ($format=='json')
           echo "}";
         $nofeature++;
@@ -531,10 +569,9 @@ class WfsServerGml extends WfsServer {
     }
     if ($format=='json')
       echo "\n";
-    return 'OK';
   }
   
-  function decodeFeature(string $pseudo, int $pos, string $format, array $bbox): int {
+  function decodeFeature(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
     if (substr($pseudo, $pos, 16) != "    properties:\n")
       throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
     $pos += 16;
@@ -566,7 +603,7 @@ class WfsServerGml extends WfsServer {
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"MultiLineString\",\n",
           "    \"coordinates\" : [\n";
-      $pos = $this->decodeMultiCurve($pseudo, $pos, $format, $bbox);
+      $pos = $this->decodeMultiCurve($pseudo, $pos, $format, $bbox, $res);
       if ($format == 'json')
         echo "    ]\n",
           "  }\n";
@@ -580,7 +617,7 @@ class WfsServerGml extends WfsServer {
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"MultiPolygon\",\n",
           "    \"coordinates\" : [\n";
-      $pos = $this->decodeMultiSurface($pseudo, $pos, $format, $bbox);
+      $pos = $this->decodeMultiSurface($pseudo, $pos, $format, $bbox, $res);
       if ($format == 'json')
         echo "    ]\n",
           "  }\n";
@@ -612,13 +649,13 @@ class WfsServerGml extends WfsServer {
     }
   }
   
-  function decodeMultiCurve(string $pseudo, int $pos, string $format, array $bbox): int {
+  function decodeMultiCurve(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
     $nols = 0;
     while (($pos != -1) && substr($pseudo, $pos, 21) == "      - LineString2: ") {
       $pos += 21;
       if ($format == 'verbose')
         echo "LineString2 détectée pos=$pos\n";
-      $pts = $this->decodeListPoints2($pseudo, $pos, $bbox);
+      $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
       if (($format == 'json') && $pts) {
         echo $nols?",\n":'',"      [";
         $this->encodeListPoints2($pts, $format);
@@ -631,7 +668,7 @@ class WfsServerGml extends WfsServer {
     return $pos;
   }
   
-  function decodeMultiSurface(string $pseudo, int $pos, string $format, array $bbox): int {
+  function decodeMultiSurface(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
     $nosurf = 0;
     while (($pos != -1) && substr($pseudo, $pos, 18) == "      - Polygon2:\n") {
       $pos += 18;
@@ -639,7 +676,7 @@ class WfsServerGml extends WfsServer {
         echo "Polygon2 détecté pos=$pos\n";
       $header = ($nosurf?",\n":'')."     [\n";
       $footer = "     ]";
-      if ($this->decodePolygon2($pseudo, $pos, $format, $bbox, $header, $footer))
+      if ($this->decodePolygon2($pseudo, $pos, $format, $bbox, $res, $header, $footer))
         $nosurf++;
     }
     if ($format == 'json')
@@ -651,13 +688,13 @@ class WfsServerGml extends WfsServer {
   // modifie $pos avec la position après la fin de ligne ou -1
   // retourne true si le polygone intersecte la bbox, false sinon
   // $header et $footer sont affichés avant et après si le polygone intersecte la bbox et si format json
-  function decodePolygon2(string $pseudo, int &$pos, string $format, array $bbox, string $header, string $footer): bool {
+  function decodePolygon2(string $pseudo, int &$pos, string $format, array $bbox, float $res, string $header, string $footer): bool {
     if (substr($pseudo, $pos, 20) != "          exterior: ")
       throw new Exception("Erreur dans decodePolygon2 exterior non détecté\n");
     $pos += 20;
     if ($format == 'verbose')
       echo "Polygon2 exterior détecté\n";
-    $pts = $this->decodeListPoints2($pseudo, $pos, $bbox);
+    $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
     if (!$pts) {
       $polygonIntersects = false;
       if ($format == 'verbose')
@@ -680,7 +717,7 @@ class WfsServerGml extends WfsServer {
         $pos += 12;
         if ($format == 'verbose')
           echo "Polygon2interior LineString2 détectée\n";
-        $pts = $this->decodeListPoints2($pseudo, $pos, $bbox);
+        $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
         if (($format == 'json') && $polygonIntersects && $pts) {
           echo "],\n      [";
           $this->encodeListPoints2($pts, $format);
@@ -695,15 +732,20 @@ class WfsServerGml extends WfsServer {
   // decode une liste de points de 2 coord dans pseudo à partir de pos
   // modifie $pos avec la position après la fin de ligne ou -1
   // renvoie la liste de points ou [] si aucun point n'est dans la qbbox
-  function decodeListPoints2(string $pseudo, int &$pos, array $qbbox): array {
-    $nbpts = 0;
-    $pts = [];
-    $bbox = [];
+  // un filtre est effectué sur les points en fonction de la résolution $res si $res <> 0
+  function decodeListPoints2(string $pseudo, int &$pos, array $qbbox, float $res): array {
+    $nbpts = 0; // le nbre de points retenus
+    $pts = []; // la liste des points retenus
+    $ptprec = []; // le dernier point retenu dans $pts
+    $ptLost = []; // mémorise le dernier point traité s'il n'a pas été retenu, sinon []
+    $bbox = []; // le bbox de la liste de points
     $poseol = strpos($pseudo, "\n", $pos);
     while (1) {
       $poswhite = strpos($pseudo, ' ', $pos);
       //echo "poswhite=$poswhite, poseol=$poseol, pos=$pos\n";
       if (($poswhite === false) || (($poseol !== FALSE) && ($poswhite > $poseol))) {
+        if ($ptLost) // je force à retenir le dernier point s'il ne l'avait pas été
+          $pts[] = $ptLost;
         break;
       }
       $x = substr($pseudo, $pos, $poswhite-$pos);
@@ -719,7 +761,6 @@ class WfsServerGml extends WfsServer {
       //echo "  pos=$pos, nopt=$nbpts, x=$x, y=$y\n";
       //if ($format=='json')
         //echo $nbpts?',':'',"[$x,$y]";
-      $pts[] = [$x,$y];
       if (!$bbox)
         $bbox = [$x, $y, $x, $y];
       else { // maj bbox 
@@ -732,7 +773,17 @@ class WfsServerGml extends WfsServer {
         if ($y > $bbox[3])
           $bbox[3] = $y;
       }
-      $nbpts++;
+      if ($ptprec && ($res <> 0.0)) {
+        $dist = max(abs($x-$ptprec[0]),abs($y-$ptprec[1]));
+      }
+      if (!$ptprec || ($res == 0.0) || ($dist > $res)) { // le point courant est conservé dans $pts
+        $ptprec = [$x,$y];
+        $pts[] = $ptprec;
+        $nbpts++;
+        $ptLost = [];
+      }
+      else // le point courant n'est pas conservé dans $pts, il est mémorisé dans $ptLost
+        $ptLost = [$x,$y];
     }
     if ($poseol === FALSE)
       $pos = -1;
@@ -742,32 +793,30 @@ class WfsServerGml extends WfsServer {
     $ymin = max($qbbox[1], $bbox[1]);
     $xmax = min($qbbox[2], $bbox[2]);
     $ymax = min($qbbox[3], $bbox[3]);
-    $inters = (($xmax >= $xmin) && ($ymax >= $ymin));
+    $inters = (($xmax >= $xmin) && ($ymax >= $ymin)); // teste l'intersection entre qbbox et bbox
     if (!$inters)
       return [];
-    else
-      return $pts;
+    if (max($bbox[2] - $bbox[0], $bbox[3] - $bbox[1]) < $res) // teste la taille de l'élément
+      return [];
+    return $pts;
   }
 
+  // affiche la liste de points
   function encodeListPoints2(array $pts, string $format): void {
     if ($format=='verbose')
       echo "$nbpts points détectés\n";
     elseif ($format=='json') {
-      //$filtre = $nbpts > 20 ? round($nbpts/20) : 1;
-      $filtre = 1;
-      //echo "{\"nbpts\": $nbpts, \"filtre\": $filtre}";
       $nbpts = count($pts);
       for($i=0; $i<$nbpts; $i++)
-        if ((($i % $filtre) == 0) || ($i == $nbpts-1))
-          echo $i?',':'','[',$pts[$i][1],',',$pts[$i][0],']';
-          //echo $i?',':'','"pt"';
+        echo $i?',':'','[',$pts[$i][1],',',$pts[$i][0],']'; // génération en LngLat (CRS:84)
+        //echo $i?',':'','"pt"';
     }
   }
   
   // effectue la transformation du Gml en un pseudo GeoJSON puis affiche les Feature en JSON
   // l'affichage doit être encadré par '{"type":"FeatureCollection","features":' et ']}'
   // Cela permet d'afficher une seule FeatureCollection en cas de pagination
-  function wfs2GeoJson(string $typename, string $xmlstr, string $format, array $bbox): void {
+  function wfs2GeoJson(string $typename, string $xmlstr, string $format, array $bbox, int $zoom): void {
     if ($format == 'gml')
       die($xmlstr); // pour afficher le GML
     if (!isset($this->xsltProcessors['typename'])) {
@@ -785,7 +834,7 @@ class WfsServerGml extends WfsServer {
     $pseudo = $this->xsltProcessors['typename']->transformToXML($getrecords);
     if ($format == 'pseudo')
       die($pseudo); // pour afficher le pseudo intermédiaire
-    $this->pseudo2GeoJson($pseudo, $format, $bbox);
+    $this->pseudo2GeoJson($pseudo, $format, $bbox, $zoom);
   }
   
   // Test unitaire de la méthode WfsServerGml::wfs2GeoJson()
@@ -798,13 +847,23 @@ class WfsServerGml extends WfsServer {
           'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
           'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
         ],
+        'zoom'=> 9,
       ],
-      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve renvoyant du GML 3.2.1 en EPSG:4326",
+      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=-1",
         'params'=> [
           'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
           'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
           'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
         ],
+        'zoom'=> -1,
+      ],
+      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=1",
+        'params'=> [
+          'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
+          'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
+          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+        ],
+        'zoom'=> 1,
       ],
       [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_P MultiPolygone bbox=-7,47,-2,49",
         'params'=> [
@@ -812,10 +871,11 @@ class WfsServerGml extends WfsServer {
           'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '47,-7,49,-2',
           'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
         ],
+        'zoom'=> 9,
       ],
     ];
     if (!isset($_GET['action'])) {
-      echo "<h3>Queries</h3><ul>\n";
+      echo "<h3>wfs2GeoJson Queries</h3><ul>\n";
       foreach ($queries as $num => $query) {
         $url = $this->url($query['params']);
         echo "<li>$query[title] ",
@@ -870,11 +930,13 @@ class WfsServerGml extends WfsServer {
       else
         header('Content-type: text/plain');
       echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
+      $query = $queries[$_GET['query']];
       $this->wfs2GeoJson(
-        $queries[$_GET['query']]['params']['TYPENAMES'],
+        $query['params']['TYPENAMES'],
         $getrecords,
         $_GET['format'],
-        explode(',', $queries[$_GET['query']]['params']['BBOX'])
+        explode(',', $query['params']['BBOX']),
+        $query['zoom']
       );
       echo "]}\n";
       die();
@@ -883,7 +945,7 @@ class WfsServerGml extends WfsServer {
   }
   
   // n'affiche pas le header/tailer GeoJSON
-  function getFeatureWoHd(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): void {
+  function getFeatureWoHd(string $typename, array $bbox, int $zoom, string $where, int $count, int $startindex): void {
     $request = [
       'VERSION'=> '2.0.0',
       'REQUEST'=> 'GetFeature',
@@ -899,14 +961,21 @@ class WfsServerGml extends WfsServer {
     //$format = 'pseudo';  // pour afficher le pseudo intermédiaire
     //$format = 'verbose'; // affichage des commentaires de la transfo pseudo en GeoJSON
     $format = 'json'; // affichage GeoJSON
-    $this->wfs2GeoJson($typename, $this->query($request), $format, $bbox4326);
+    $this->wfs2GeoJson($typename, $this->query($request), $format, $bbox4326, $zoom);
   }
 
   // affiche le résultat de la requête en GeoJSON
-  function getFeature(string $typename, array $bbox=[], string $where='', int $count=100, int $startindex=0): string {
+  function getFeature(string $typename, array $bbox=[], int $zoom=-1, string $where='', int $count=100, int $startindex=0): string {
     //die($this->query($request)); // affichage du GML
-    echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
-    $this->getFeatureWoHd($typename, $bbox, $where, $count, $startindex);
+    echo "{ \"type\":\"FeatureCollection\",\n",
+      "  \"typename\":\"$typename\",\n",
+      "  \"bbox\":",json_encode($bbox),",\n",
+      "  \"zoom\":\"$zoom\",\n",
+      "  \"where\":\"$where\",\n",
+      "  \"count\":\"$count\",\n",
+      "  \"startindex\":\"$startindex\",\n",
+      "  \"features\":[\n";
+    $this->getFeatureWoHd($typename, $bbox, $zoom, $where, $count, $startindex);
     echo "]}\n";
     return '';
   }
@@ -916,14 +985,14 @@ class WfsServerGml extends WfsServer {
     //header('Content-type: application/xml');
     //header('Content-type: text/plain');
     $this->_c['urlWfs'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
-    $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51]);
+    $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51], 8);
   }
 
   // affiche le résultat de la requête en GeoJSON
-  function printAllFeatures(string $typename, array $bbox=[], string $where=''): void {
+  function printAllFeatures(string $typename, array $bbox=[], int $zoom=-1, string $where=''): void {
     $numberMatched = $this->getNumberMatched($typename, $bbox, $where);
     if ($numberMatched <= 100) {
-      $this->getFeature($typename, $bbox, $where);
+      $this->getFeature($typename, $bbox, $zoom, $where);
       return;
     }
     //$numberMatched = 12; POUR TESTS
@@ -931,7 +1000,7 @@ class WfsServerGml extends WfsServer {
     $startindex = 0;
     $count = 100;
     while ($startindex < $numberMatched) {
-      $this->getFeatureWoHd($typename, $bbox, $where, $count, $startindex);
+      $this->getFeatureWoHd($typename, $bbox, $zoom, $where, $count, $startindex);
       if ($startindex<>0)
         echo ",\n";
       $startindex += $count;
@@ -957,13 +1026,3 @@ $testMethod = substr($_SERVER['PATH_INFO'], 1);
 $wfsDoc = [];
 $wfsServer = new WfsServerGml($wfsDoc);
 $wfsServer->$testMethod();
-/*
-if ($_SERVER['PATH_INFO'] == '/wfs2GeoJsonTest') {
-}
-
-if ($_SERVER['PATH_INFO'] == '/getFeatureTest') {
-  $wfsDoc = [];
-  $wfsServer = new WfsServerGml($wfsDoc);
-  $wfsServer->getFeatureTest();
-}
-*/
