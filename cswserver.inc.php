@@ -31,6 +31,11 @@ doc: |
     - /{document}/GetRecordsInDC/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
     - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
       dans les fichiers /{document}/harvest/{startposition}.xml
+    - /{document}/harvest/{startPosition} : moisonne les enregistrements ISO à partir de {startPosition}
+      et les enregistre dans les fichiers /{document}/harvest/{startposition}.xml
+    - /{document}/harvest/{startPosition}/{startPosition} : moisonne les enregistrements ISO à partir de {startPosition}
+      et au plus jusqu'à la position {endPosition}
+      et les enregistre dans les fichiers /{document}/harvest/{startposition}.xml
     
   Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
   
@@ -107,18 +112,59 @@ class CswServer extends YamlDoc {
       echo $this->GetRecordsInIso($matches[1]);
       die();
     }
+    elseif (preg_match('!^/GetRecordByIdInIso/([^/]+)$!', $ypath, $matches)) {
+      header('Content-type: application/xml');
+      echo $this->GetRecordByIdInIso($matches[1]);
+      die();
+    }
     elseif (preg_match('!^/GetRecordsInDC/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
       echo $this->GetRecordsInDC($matches[1]);
       die();
     }
-    elseif ($ypath == '/harvest') {
-      //echo "CswServer::extractByUri($docuri, $ypath)<br>\n";
-      $this->harvest($docuri);
+    elseif (preg_match('!^/GetRecordByIdInDC/([^/]+)$!', $ypath, $matches)) {
+      header('Content-type: application/xml');
+      echo $this->GetRecordByIdInDC($matches[1]);
+      die();
+    }
+    elseif (preg_match('!^/harvest(/([^/]+))?(/([^/]+))?$!', $ypath, $matches)) {
+      echo "CswServer::extractByUri($docuri, $ypath)<br>\n";
+      //echo "count(matches)=",count($matches),"\n"; print_r($matches); die();
+      if (count($matches) == 1)
+        $this->harvest($docuri);
+      elseif (count($matches) == 3)
+        $this->harvest($docuri, $matches[2]);
+      elseif (count($matches) == 5)
+        $this->harvest($docuri, $matches[2], $matches[4]);
       die();
     }
     else
       return null;
+  }
+  
+  // envoi une requête HTTP GET, en cas d'erreur fait 3 essais
+  function httpGet(string $url): string {
+    $context = null;
+    if ($this->referer) {
+      $referer = $this->referer;
+      $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
+    }
+    if (($result = @file_get_contents($url, false, $context)) === false) {
+      echo "Attention: 1ère erreur de GET sur $url, 2ème essai<br>\n";
+      sleep(1);
+      if (($result = @file_get_contents($url, false, $context)) === false) {
+        echo "Attention: 2ème erreur de GET sur $url, 3ème essai<br>\n";
+        sleep(3);
+        if (($result = @file_get_contents($url, false, $context)) === false) {
+          var_dump($http_response_header);
+          throw new Exception("Erreur dans CswServer::httpGet() : sur url=$url");
+        }
+      }
+    }
+    if (self::$log) { // log
+      file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
+    }
+    return $result;
   }
   
   // envoi une requête et récupère la réponse sous la forme d'un texte XML
@@ -137,19 +183,10 @@ class CswServer extends YamlDoc {
     $url = $this->urlCsw.'?SERVICE=CSW&VERSION=2.0.2';
     foreach($params as $key => $value)
       $url .= "&$key=$value";
-    if ($this->referer) {
-      $referer = $this->referer;
-      $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
-    }
-    else
-      $context = null;
-    //echo "referer=$referer\n";
-    if (($result = file_get_contents($url, false, $context)) === false) {
-      var_dump($http_response_header);
-      throw new Exception("Erreur dans CswServer::query() : sur url=$url");
-    }
-    if (self::$log) { // log
-      file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
+    try {
+      $result = $this->httpGet($url);
+    } catch(Exception $e) {
+      throw new Exception($e->getMessage());
     }
     //die($result);
     if (substr($result, 0, 17) == '<ExceptionReport>') {
@@ -181,10 +218,22 @@ class CswServer extends YamlDoc {
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'gmd:MD_Metadata',
       'RESULTTYPE'=> 'results',
-      //'OUTPUTSCHEMA'=> urlencode('http://www.isotc211.org/2005/gmd'), // semble faux
       'OUTPUTSCHEMA'=> 'http://www.isotc211.org/2005/gmd',
       'ELEMENTSETNAME'=> 'full',
       'startposition'=> $startposition,
+    ];
+    return $this->query($query);
+  }
+  
+  // retourne en XML le résultat d'une requête GetRecords en format ISO
+  function GetRecordByIdInIso(string $id): string {
+    $query = [
+      'REQUEST'=> 'GetRecordById',
+      'TYPENAMES'=> 'gmd:MD_Metadata',
+      'RESULTTYPE'=> 'results',
+      'OUTPUTSCHEMA'=> 'http://www.isotc211.org/2005/gmd',
+      'ELEMENTSETNAME'=> 'full',
+      'id'=> $id,
     ];
     return $this->query($query);
   }
@@ -195,7 +244,6 @@ class CswServer extends YamlDoc {
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'csw:Record',
       'RESULTTYPE'=> 'results',
-      //'OUTPUTSCHEMA'=> urlencode('http://www.opengis.net/cat/csw/2.0.2'),
       'OUTPUTSCHEMA'=> 'http://www.opengis.net/cat/csw/2.0.2',
       'ELEMENTSETNAME'=> 'full',
       'startposition'=> $startposition,
@@ -203,10 +251,24 @@ class CswServer extends YamlDoc {
     return $this->query($query);
   }
   
+  // retourne en XML le résultat d'une requête GetRecords en format DC
+  function GetRecordByIdInDC(string $id): string {
+    $query = [
+      'REQUEST'=> 'GetRecordById',
+      'TYPENAMES'=> 'csw:Record',
+      'RESULTTYPE'=> 'results',
+      'OUTPUTSCHEMA'=> 'http://www.opengis.net/cat/csw/2.0.2',
+      'ELEMENTSETNAME'=> 'full',
+      'id'=> $id,
+    ];
+    return $this->query($query);
+  }
+  
   // effectue des GetRecordsInIso à partir de 1 jusqu'à nextRecord > numberOfRecordsMatched
   // Pas optimal: beaucoup de requêtes pour rien
   // Probablement des enregistrements qui ne sont pas compatibles avec le format de sortie ISO demandé
-  function harvest(string $docuri): void {
+  // ajout possibilité de démarrer à une position quelconque et de s'arrêter avant la fin
+  function harvest(string $docuri, int $startposition=1, int $endPosition=-1): void {
     $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
     if (!is_dir($dirpath))
       mkdir($dirpath);
@@ -214,7 +276,6 @@ class CswServer extends YamlDoc {
     if (!is_dir($dirpath))
       mkdir($dirpath);
     $numberOfRecordsMatched = 0;
-    $startposition = 1;
     // la boucle s'arrête quand $startposition > $numberOfRecordsMatched
     // $numberOfRecordsMatched est calculé à la première itération
     while (true) {
@@ -249,8 +310,14 @@ class CswServer extends YamlDoc {
       }
       else
         $startposition = $nextRecord;
-      if ($startposition > $numberOfRecordsMatched)
+      if ($startposition > $numberOfRecordsMatched) {
+        echo "Fin sur startposition=$startposition > numberOfRecordsMatched=$numberOfRecordsMatched<br>\n";
         return;
+      }
+      if (($endPosition <> -1) && ($startposition > $endPosition)) {
+        echo "Fin sur startposition=$startposition > endPosition=$endPosition<br>\n";
+        return;
+      }
     }
   }
 };

@@ -61,7 +61,7 @@ class SubjectList extends YamlDoc {
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $docuri, string $ypath) {
-    echo "SubjectList::extractByUri($docuri, $ypath)<br>\n";
+    //echo "SubjectList::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/')) {
       // affichage de la liste des cvocs sans les mots clés
       $result = [];
@@ -76,24 +76,26 @@ class SubjectList extends YamlDoc {
         $result[$cvoc->id()] = $cvoc->asArray();
       return $result;
     }
+    // /{cvocname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       // affichage des mots-clés d'un cvoc
       $vocname = rawurldecode($matches[1]);
-      echo "vocname='$vocname'<br>\n";
+      //echo "vocname='$vocname'<br>\n";
       if (!isset($this->cvocs[$vocname]))
         return null;
       else
         return $this->cvocs[$vocname]->asArray();
     }
+    // /{cvocname}/{labelname}
     elseif (preg_match('!^/([^/]+)/([^/]+)$!', $ypath, $matches)) {
       // affichage d'un mot-clé d'un cvoc
       $cvocname = rawurldecode($matches[1]);
-      $labelname = rawurldecode($matches[2]);
-      echo "vocname='$vocname'<br>\n";
-      if (!isset($this->cvocs[$vocname]))
+      $termId = rawurldecode($matches[2]);
+      echo "cvocname='$cvocname'<br>\n";
+      if (!isset($this->cvocs[$cvocname]))
         return null;
       else
-        return $this->cvocs[$vocname]->getOne($labelname);
+        return $this->cvocs[$cvocname]->getOne($termId);
     }
     else
       return null;
@@ -248,16 +250,14 @@ class Cvoc {
   }
   
   // retourne un label
-  function getOne(string $label) {
-    if (!isset($this->labelList[$label])) {
-      $label = rawurldecode($label);
-      if (!isset($this->labelList[$label]))
-        return null;
+  function getOne(string $termId) {
+    if (!isset($this->termList[$termId])) {
+      return null;
     }
     return [
-      'id'=> rawurlencode($label),
-      'label'=> $label,
-      'nbreOfOccurences'=> $this->labelList[$label]['nbreOfOccurences'],
+      'id'=> $termId,
+      'labels'=> $this->termList[$termId]['labels']->__toString(),
+      'nbreOfOccurences'=> $this->termList[$termId]['nbreOfOccurences'],
     ];
   }
 };

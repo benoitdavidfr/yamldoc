@@ -10,12 +10,12 @@ $phpDocs['mddb.inc.php']['file'] = <<<'EOT'
 name: mddb.inc.php
 title: mddb.inc.php - base de données de Metadata
 doc: |
-  Une BD de MD est une base YData composé des 4 tables suivantes :
+  Une BD de MD est une base YData composé des 5 tables suivantes :
   
   - une table data des MD de données
   - une table services des MD de service
   - une table maps des MD de cartes
-  - une table nonGeographicDataset des MD de SD non géographiques (nonGeographicDataset)
+  - une table nonGeographicDataset des MD de SD non géographiques (type=nonGeographicDataset)
   - une table others des autres MD
 journal:
   26/8/2018:
@@ -169,6 +169,47 @@ class MetadataDb extends YData {
         'title'=> "liste des serveurs WFS recensés dans les MDD Sextant",
         'wfsservers'=> $wfsServers,
       ]];
+    }
+    // recherche des serveurs WFS dans GeoIDE: AUCUN
+    elseif (preg_match('!^/wfsGeoide$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
+      $result = [];
+      if (0) { // serviceType<>view -> Aucun 
+        foreach ($this->tables['services']['data'] as $id => $srvmd) {
+          if (1 && ($srvmd['serviceType']<>'view'))
+            $result[$id] = $srvmd;
+        }
+      }
+      elseif (0) { // afficher les relation.protocol: OGC:WFS 
+        foreach ($this->tables['data']['data'] as $id => $datamd) {
+          if (isset($datamd['relation'])) {
+            foreach ($datamd['relation'] as $relation) {
+              if (isset($relation['protocol'])) {
+                if (!in_array($relation['protocol'], $result)) {
+                  $result[] = $relation['protocol'];
+                }
+              }
+            }
+          }
+        }
+      }
+      elseif (0) { // URL de service WFS, aucun geo-ide sur internet 
+        foreach ($this->tables['data']['data'] as $id => $datamd) {
+          if (isset($datamd['relation'])) {
+            foreach ($datamd['relation'] as $relation) {
+              if (isset($relation['protocol']) && ($relation['protocol']=='OGC:WFS')) {
+                $result[] = ['id'=> $id, 'url'=>$relation['url']];
+              }
+            }
+          }
+        }
+      }
+      // "http://data.geo-ide.application.i2/WFS/709/document_urbanisme?&REQUEST=describefeaturetype&typename=PPRM_arrondissement_montdidier_Zr"
+      elseif (0) {
+        foreach ($this->tables['data']['data'] as $id => $datamd) {
+        }
+      }
+      return $result;
     }
     // recherche full text ou par mot-clé
     elseif ($ypath == '/search') {

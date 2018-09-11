@@ -10,12 +10,18 @@ $phpDocs['wfsserver.inc.php'] = <<<'EOT'
 name: wfsserver.inc.php
 title: wfsserver.inc.php - document correspondant à un serveur WFS
 doc: |
-  La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de retour du JSON.
+  La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de générer du GeoJSON.
+  La classe WfsServerGml expose différentes méthodes utilisant un serveur WFS capable de générer du GML 3.1.2 EPSG:4306.
+  Un GetFeature avec un WfsServerGml réalise un filtrage en fonction du bbox et du zoom:
+    1) les polygones, les trous ou les linestring qui n'intersectent pas la bbox sont rejetés,
+    2) les polygones, les trous ou les linestring dont la taille est inférieure à la résolution sont rejetés,
+    3) dans les lignes et les contours, si un point est trop proche du point précédent alors il est rejeté.
+    La résolution est fixée à 360 / 2**(zoom+8) degrés
   
-  2 évolutions à réaliser:
+  évolutions à réaliser:
   
     - faire un new_doc sur WfsServer et ne pas avoir à choisr entre les sous-classes
-    - revoir le filtrage en fonction d'une résolution dépendant du zoom
+    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
   
   Outre les champs de métadonnées, le document doit définir les champs suivants:
   
@@ -60,15 +66,18 @@ doc: |
       - en XML, le schéma de chaque type n'est pas fourni
       - la solution retenue consiste à effectuer un appel JSON par typename et à le bufferiser en JSON 
   
+  Des tests unitaires de la transformation GML -> JSON sont définis.
+      
 journal:
   5-9/9/2018:
     - développement de la classe WfsServerGml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
+    - mise en oeuvre du filtrage défini plus haut
   4/9/2018:
     - remplacement du prefixe t par ft pour featureType
     - refonte de la gestion du cache indépendamment du stockage du document car le doc peut être volatil
     - ajout de la récupération du nom de la propriété géométrique qui n'est pas toujours le même
   3/9/2018:
-    - ajout d'une classe WfsServer4326Gml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
+    - ajout d'une classe WfsServerGml implémentant les requêtes pour un serveur WFS GML + EPSG:4326
     en cours
   15/8/2018:
     - création
@@ -84,7 +93,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 // classe simplifiant l'envoi de requêtes WFS
 abstract class WfsServer extends YamlDoc {
-  static $log = __DIR__.'/wfs.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $log = __DIR__.'/wfsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   static $capCache = __DIR__.'/wfscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML
                                            // de capacités ainsi que les DescribeFeatureType en json
   protected $_c; // contient les champs
@@ -95,6 +104,8 @@ abstract class WfsServer extends YamlDoc {
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
+    if (!$this->urlWfs)
+      throw new Exception("Erreur dans WfsServer::__construct(): champ urlWfs obligatoire");
   }
   
   // lit les champs
@@ -231,7 +242,8 @@ abstract class WfsServer extends YamlDoc {
           FILE_APPEND
       );
     }
-    $url = $this->urlWfs.'?SERVICE=WFS';
+    $url = $this->urlWfs;
+    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WFS';
     foreach($params as $key => $value)
       $url .= "&$key=$value";
     if (self::$log) { // log
