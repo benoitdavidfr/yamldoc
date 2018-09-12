@@ -75,6 +75,7 @@ journal:
     - transfert des fichiers Php dans ydclasses
     - chgt urlWfs en wfsUrl
     - structuration wfsOptions avec l'option referer et l'option gml
+    - ajout option version et possibilité d'interroger le serveur en WFS 1.0.0
   5-9/9/2018:
     - développement de la classe WfsServerGml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
     - mise en oeuvre du filtrage défini plus haut
@@ -90,9 +91,9 @@ journal:
 EOT;
 }
 
-//require_once __DIR__.'/yd.inc.php';
-//require_once __DIR__.'/store.inc.php';
-//require_once __DIR__.'/ydclasses.inc.php';
+//require_once __DIR__.'/../yd.inc.php';
+//require_once __DIR__.'/../store.inc.php';
+require_once __DIR__.'/inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -292,11 +293,15 @@ abstract class WfsServer extends YamlDoc {
   // effectue un GetCapabities et retourne le XML. Utilise le cache sauf si force=true
   function getCapabilities(bool $force=false): string {
     //echo "wfsUrl=",$this->wfsUrl,"<br>\n";
+    //print_r($this); die();
     $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl).'-cap.xml';
     if ((!$force) && file_exists($filepath))
       return file_get_contents($filepath);
     else {
-      $cap = $this->query(['request'=> 'GetCapabilities']);
+      $query = ['request'=> 'GetCapabilities'];
+      if ($this->wfsOptions && isset($this->wfsOptions['version']))
+        $query['VERSION'] = $this->wfsOptions['version'];
+      $cap = $this->query($query);
       if (!is_dir(self::$capCache))
         mkdir(self::$capCache);
       file_put_contents($filepath, $cap);
@@ -462,13 +467,21 @@ class WfsServerGml extends WfsServer {
       $ftXml = file_get_contents($filepath);
     }
     else {
-      $ftXml = $this->query([
-        'VERSION'=> '2.0.0',
-        'REQUEST'=> 'DescribeFeatureType',
-        //'OUTPUTFORMAT'=> 'application/json',
-        'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2'),
-        'TYPENAME'=> $typeName,
-      ]);
+      if (!$this->wfsOptions || !isset($this->wfsOptions['version'])) {
+        $ftXml = $this->query([
+          'VERSION'=> '2.0.0',
+          'REQUEST'=> 'DescribeFeatureType',
+          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2'),
+          'TYPENAME'=> $typeName,
+        ]);
+      }
+      else {
+        $ftXml = $this->query([
+          'VERSION'=> $this->wfsOptions['version'],
+          'REQUEST'=> 'DescribeFeatureType',
+          'TYPENAME'=> $typeName,
+        ]);
+      }
       file_put_contents($filepath, $ftXml);
     }
     $ft = new SimpleXMLElement($ftXml);
@@ -504,24 +517,29 @@ class WfsServerGml extends WfsServer {
     //var_dump($featureType);
     foreach($featureType['featureTypes'] as $featureType) {
       foreach ($featureType['properties'] as $property) {
-        if (preg_match('!^gml:!', $property['type']))
+        if (preg_match('!^gml:!', $property['localType']))
           return $property['name'];
       }
     }
     return null;
   }
   
-  // retourne le nbre d'objets correspondant au résultat de la requête
+  // retourne le nbre d'objets correspondant au résultat de la requête, si inconnu retourne -1
   function getNumberMatched(string $typename, array $bbox=[], string $where=''): int {
+    if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
+      return -1; 
+    $version = ($this->wfsOptions && isset($this->wfsOptions['version'])) ? $this->wfsOptions['version'] : '2.0.0';
     $request = [
-      'VERSION'=> '2.0.0',
+      'VERSION'=> $version,
       'REQUEST'=> 'GetFeature',
       'TYPENAMES'=> $typename,
       'SRSNAME'=> 'EPSG:4326',
       'RESULTTYPE'=> 'hits',
     ];
-    $bbox4326 = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en EPSG:4326
-    $request['BBOX'] = implode(',',$bbox4326);
+    if ($version <> '1.0.0') {
+      $bbox = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en LatLng
+    }
+    $request['BBOX'] = implode(',',$bbox);
     $result = $this->query($request);
     if (!preg_match('! numberMatched="(\d+)" !', $result, $matches)) {
       //echo "result=",$result,"\n";
@@ -547,7 +565,10 @@ class WfsServerGml extends WfsServer {
         //echo "xsl=$xsl_properties\n";
       }
     }
-    $xslsrc = file_get_contents(__DIR__.'/wfs2geojson.xsl');
+    if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
+      $xslsrc = file_get_contents(__DIR__.'/wfsgml2togeojson.xsl'); // GML 2
+    else
+      $xslsrc = file_get_contents(__DIR__.'/wfsgml32togeojson.xsl'); // GML 3.2
     $targetNamespaceDef = "xmlns:$targetPrefix=\"$targetNamespace\"";
     $xslsrc = str_replace('{targetNamespaceDef}', $targetNamespaceDef, $xslsrc);
     $xslsrc = str_replace('{xslProperties}', $xsl_properties, $xslsrc);
@@ -682,7 +703,7 @@ class WfsServerGml extends WfsServer {
       $pos += 21;
       if ($format == 'verbose')
         echo "LineString2 détectée pos=$pos\n";
-      $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
+      $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
       if (($format == 'json') && $pts) {
         echo $nols?",\n":'',"      [";
         $this->encodeListPoints2($pts, $format);
@@ -721,7 +742,7 @@ class WfsServerGml extends WfsServer {
     $pos += 20;
     if ($format == 'verbose')
       echo "Polygon2 exterior détecté\n";
-    $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
+    $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
     if (!$pts) {
       $polygonIntersects = false;
       if ($format == 'verbose')
@@ -744,7 +765,7 @@ class WfsServerGml extends WfsServer {
         $pos += 12;
         if ($format == 'verbose')
           echo "Polygon2interior LineString2 détectée\n";
-        $pts = $this->decodeListPoints2($pseudo, $pos, $bbox, $res);
+        $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
         if (($format == 'json') && $polygonIntersects && $pts) {
           echo "],\n      [";
           $this->encodeListPoints2($pts, $format);
@@ -760,7 +781,11 @@ class WfsServerGml extends WfsServer {
   // modifie $pos avec la position après la fin de ligne ou -1
   // renvoie la liste de points ou [] si aucun point n'est dans la qbbox
   // un filtre est effectué sur les points en fonction de la résolution $res si $res <> 0
-  function decodeListPoints2(string $pseudo, int &$pos, array $qbbox, float $res): array {
+  function decodeListPoints2(string $pseudo, int &$pos, string $format, array $qbbox, float $res): array {
+    if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
+      $gmlVersion = '2'; // GML 2
+    else
+      $gmlVersion = '3.2'; // GML 3.2
     $nbpts = 0; // le nbre de points retenus
     $pts = []; // la liste des points retenus
     $ptprec = []; // le dernier point retenu dans $pts
@@ -768,7 +793,10 @@ class WfsServerGml extends WfsServer {
     $bbox = []; // le bbox de la liste de points
     $poseol = strpos($pseudo, "\n", $pos);
     while (1) {
-      $poswhite = strpos($pseudo, ' ', $pos);
+      if ($gmlVersion == '2')
+        $poswhite = strpos($pseudo, ',', $pos);
+      else
+        $poswhite = strpos($pseudo, ' ', $pos);
       //echo "poswhite=$poswhite, poseol=$poseol, pos=$pos\n";
       if (($poswhite === false) || (($poseol !== FALSE) && ($poswhite > $poseol))) {
         if ($ptLost) // je force à retenir le dernier point s'il ne l'avait pas été
@@ -785,9 +813,8 @@ class WfsServerGml extends WfsServer {
       }
       $y = substr($pseudo, $pos, $poswhite-$pos);
       $pos = $poswhite+1;
-      //echo "  pos=$pos, nopt=$nbpts, x=$x, y=$y\n";
-      //if ($format=='json')
-        //echo $nbpts?',':'',"[$x,$y]";
+      if ($format=='verbose')
+        echo "  pos=$pos, nopt=$nbpts, x=$x, y=$y\n";
       if (!$bbox)
         $bbox = [$x, $y, $x, $y];
       else { // maj bbox 
@@ -830,19 +857,28 @@ class WfsServerGml extends WfsServer {
 
   // affiche la liste de points
   function encodeListPoints2(array $pts, string $format): void {
+    if (isset($this->wfsOptions['coordOrderInGml']) && ($this->wfsOptions['coordOrderInGml']=='lngLat'))
+      $coordOrderInGml = 'lngLat'; // GML 2
+    else
+      $coordOrderInGml = 'latLng'; // GML 3.2
     if ($format=='verbose')
       echo "$nbpts points détectés\n";
     elseif ($format=='json') {
       $nbpts = count($pts);
-      for($i=0; $i<$nbpts; $i++)
-        echo $i?',':'','[',$pts[$i][1],',',$pts[$i][0],']'; // génération en LngLat (CRS:84)
+      for($i=0; $i<$nbpts; $i++) {
+        if ($coordOrderInGml == 'lngLat')
+          echo $i?',':'','[',$pts[$i][0],',',$pts[$i][1],']'; // génération en LngLat (CRS:84)
+        else
+          echo $i?',':'','[',$pts[$i][1],',',$pts[$i][0],']'; // génération en LngLat (CRS:84)
         //echo $i?',':'','"pt"';
+      }
     }
   }
   
   // effectue la transformation du Gml en un pseudo GeoJSON puis affiche les Feature en JSON
   // l'affichage doit être encadré par '{"type":"FeatureCollection","features":' et ']}'
   // Cela permet d'afficher une seule FeatureCollection en cas de pagination
+  // le bbox est en LatLng pour GML 3.2 et en LngLat pour GML 2
   function wfs2GeoJson(string $typename, string $xmlstr, string $format, array $bbox, int $zoom): void {
     if ($format == 'gml')
       die($xmlstr); // pour afficher le GML
@@ -866,41 +902,68 @@ class WfsServerGml extends WfsServer {
   
   // Test unitaire de la méthode WfsServerGml::wfs2GeoJson()
   function wfs2GeoJsonTest() {
-    $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
-    $queries = [
-      [ 'title'=> "ESPACES_TERRESTRES_P MultiSurface GML 3.2.1 EPSG:4326",
-        'params'=> [
-          'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:ESPACES_TERRESTRES_P', 'RESULTTYPE'=> 'results',
-          'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
-          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+    if (0) { // sextant en WFS 2.0.0
+      $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+      $queries = [
+        [ 'title'=> "ESPACES_TERRESTRES_P MultiSurface GML 3.2.1 EPSG:4326",
+          'params'=> [
+            'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:ESPACES_TERRESTRES_P', 'RESULTTYPE'=> 'results',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
+            'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+          ],
+          'zoom'=> 9,
         ],
-        'zoom'=> 9,
-      ],
-      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=-1",
-        'params'=> [
-          'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
-          'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
-          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=-1",
+          'params'=> [
+            'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
+            'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
+            'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+          ],
+          'zoom'=> -1,
         ],
-        'zoom'=> -1,
-      ],
-      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=1",
-        'params'=> [
-          'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
-          'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
-          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=1",
+          'params'=> [
+            'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
+            'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
+            'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+          ],
+          'zoom'=> 1,
         ],
-        'zoom'=> 1,
-      ],
-      [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_P MultiPolygone bbox=-7,47,-2,49",
-        'params'=> [
-          'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_P',
-          'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '47,-7,49,-2',
-          'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_P MultiPolygone bbox=-7,47,-2,49",
+          'params'=> [
+            'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_P',
+            'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '47,-7,49,-2',
+            'OUTPUTFORMAT'=> rawurlencode('text/xml; subtype=gml/3.2.1'), 'COUNT'=> '2',
+          ],
+          'zoom'=> 9,
         ],
-        'zoom'=> 9,
-      ],
-    ];
+      ];
+    }
+    elseif (1) { // geoide en WFS 1.0.0
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+
+      $queries = [
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
+          ],
+          'zoom'=> 18,
+        ],
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
+          ],
+          'zoom'=> 10,
+        ],
+      ];
+    }
     if (!isset($_GET['action'])) {
       echo "<h3>wfs2GeoJson Queries</h3><ul>\n";
       foreach ($queries as $num => $query) {
@@ -910,6 +973,7 @@ class WfsServerGml extends WfsServer {
           "<a href='?action=wfs&query=$num'>wfs</a>, ", // appel du WFS et stockage
           "<a href='?action=xml&query=$num'>xml</a>, ", // si en cache affiche
           "<a href='?action=xsl&query=$num'>xsl</a>, ", // affiche la feuille de style
+          "<a href='?action=geojson&query=$num&format=pseudo'>pseudoGeoJSON</a>, ",
           "<a href='?action=geojson&query=$num&format=verbose'>GeoJSON verbose</a>, ",
           "<a href='?action=geojson&query=$num&format=json'>GeoJSON json</a>)\n"; // transforme en GeoJSON
       }
@@ -920,7 +984,9 @@ class WfsServerGml extends WfsServer {
 
     if ($_GET['action']=='xsl') {
       header('Content-type: text/xml');
-      echo $this->xslForGeoJson($queries[$_GET['query']]['params']['TYPENAMES']);
+      $query = $queries[$_GET['query']];
+      $typename = isset($query['params']['TYPENAMES']) ? $query['params']['TYPENAMES'] : $query['params']['TYPENAME'];
+      echo $this->xslForGeoJson($typename);
       die();
     }
     
@@ -933,9 +999,12 @@ class WfsServerGml extends WfsServer {
       die();
     }
 
-    $filepath = __DIR__.$_SERVER['PATH_INFO']."/$_GET[query].xml";
+    // le nom du du fichier de cache du résultat de la requête est construit avec le MD5 de la requete
+    $query = $queries[$_GET['query']];
+    $md5 = md5($this->url($query['params']));
+    $filepath = __DIR__.$_SERVER['PATH_INFO']."/$md5.xml";
     if ($_GET['action']=='wfs') {
-      $getrecords = $this->query($queries[$_GET['query']]['params']);
+      $getrecords = $this->query($query['params']);
       file_put_contents($filepath, $getrecords);
       header('Content-type: text/xml');
       die($getrecords);
@@ -944,7 +1013,7 @@ class WfsServerGml extends WfsServer {
     if (is_file($filepath))
       $getrecords = file_get_contents($filepath);
     else {
-      $getrecords = $this->query($queries[$_GET['query']]['params']);
+      $getrecords = $this->query($query['params']);
       file_put_contents($filepath, $getrecords);
     }
     if ($_GET['action']=='xml') {
@@ -957,9 +1026,9 @@ class WfsServerGml extends WfsServer {
       else
         header('Content-type: text/plain');
       echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
-      $query = $queries[$_GET['query']];
+      $typename = isset($query['params']['TYPENAMES']) ? $query['params']['TYPENAMES'] : $query['params']['TYPENAME'];
       $this->wfs2GeoJson(
-        $query['params']['TYPENAMES'],
+        $typename,
         $getrecords,
         $_GET['format'],
         explode(',', $query['params']['BBOX']),
@@ -973,22 +1042,33 @@ class WfsServerGml extends WfsServer {
   
   // n'affiche pas le header/tailer GeoJSON
   function getFeatureWoHd(string $typename, array $bbox, int $zoom, string $where, int $count, int $startindex): void {
-    $request = [
-      'VERSION'=> '2.0.0',
-      'REQUEST'=> 'GetFeature',
-      'TYPENAMES'=> $typename,
-      'OUTPUTFORMAT'=> rawurlencode('application/gml+xml; version=3.2'),
-      'SRSNAME'=> 'EPSG:4326',
-      'COUNT'=> $count,
-      'STARTINDEX'=> $startindex,
-    ];
-    $bbox4326 = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en EPSG:4326
-    $request['BBOX'] = implode(',',$bbox4326);
+    if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0')) {
+      $request = [
+        'VERSION'=> '1.0.0',
+        'REQUEST'=> 'GetFeature',
+        'TYPENAME'=> $typename,
+        'SRSNAME'=> 'EPSG:4326',
+        'BBOX'=> implode(',',$bbox),
+      ];
+    }
+    else {
+      $request = [
+        'VERSION'=> '2.0.0',
+        'REQUEST'=> 'GetFeature',
+        'TYPENAMES'=> $typename,
+        'OUTPUTFORMAT'=> rawurlencode('application/gml+xml; version=3.2'),
+        'SRSNAME'=> 'EPSG:4326',
+        'COUNT'=> $count,
+        'STARTINDEX'=> $startindex,
+      ];
+      $bbox = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en EPSG:4326
+      $request['BBOX'] = implode(',',$bbox);
+    }
     //$format = 'gml'; // pour afficher le GML
     //$format = 'pseudo';  // pour afficher le pseudo intermédiaire
     //$format = 'verbose'; // affichage des commentaires de la transfo pseudo en GeoJSON
     $format = 'json'; // affichage GeoJSON
-    $this->wfs2GeoJson($typename, $this->query($request), $format, $bbox4326, $zoom);
+    $this->wfs2GeoJson($typename, $this->query($request), $format, $bbox, $zoom);
   }
 
   // affiche le résultat de la requête en GeoJSON
@@ -1011,8 +1091,19 @@ class WfsServerGml extends WfsServer {
     header('Content-type: application/json');
     //header('Content-type: application/xml');
     //header('Content-type: text/plain');
-    $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
-    $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51], 8);
+    if (0) {
+      $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+      $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51], 8);
+    }
+    elseif (1) {
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+      $this->getFeature('N_VULNERABLE_ZSUP_041', [-8.0,42.4,14.0,51.1], 8);
+    }
   }
 
   // affiche le résultat de la requête en GeoJSON
@@ -1050,6 +1141,6 @@ if (!isset($_SERVER['PATH_INFO'])) {
 }
 
 $testMethod = substr($_SERVER['PATH_INFO'], 1);
-$wfsDoc = [];
+$wfsDoc = ['wfsUrl'=>'test'];
 $wfsServer = new WfsServerGml($wfsDoc);
 $wfsServer->$testMethod();
