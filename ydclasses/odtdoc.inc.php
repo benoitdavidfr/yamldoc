@@ -17,7 +17,7 @@ journal:
   - création
 EOT;
 }
-require_once __DIR__.'/../phplib/ophir.inc.php';
+require_once __DIR__.'/../../phplib/ophir.inc.php';
 
 class OdtDoc extends Doc  {
   public $authorizedReaders, $authRd, $authorizedWriters, $authWr, $yamlPassword , $language;

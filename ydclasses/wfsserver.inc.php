@@ -25,11 +25,13 @@ doc: |
   
   Outre les champs de métadonnées, le document doit définir les champs suivants:
   
-    - urlWfs: fournissant l'URL du serveur à compléter avec les paramètres,
+    - wfsUrl: fournissant l'URL du serveur à compléter avec les paramètres,
   
   Il peut aussi définir les champs suivants:
   
-    - referer: définissant le referer à transmettre à chaque appel du serveur.
+    - wfsOptions: définit des options parmi les suivantes
+      - referer: définissant le referer à transmettre à chaque appel du serveur,
+      - gml: le retour est en GML et non en GeoJSON
 
   Liste des points d'entrée de l'API:
   
@@ -69,6 +71,10 @@ doc: |
   Des tests unitaires de la transformation GML -> JSON sont définis.
       
 journal:
+  12/9/2018:
+    - transfert des fichiers Php dans ydclasses
+    - chgt urlWfs en wfsUrl
+    - structuration wfsOptions avec l'option referer et l'option gml
   5-9/9/2018:
     - développement de la classe WfsServerGml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
     - mise en oeuvre du filtrage défini plus haut
@@ -84,9 +90,9 @@ journal:
 EOT;
 }
 
-require_once __DIR__.'/yd.inc.php';
-require_once __DIR__.'/store.inc.php';
-require_once __DIR__.'/ydclasses.inc.php';
+//require_once __DIR__.'/yd.inc.php';
+//require_once __DIR__.'/store.inc.php';
+//require_once __DIR__.'/ydclasses.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -104,8 +110,8 @@ abstract class WfsServer extends YamlDoc {
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
-    if (!$this->urlWfs)
-      throw new Exception("Erreur dans WfsServer::__construct(): champ urlWfs obligatoire");
+    if (!$this->wfsUrl)
+      throw new Exception("Erreur dans WfsServer::__construct(): champ wfsUrl obligatoire");
   }
   
   // lit les champs
@@ -242,7 +248,7 @@ abstract class WfsServer extends YamlDoc {
           FILE_APPEND
       );
     }
-    $url = $this->urlWfs;
+    $url = $this->wfsUrl;
     $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WFS';
     foreach($params as $key => $value)
       $url .= "&$key=$value";
@@ -256,9 +262,18 @@ abstract class WfsServer extends YamlDoc {
   function query(array $params): string {
     $url = $this->url($params);
     $context = null;
-    if ($this->referer) {
-      $referer = $this->referer;
-      //echo "referer=$referer\n";
+    if ($this->wfsOptions && isset($this->wfsOptions['referer'])) {
+      $referer = $this->wfsOptions['referer'];
+      if (self::$log) { // log
+        file_put_contents(
+            self::$log,
+            YamlDoc::syaml([
+              'appel'=> 'WfsServer::query',
+              'referer'=> $referer,
+            ]),
+            FILE_APPEND
+        );
+      }
       $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
     }
     if (($result = file_get_contents($url, false, $context)) === false) {
@@ -276,8 +291,8 @@ abstract class WfsServer extends YamlDoc {
   
   // effectue un GetCapabities et retourne le XML. Utilise le cache sauf si force=true
   function getCapabilities(bool $force=false): string {
-    //echo "urlWfs=",$this->urlWfs,"<br>\n";
-    $filepath = self::$capCache.'/wfs'.md5($this->urlWfs).'-cap.xml';
+    //echo "wfsUrl=",$this->wfsUrl,"<br>\n";
+    $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl).'-cap.xml';
     if ((!$force) && file_exists($filepath))
       return file_get_contents($filepath);
     else {
@@ -294,7 +309,7 @@ abstract class WfsServer extends YamlDoc {
     //echo "WfsServerJson::featureTypeList()<br>\n";
     $cap = $this->getCapabilities();
     $cap = str_replace(['xlink:href'], ['xlink_href'], $cap);
-    //echo "<a href='/yamldoc/wfscapcache/",md5($this->urlWfs),".xml'>capCache</a><br>\n";
+    //echo "<a href='/yamldoc/wfscapcache/",md5($this->wfsUrl),".xml'>capCache</a><br>\n";
     $featureTypeList = [];
     $cap = new SimpleXMLElement($cap);
     foreach ($cap->FeatureTypeList->FeatureType as $featureType) {
@@ -851,7 +866,7 @@ class WfsServerGml extends WfsServer {
   
   // Test unitaire de la méthode WfsServerGml::wfs2GeoJson()
   function wfs2GeoJsonTest() {
-    $this->_c['urlWfs'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+    $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
     $queries = [
       [ 'title'=> "ESPACES_TERRESTRES_P MultiSurface GML 3.2.1 EPSG:4326",
         'params'=> [
@@ -996,7 +1011,7 @@ class WfsServerGml extends WfsServer {
     header('Content-type: application/json');
     //header('Content-type: application/xml');
     //header('Content-type: text/plain');
-    $this->_c['urlWfs'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+    $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
     $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51], 8);
   }
 

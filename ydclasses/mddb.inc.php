@@ -22,9 +22,9 @@ journal:
     - création
 EOT;
 }
-require_once __DIR__.'/yamldoc.inc.php';
-require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/isometadata.inc.php';
+//require_once __DIR__.'/yamldoc.inc.php';
+//require_once __DIR__.'/search.inc.php';
+//require_once __DIR__.'/isometadata.inc.php';
 
 class MetadataDb extends YData {
   static $log = __DIR__.'/mddb.log.yaml'; // nom du fichier de log ou '' pour pas de log
@@ -332,25 +332,25 @@ class MetadataDb extends YData {
       //echo "<pre>"; print_r($service);
       if (!isset($service['relation']))
         continue;
-      $urlWfs = null;
+      $wfsUrl = null;
       foreach ($service['relation'] as $relation) {
         if (isset($relation['protocol'])
              && preg_match('!^OGC:WFS-1.0.0-http-get-capabilities$!', $relation['protocol'])) {
-          $urlWfs = $relation['url'];
+          $wfsUrl = $relation['url'];
           break 2;
         }
       }
     }
-    if (!$urlWfs)
+    if (!$wfsUrl)
       throw new Exception("Aucun service WFS");
-    $urlWfs = str_replace('&amp;', '&', $urlWfs);
-    //echo "urlWfs=$urlWfs<br>\n";
-    if (!preg_match('!^([^?]+)\?(service=WFS&?|version=.\..\..&?|request=GetCapabilities&?)*$!i', $urlWfs, $matches))
-      throw new Exception("Impossible d'interpréter l'URL du service WFS : $urlWfs");
+    $wfsUrl = str_replace('&amp;', '&', $wfsUrl);
+    //echo "wfsUrl=$wfsUrl<br>\n";
+    if (!preg_match('!^([^?]+)\?(service=WFS&?|version=.\..\..&?|request=GetCapabilities&?)*$!i', $wfsUrl, $matches))
+      throw new Exception("Impossible d'interpréter l'URL du service WFS : $wfsUrl");
     //print_r($matches);
-    $urlWfs = $matches[1];
-    //echo "urlWfs=$urlWfs<br>\n";
-    $params = ['urlWfs'=> $urlWfs];
+    $wfsUrl = $matches[1];
+    //echo "wfsUrl=$wfsUrl<br>\n";
+    $params = ['wfsUrl'=> $wfsUrl];
     $wfsServer = new WfsServer($params);
     $featureTypeList = $wfsServer->featureTypeList($dataset['identifier'][0]['code']);
     // Si aucun featureType n'est trouvé alors le filtre est supprimé
@@ -358,7 +358,7 @@ class MetadataDb extends YData {
       $featureTypeList = $wfsServer->featureTypeList();
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList); echo "</pre>\n";
     $dataset['yamlClass'] = 'VectorDataset';
-    $dataset['urlWfs'] = $urlWfs;
+    $dataset['wfsUrl'] = $wfsUrl;
     foreach ($featureTypeList as $typename => $featureType) {
       $dataset['layers'][$typename] = [
         'title'=> $featureType['Title'],

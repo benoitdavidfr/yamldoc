@@ -114,7 +114,7 @@ doc: |
       
     2. elle peut aussi correspondre à une couche exposée par un service WFS ;
       dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
-      la SD doit définir un champ *urlWfs* qui définit l'URL du serveur WFS
+      la SD doit définir un champ *wfsUrl* qui définit l'URL du serveur WFS
       et peut définir un champ referer qui sera utilisé dans l'appel WFS.
       Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
       
@@ -179,9 +179,9 @@ doc: |
     
 EOT;
 }
-require_once __DIR__.'/../ogr2php/feature.inc.php';
-require_once __DIR__.'/../phplib/mysql.inc.php';
-require_once __DIR__.'/yamldoc.inc.php';
+require_once __DIR__.'/../../ogr2php/feature.inc.php';
+require_once __DIR__.'/../../phplib/mysql.inc.php';
+//require_once __DIR__.'/yamldoc.inc.php';
 
 class VectorDataset extends YamlDoc {
   static $log = __DIR__.'/vectords.log.yaml'; // nom du fichier de log ou '' pour pas de log
@@ -207,12 +207,15 @@ class VectorDataset extends YamlDoc {
         }
       }
     }
-    $wfsdoc = ['urlWfs'=> $this->urlWfs];
-    if ($this->wfsOptions && isset($this->wfsOptions['Gml4326']))
-      $wfsdoc['yamlClass'] = 'WfsServerGml';
-    else
-      $wfsdoc['yamlClass'] = 'WfsServerJson';
-    $this->wfsServer = new $wfsdoc['yamlClass']($wfsdoc);
+    if ($this->wfsUrl) {
+      $wfsdoc = ['yamlClass' => 'WfsServerJson', 'wfsUrl'=> $this->wfsUrl];
+      if ($this->wfsOptions) {
+        $wfsdoc['wfsOptions'] = $this->wfsOptions;
+        if (isset($this->wfsOptions['gml']) && $this->wfsOptions['gml'])
+          $wfsdoc['yamlClass'] = 'WfsServerGml';
+      }
+      $this->wfsServer = new $wfsdoc['yamlClass']($wfsdoc);
+    }
     
     //unset($this->_c['layersByTheme']);
     //echo "<pre>"; print_r($this);
@@ -462,7 +465,7 @@ class VectorDataset extends YamlDoc {
     elseif (preg_match('!^/([^/]+)/properties$!', $ypath, $matches)) {
       $lyrname = $matches[1];
       //echo "accès à la layer $lyrname\n";
-      MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+      MySql::open(require(__DIR__.'/../mysqlparams.inc.php'));
       if (!isset($this->layers[$lyrname]))
         return null;
       elseif (isset($this->layers[$lyrname]['select'])) {
@@ -588,7 +591,7 @@ class VectorDataset extends YamlDoc {
     //echo "VectorDataset::queryFeatures($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
     // requête dans MySQL
     if (isset($this->layers[$lyrname]['ogrPath'])) {
-      MySql::open(require(__DIR__.'/mysqlparams.inc.php'));
+      MySql::open(require(__DIR__.'/../mysqlparams.inc.php'));
       $dbname = $this->dbname();
     
       $props = $this->properties($lyrname);

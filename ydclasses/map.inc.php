@@ -47,6 +47,8 @@ class Map extends YamlDoc {
   // $yaml est généralement un array mais peut aussi être du texte
   function __construct(&$yaml) {
     $this->_c = $yaml;
+    if (!is_file(__DIR__."/map-default.yaml"))
+      throw new Exception("Erreur dans Map::__construct() le fichier map-default.yaml est absent");
     $defaultParams = Yaml::parse(file_get_contents(__DIR__."/map-default.yaml"), Yaml::PARSE_DATETIME);
     foreach ($defaultParams as $prop => $value) {
       if (!isset($this->_c[$prop]))

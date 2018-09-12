@@ -26,7 +26,7 @@ journal: |
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/store.inc.php';
-require_once __DIR__.'/ydclasses.inc.php';
+require_once __DIR__.'/ydclasses/inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;

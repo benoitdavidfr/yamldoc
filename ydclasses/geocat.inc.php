@@ -47,9 +47,9 @@ journal:
     - création
 EOT;
 }
-require_once __DIR__.'/yamldoc.inc.php';
-require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/isometadata.inc.php';
+//require_once __DIR__.'/yamldoc.inc.php';
+//require_once __DIR__.'/search.inc.php';
+//require_once __DIR__.'/isometadata.inc.php';
 
 class Geocat extends CswServer {
   static $log = __DIR__.'/geocat.log.yaml'; // nom du fichier de log ou '' pour pas de log
