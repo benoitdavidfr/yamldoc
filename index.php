@@ -405,11 +405,14 @@ if (isset($_GET['clone'])) {
 }
 
 
+// évite d'avoir à tester le paramètre doc dans les actions suivantes
+if (!isset($_GET['doc']) || !$_GET['doc']) {
+  die("<a href='?doc=index'>Accès au document par défaut</a>\n");
+}
+
+
 // action d'affichage d'un document ou de recherche de documents
-if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
-  if (!isset($_GET['doc']) || !$_GET['doc'])
-    die("<a href='?doc=index'>Accès au document par défaut</a>\n");
-  
+if (!isset($_GET['action'])) {
   //$docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
   $docuid = $_GET['doc'];
   //isset($_SESSION['parents'][$doc]);
@@ -460,12 +463,6 @@ if (!isset($_GET['action']) && (isset($_GET['doc']) || isset($_GET['ypath']))) {
       echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
   }
   die();
-}
-
-
-// évite d'avoir à tester le paramètre doc dans les actions suivantes
-if (!isset($_GET['doc'])) {
-  die("<a href='?doc=index'>Accès au document par défaut</a>\n");
 }
 
 

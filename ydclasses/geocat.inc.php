@@ -14,7 +14,7 @@ doc: |
 
   Outre les champs de métadonnées, le document doit définir les champs suivants:
 
-    - urlCsw: fournissant l'URL du serveur à compléter avec les paramètres,
+    - cswUrl: fournissant l'URL du serveur à compléter avec les paramètres,
 
   Il peut aussi définir les champs suivants:
 
@@ -22,25 +22,31 @@ doc: |
 
   Liste des points d'entrée de l'API:
 
-    - /{document} : description du serveur
+    - /{document} : description du geocat
     - /{document}/csw/xxx : appelle /xxx sur le serveur Csw sous-jacent
-    - /{document}/buildDb : construit une base de données des métadonnées et l'enregistre
-      dans le fichier /{document}/db.yaml
-    - /{document}/buildSubjects : construit le sous-objet de la liste les mots-clés
+    - /{document}/buildDb : construit une base de données des métadonnées (BDMD) et l'enregistre
+      dans le document /{document}/db
+    - /{document}/db : retourne la BDMD
+    - /{document}/db/xxx : appelle /xxx sur la BDMD
+    - /{document}/buildSubjects : construit la liste les mots-clés et l'enregistre
+      dans le document /{document}/subjects
     - /{document}/subjects : liste les cvoc
-    - /{document}/subjects/* : liste tous les mots-clés
+    - /{document}/subjects/xxx : appelle /xxx sur la la liste les mots-clés
     - /{document}/search?subject={subject} : recherche dans les MD le mot-clé {subject}
-    - /{document}/search?text={text} : recherche plein texte dans les MD le texte {text}
-    - /{document}/items/{id} : retourne la MD {id}
-
-  Un objet Geocat peut contenir les différents sous-objets suivants dont l'accès est effectué au travers du Geocat:
+    - /{document}/search : appelle /search sur la BDMD
+    - /{document}/items/xxx : appelle /items/xxx sur la BDMD
     
-    - un objet MetadataDb, correspondant à l'uri {docid}/db, qui contient une base de données des MD
+  Un objet Geocat peut contenir les différents sous-documents suivants dont l'accès est effectué au travers du Geocat:
+    
+    - un document MetadataDb, correspondant à l'uri {docid}/db,  contient la base de données des MD
       composée de différentes tables: data, services, maps, ...
-    - un objet Subjects, correspondant à l'uri {docid}/subjects, qui contient la liste des mot-clés organisée
+    - un objet SubjectList, correspondant à l'uri {docid}/subjects, contient la liste des mot-clés organisée
       par vocabulaire contrôlé
 
-  Le document http://localhost/yamldoc/?doc=geocats/sigloire permet de tester cette classe.
+  Les documents geocats/sigloire, geocats/sextant et geocats/geoide permettent de tester cette classe.
+  
+  A FAIRE:
+    - limiter l'indexation en restreignant les champs indexables
 
 journal:
   24-26/8/2018:
@@ -49,7 +55,8 @@ EOT;
 }
 //require_once __DIR__.'/yamldoc.inc.php';
 //require_once __DIR__.'/search.inc.php';
-//require_once __DIR__.'/isometadata.inc.php';
+require_once __DIR__.'/../isometadata.inc.php';
+require_once __DIR__.'/inc.php';
 
 class Geocat extends CswServer {
   static $log = __DIR__.'/geocat.log.yaml'; // nom du fichier de log ou '' pour pas de log
@@ -130,15 +137,12 @@ class Geocat extends CswServer {
     // crée la DB à partir de la moissson et l'enregistre comme fichier db.yaml
     elseif ($ypath == '/buildDb') {
       $db = $this->buildDb($docuri);
-      $db->buildOperatedBy($docuri);
+      $db->buildHasFormat("$docuri/db");
       $storepath = Store::storepath();
       //$filename = __DIR__."/$storepath/$docuri/db.yaml";
       //file_put_contents($filename, YamlDoc::syaml(self::replaceYDEltByArray($db->asArray())));
       $db->writePser("$docuri/db");
       return "buildDb ok, document $docuri/db créé en pser\n";
-    }
-    elseif ($ypath == '/buildOperatedBy') {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/buildOperatedBy');
     }
     elseif ($ypath == '/db') {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", '');
@@ -158,21 +162,39 @@ class Geocat extends CswServer {
       return new_doc("$docuri/subjects")->extractByUri("$docuri/subjects", $matches[1]);
     }
     elseif ($ypath == '/search') {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", '/search');
-    }
-    elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
     }
-    elseif (preg_match('!^/items/([^/]+)/download$!', $ypath, $matches)) {
+    elseif (preg_match('!^/items/(.*)$!', $ypath, $matches)) {
       return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
     }
     else
       return null;
   }
 
+  // le fileIdentifier est bon comme id s'il n'est composé que de chiffres, lettres et '-' et qu'il est court
+  // ex: fr-120066022-jdd-9450de81-bbc9-4175-a4b1-f9726bebf602
+  private static function goodIdentifier(string $fileIdentifier): string {
+    if (preg_match('!^[0-9a-z-]+$!i', $fileIdentifier) && (strlen($fileIdentifier) <= 600))
+      return $fileIdentifier;
+    else
+      return md5($fileIdentifier);
+  }
+  // test de goodIdentifier
+  static function goodIdentifierTest(): void {
+    $testIds = [
+      'fr-120066022-jdd-9450de81-bbc9-4175-a4b1-f9726bebf602',
+      'a456-B',
+      'ssh!hhtp',
+    ];
+    foreach ($testIds as $id) {
+      echo "goodIdentifier($id) -> ",self::goodIdentifier($id),"<br>\n";
+      echo "len=",strlen($id),"<br>\n";
+    }
+  }
+    
   // Fabrique la base de données des MD, la renoie comme objet MetadataDb
   function buildDb(string $docuri): MetadataDb {
-    $logfilename = __DIR__.'/'.Store::id()."/$docuri/build.log.yaml";
+    $logfilename = __DIR__.'/../'.Store::id()."/$docuri/build.log.yaml";
     file_put_contents(
         $logfilename,
         YamlDoc::syaml([
@@ -210,7 +232,7 @@ class Geocat extends CswServer {
         ],
       ],
     ];
-    $dirpath = __DIR__.'/'.Store::id()."/$docuri/harvest";
+    $dirpath = __DIR__.'/../'.Store::id()."/$docuri/harvest";
     $dir = dir($dirpath);
     // lecture des différents fichiers issus du moissonnage
     while (false !== ($entry = $dir->read())) {
@@ -230,7 +252,7 @@ class Geocat extends CswServer {
       $no = 0; // no dans le getrecord
       foreach ($searchResults->metadata as $md) {
         $record = IsoMetadata::standardizeMl($md);
-        $id = md5($record['fileIdentifier']);
+        $id = self::goodIdentifier($record['fileIdentifier']);
         //echo "type=$record[type]<br>\n";
         if (!isset($record['type'])) {
           $message = "erreur champ type absent dans l'enregistrement $entry $no";
@@ -266,4 +288,30 @@ class Geocat extends CswServer {
     $dir->close();
     return new MetadataDb($database);
   }
+  
+  // retourne le wfsOptions en fonction du wfsUrl
+  function wfsOptions(string $wfsUrl): array {
+    if (!$this->wfsOptions)
+      return [];
+    foreach ($this->wfsOptions as $pattern => $wfsOptions) {
+      if (preg_match($pattern, $wfsUrl))
+        return $wfsOptions;
+    }
+    return [];
+  }
 };
+
+
+if (basename(__FILE__)<>basename($_SERVER['SCRIPT_NAME'])) return;
+
+
+
+if (!isset($_SERVER['PATH_INFO'])) {
+  echo "<h3>Tests unitaires</h3><ul>\n";
+  echo "<li><a href='$_SERVER[SCRIPT_NAME]/goodIdentifierTest'>Test de la méthode Geocat::goodIdentifier()</a>\n";
+  echo "</ul>\n";
+  die();
+}
+
+$testMethod = substr($_SERVER['PATH_INFO'], 1);
+Geocat::$testMethod();

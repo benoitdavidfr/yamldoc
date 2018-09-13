@@ -110,9 +110,11 @@ class MetadataDb extends YData {
     //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this->_c;
-    elseif ($ypath == '/buildOperatedBy') {
+    elseif ($ypath == '/buildHasFormat') {
       // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
-      return $this->buildOperatedBy($docuri);
+      $this->buildHasFormat($docuri);
+      $this->writePser($docuri);
+      return "buildHasFormat ok, document $docuri/db enregistré en pser\n";
     }
     // projection sur certains champs
     elseif (preg_match('!^/proj/(.*)$!', $ypath, $matches)) {
@@ -229,8 +231,13 @@ class MetadataDb extends YData {
       }
       return null;
     }
-    elseif (preg_match('!^/items/([^/]+)/download$!', $ypath, $matches)) {
-      return $this->download($docuri, $matches[1])->asArray();
+    // renvoie le VectorDataset correspondant au WFS
+    elseif (preg_match('!^/items/([^/]+)/wfs$!', $ypath, $matches)) {
+      return $this->wfs($docuri, $matches[1])->asArray();
+    }
+    elseif (preg_match('!^/items/([^/]+)/wfs/(.*)$!', $ypath, $matches)) {
+      $vds = $this->wfs($docuri, $matches[1]);
+      return $vds->extractByUri("$docuri/items/$matches[1]/wfs", "/$matches[2]");
     }
     else
       return null;
@@ -291,8 +298,15 @@ class MetadataDb extends YData {
     ];
   }
   
-  // part de la base de données et complète les fiches de MD de données avec un champ operatedBy 
-  function buildOperatedBy(string $docuri) {
+  /* part de la base de données et complète les fiches de MD de données avec un champ hasFormat de la forme:
+    s'il existe des MD de service [[ 'serviceType'=> serviceType, 'serviceId'=> serviceId ]]
+    sinon [ 'url'=> url, 'protocol'=> protocol ] / protocol in ('OGC:WMS', 'OGC:WFS', 'IETF:ATOM', 'http:link')
+  */
+  function buildHasFormat(string $docuri): void {
+    if ($docuri == 'geocats/geoide/db') {
+      $this->buildHasFormatForGeoide();
+      return;
+    }
     $fileIdentifiers = []; // [ fileIdentifier => id ]
     // fabrication d'une table temporaire $fileIdentifiers pour accéder efficament aux datasets par leur fileIdentifier
     foreach ($this->tables['data']['data'] as $id => $metadata) {
@@ -308,62 +322,93 @@ class MetadataDb extends YData {
           if (isset($operatesOn['uuidref']) && isset($fileIdentifiers[$operatesOn['uuidref']])) {
             echo "uuidref $n matches fileIdentifier<br>\n";
             $dataId = $fileIdentifiers[$operatesOn['uuidref']];
-            if (!isset($this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType]))
-              $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType] = [$serviceId];
-            elseif (!in_array($serviceId, $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType]))
-              $this->_c['tables']['data']['data'][$dataId]['operatedBy'][$serviceType][] = $serviceId;
+            $hasFormat = [ 'serviceType'=> $serviceType, 'serviceId'=> $serviceId ];
+            if (!isset($this->_c['tables']['data']['data'][$dataId]['hasFormat']))
+              $this->_c['tables']['data']['data'][$dataId]['hasFormat'] = [$hasFormat];
+            elseif (!in_array($hasFormat, $this->_c['tables']['data']['data'][$dataId]['hasFormat']))
+              $this->_c['tables']['data']['data'][$dataId]['hasFormat'][] = $hasFormat;
           }
         }
       }
     }
-    //die("buildOperatedBy ok\n");
-    return "buildOperatedBy ok\n";
+    //die("buildHasFormat ok\n");
+    return;
   }
   
-  // renvoie la VectorDataset correspondant à la fiche de MDD $$dsid ou génère une exception si cela n'est pas possible
-  function download(string $docuri, string $dsid): VectorDataset {
-    $dataset = parent::extractByUri($docuri, "/tables/data/data/$dsid");
-    //echo "<pre> dataset = "; print_r($dataset);
-    if (!isset($dataset['operatedBy']['download']))
-      throw new Exception("Aucun service download");
-    foreach ($dataset['operatedBy']['download'] as $serviceId) {
-      //echo "serviceId=$serviceId<br>\n";
-      $service = parent::extractByUri($docuri, "/tables/services/data/$serviceId");
-      //echo "<pre>"; print_r($service);
-      if (!isset($service['relation']))
-        continue;
-      $wfsUrl = null;
-      foreach ($service['relation'] as $relation) {
-        if (isset($relation['protocol'])
-             && preg_match('!^OGC:WFS-1.0.0-http-get-capabilities$!', $relation['protocol'])) {
-          $wfsUrl = $relation['url'];
-          break 2;
+  // buildHasFormat spécifique pour Geoide
+  function buildHasFormatForGeoide(): void {
+    foreach ($this->tables['data']['data'] as $id => $mdd) {
+      if (isset($mdd['relation'])) {
+        $hasFormat = [];
+        foreach ($mdd['relation'] as $relation) {
+          if (!isset($relation['url']))
+            continue;
+          if (preg_match('!^http://atom.geo-ide.developpement-durable.gouv.fr/atomArchive/GetResource!', $relation['url'])) {
+            $hasFormat[] = [ 'url'=> $relation['url'], 'protocol'=> 'http:link' ];
+          }
+          if (preg_match('!^http://ogc.geo-ide.developpement-durable.gouv.fr/wxs!', $relation['url'])) {
+            $hasFormat[] = [ 'url'=> $relation['url'], 'protocol'=> 'OGC:WMS' ];
+            $hasFormat[] = [ 'url'=> $relation['url'], 'protocol'=> 'OGC:WFS' ];
+          }
+        }
+        if ($hasFormat) {
+          $this->_c['tables']['data']['data'][$id]['hasFormat'] = $hasFormat;
+          echo "MDD $id modifiée<br>\n";
         }
       }
     }
-    if (!$wfsUrl)
-      throw new Exception("Aucun service WFS");
+  }
+  
+  // nettoyage de l'URL WFS qui contient service=WFS et request=GetCapabilities
+  private static function cleanWfsUrl(string $wfsUrl): string {
     $wfsUrl = str_replace('&amp;', '&', $wfsUrl);
     //echo "wfsUrl=$wfsUrl<br>\n";
     if (!preg_match('!^([^?]+)\?(service=WFS&?|version=.\..\..&?|request=GetCapabilities&?)*$!i', $wfsUrl, $matches))
       throw new Exception("Impossible d'interpréter l'URL du service WFS : $wfsUrl");
     //print_r($matches);
-    $wfsUrl = $matches[1];
+    return ($matches[1]);
+  }
+  
+  // renvoie la VectorDataset correspondant à la fiche de MDD $dsid ou génère une exception si cela n'est pas possible
+  function wfs(string $docuri, string $dsid): VectorDataset {
+    if (!isset($this->tables['data']['data'][$dsid]))
+      throw new Exception("Erreur: MDD inexistante");
+    $dataset = $this->tables['data']['data'][$dsid];
+    //echo "<pre> dataset = "; print_r($dataset);
+    if (!isset($dataset['hasFormat']))
+      throw new Exception("Erreur: aucun service download");
+    $wfsUrl = null;
+    foreach ($dataset['hasFormat'] as $hasFormat) {
+      if (isset($hasFormat['serviceType']) && ($hasFormat['serviceType']=='download')) {
+        $service = $this->tables['services']['data'][$hasFormat['serviceId']];
+        if (!isset($service['relation']))
+          continue;
+        foreach ($service['relation'] as $relation) {
+          if (isset($relation['protocol']) && preg_match('!^OGC:WFS!', $relation['protocol'])) {
+            $wfsUrl = self::cleanWfsUrl($relation['url']);
+            break 2;
+          }
+        }
+      }
+      elseif (isset($hasFormat['protocol']) && ($hasFormat['protocol']=='OGC:WFS')) {
+        $wfsUrl = $hasFormat['url'];
+      }
+    }
+    if (!$wfsUrl)
+      throw new Exception("Aucun service WFS");
     //echo "wfsUrl=$wfsUrl<br>\n";
-    $params = ['wfsUrl'=> $wfsUrl];
-    $wfsServer = new WfsServer($params);
+    $geocat = new_doc(dirname($docuri));
+    $wfsOptions = $geocat->wfsOptions($wfsUrl);
+    $wfsParams = ['wfsUrl'=> $wfsUrl, 'wfsOptions'=> $wfsOptions];
+    $wfsServer = WfsServer::new_WfsServer($wfsParams);
     $featureTypeList = $wfsServer->featureTypeList($dataset['identifier'][0]['code']);
     // Si aucun featureType n'est trouvé alors le filtre est supprimé
     if (!$featureTypeList)
       $featureTypeList = $wfsServer->featureTypeList();
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList); echo "</pre>\n";
-    $dataset['yamlClass'] = 'VectorDataset';
-    $dataset['wfsUrl'] = $wfsUrl;
+    $dataset = ['yamlClass'=> 'VectorDataset', 'wfsUrl'=> $wfsUrl, 'wfsOptions'=> $wfsOptions];
     foreach ($featureTypeList as $typename => $featureType) {
-      $dataset['layers'][$typename] = [
-        'title'=> $featureType['Title'],
-        'typename'=> $typename,
-      ];
+      $dataset['layers'][$typename] = [ 'title'=> $featureType['Title'], 'typename'=> $typename ];
     }
     //die("FIN ligne ".__LINE__."\n");
     return new VectorDataset($dataset);

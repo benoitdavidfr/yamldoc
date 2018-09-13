@@ -14,7 +14,7 @@ doc: |
   
   Outre les champs de métadonnées, le document doit définir les champs suivants:
   
-    - urlCsw: fournissant l'URL du serveur à compléter avec les paramètres,
+    - cswUrl: fournissant l'URL du serveur à compléter avec les paramètres,
   
   Il peut aussi définir les champs suivants:
   
@@ -180,7 +180,7 @@ class CswServer extends YamlDoc {
           FILE_APPEND
       );
     }
-    $url = $this->urlCsw.'?SERVICE=CSW&VERSION=2.0.2';
+    $url = $this->cswUrl.'?SERVICE=CSW&VERSION=2.0.2';
     foreach($params as $key => $value)
       $url .= "&$key=$value";
     try {

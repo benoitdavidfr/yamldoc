@@ -10,7 +10,7 @@ $phpDocs['gcsubjlist.inc.php']['file'] = <<<'EOT'
 name: gcsubjlist.inc.php
 title: gcsubjlist.inc.php - sous-document d'un géocatalogue constitué des mots-clés présents
 doc: |
-  La classe SubjectList liste les mots-clés présents dans un géocatalogue.
+  La classe SubjectList définit des objets qui enregistrent les mots-clés présents dans un géocatalogue.
 
   Liste des points d'entrée de l'API:
     - /  - liste des cvocs
@@ -21,7 +21,8 @@ doc: |
   Les noms utilisés des cvoc ne peuvent pas être des identifiants car inadapté pour un URI.
   Je construis systématiquement pour chaque cvoc un id comme rawurlencode(name).
   
-  De même pour les labels des cvocs.
+  NON: De même pour les labels des cvocs.
+  Pour les labels des cvocs, utilisant comme identifiant d'un no d'ordre.
 
 journal:
   2/9/2018:
@@ -37,11 +38,48 @@ require_once __DIR__.'/yamldoc.inc.php';
 class SubjectList extends YamlDoc {
   private $cvocs = []; // [ cvocname => Cvoc ]
   
+  // à la création l'objet est vide et sa constitution s'effectue en ajoutant des mots-clés avec la méthode add()
   function __construct(&$yaml) { }
+  
+  // liste des langues présentes dans le doc courant
+  function language() {
+    $language = [];
+    foreach ($this->cvocs as $cvoc) {
+      foreach ($cvoc->languageNbre() as $lang=>$nbre) {
+        if (!isset($language[$lang]))
+          $language[$lang] = $nbre;
+        else
+          $language[$lang] += $nbre;
+      }
+    }
+    arsort($language);
+    //print_r($language);
+    return array_keys($language);
+  }
   
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $docid, string $ypath): void {
+    if (($ypath=='') || ($ypath=='/')) {
+      //echo "<pre>language="; print_r($this->language()); echo "</pre>\n";
+      echo "<h3>Liste des vocabulaires</h3><ul>\n";
+      $lang = isset($_GET['lang']) ? $_GET['lang'] : $this->language()[0];
+      foreach ($this->cvocs as $cvocname => $cvoc) {
+        $abstract = $cvoc->abstract();
+        $href = "?doc=$docid&amp;ypath=/$abstract[id]";
+        $title = $cvoc->title($lang) ? $cvoc->title($lang) : $cvocname;
+        echo "<li><a href='$href'>$title</a> ($abstract[nbreOflabels])</li>\n";
+        //echo "<pre>"; print_r($abstract); echo "</pre>";
+      }
+    }
+    else {
+      $cvocid = substr($ypath, 1);
+      if (!isset($this->cvocs[$cvocid]))
+        die("cvoc $cvocid inexistant<br>\n");
+      $this->cvocs[$cvocid]->show($docid);
+    }
   }
+  
+  function __get(string $name) { return $name == 'language' ? $this->language() : null; }
   
   // retourne la liste des vocabulaires contrôlés construits
   function asArray(): array {
@@ -106,7 +144,17 @@ class SubjectList extends YamlDoc {
 
   // ajoute un mot-clé aux cvoc
   function add(array $subject, string $defaultMdLanguage): void {
-    if (!isset($subject['value']) || !$subject['value'])
+    if (!isset($subject['value']))
+      return;
+    // suppression des langues pour lesquelles il n'y a pas de label
+    //echo "<pre>subject="; print_r($subject); echo "</pre>\n";
+    if (is_array($subject['value'])) {
+      foreach ($subject['value'] as $lang => $label) {
+        if (!$label)
+          unset($subject['value'][$lang]);
+      }
+    }
+    if (!$subject['value'])
       return;
     try {
       $term = new SimpleMlString($subject['value'], $defaultMdLanguage);
@@ -136,6 +184,7 @@ class SubjectList extends YamlDoc {
       $this->cvocs[$cvoc['id']]->add($term);
     } catch (Exception $e) {
       echo "Erreur SubjectList::add() : ",$e->getMessage(),"<br>\n";
+      echo "<pre>subject="; print_r($subject); echo "</pre>\n";
     }
   }
   
@@ -149,8 +198,10 @@ class SubjectList extends YamlDoc {
 // Gestion d'un vocabulaire contrôlé
 class Cvoc {
   private $name; // identifiant du vocabulaire contrôlé provenant des mots-clés
-  private $title=null; // titre du vocabulaire contrôlé provenant des mots-clés
+  private $title=null; // titre du vocabulaire contrôlé provenant des mots-clés, null, string | [lang => string]
   private $referenceDate=null; // referenceDate du vocabulaire contrôlé provenant des mots-clés
+  private $languageNbre = []; // liste des langues avec nbre d'occurences d'ajouts: [lang => nbre]
+  private $language = []; // liste des langues ordonnées par nbre d'occurences décroisantes
   private $termList = []; // [ [ 'labels'=> SimpleMlString, 'nbreOfOccurences'=> nbre d''occurences ] ]
     
   function __construct(array $cvoc) {
@@ -160,7 +211,43 @@ class Cvoc {
     if (isset($cvoc['referenceDate']))
       $this->referenceDate = $cvoc['referenceDate'];
   }
-    
+  
+  function title(string $lang): ?string {
+    if (!$this->title)
+      return null;
+    elseif (is_string($this->title))
+      return $this->title;
+    elseif (isset($this->title[$lang]))
+      return $this->title[$lang];
+    else
+      return array_values($this->title)[0];
+  }
+  
+  function languageNbre() { return $this->languageNbre; }
+  function language() {
+    if ($this->language)
+      return $this->language;
+    arsort($this->languageNbre);
+    $this->language = array_keys($this->languageNbre);
+    return $this->language;
+  }
+  
+  function show(string $docid): void {
+    //echo "<pre>this="; print_r($this); echo "</pre>\n";
+    $lang = isset($_GET['lang']) ? $_GET['lang'] : $this->language()[0];
+    echo "<h3>",$this->title($lang) ? $this->title($lang) : $this->name,"</h3>\n";
+    echo "languages: ",implode(', ', $this->language()),"<br>\n";
+    echo "language: $lang<br>\n";
+    echo "<ul>";
+    foreach ($this->termList as $termid => $term) {
+      $labelInLang = $term['labels']->labelInLang($lang);
+      $pdocid = dirname($docid);
+      //echo "pdocid=$pdocid<br>\n";
+      $href = "?doc=$pdocid&amp;ypath=/search&amp;subject=".rawurlencode($term['labels']->label0());
+      echo "<li><a href='$href'>$labelInLang</a> ($term[nbreOfOccurences])</li>\n";
+    }
+  }
+  
   // améliore éventuellement la définition du cvoc
   function improve(array $cvoc) {
     if (!$this->title && isset($cvoc['title']))
@@ -191,6 +278,12 @@ class Cvoc {
         'labels'=> $labels,
         'nbreOfOccurences'=> 1,
       ];
+    }
+    foreach ($labels->language() as $lang) {
+      if (!isset($this->languageNbre[$lang]))
+        $this->languageNbre[$lang] = 1;
+      else
+        $this->languageNbre[$lang]++;
     }
   }
   
@@ -224,6 +317,8 @@ class Cvoc {
     if ($this->title)
       $abstract['title'] = $this->title;
     $abstract['nbreOflabels'] = count($this->termList);
+    $abstract['language'] = $this->language();
+    $abstract['languageNbre'] = $this->languageNbre;
     return $abstract;
   }
   
@@ -295,6 +390,8 @@ class SimpleMlString {
         throw new Exception("SimpleMlString::check() erreur");
   }
   
+  function language() { return array_keys($this->labels); }
+  
   function asArray() { return $this->labels; }
   
   function __toString(): string { return json_encode($this->labels, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); }
@@ -328,7 +425,19 @@ class SimpleMlString {
     return $result;
   }
   
-  function label(string $lang) { return isset($this->labels[$lang]) ? $this->labels[$lang] : null; }
+  // retourne le label dans la langue demandée ou null
+  function label(string $lang): ?string { return isset($this->labels[$lang]) ? $this->labels[$lang] : null; }
+  
+  // retourne un label si possible dans la langue demandée, sinon une autre langue
+  function labelInLang(string $lang) {
+    return isset($this->labels[$lang]) ? $this->labels[$lang]
+       : array_values($this->labels)[0].'@'.array_keys($this->labels)[0];
+  }
+  
+  // retourne la première étiquette
+  function label0(): string {
+    return array_values($this->labels)[0];
+  }
 };
 
 

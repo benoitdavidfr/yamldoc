@@ -108,7 +108,7 @@ abstract class YamlDoc extends Doc {
   // si une classe crée un .pser, elle doit appeler YamlDoc::writePserReally()
   protected function writePserReally(string $docuid): void {
     $storepath = Store::storepath();
-    $filename = __DIR__."/$storepath/$docuid";
+    $filename = __DIR__."/../$storepath/$docuid";
     if (!is_file("$filename.pser")
         || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
         || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))

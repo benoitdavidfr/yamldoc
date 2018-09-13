@@ -31,7 +31,9 @@ doc: |
   
     - wfsOptions: définit des options parmi les suivantes
       - referer: définissant le referer à transmettre à chaque appel du serveur,
-      - gml: le retour est en GML et non en GeoJSON
+      - gml: booléen indiquant si le retour est en GML et non en GeoJSON
+      - version: version WFS, par défaut 2.0.0
+      - coordOrderInGml: 'lngLat' pour indiquer que les coordonnées GML sont en LngLat et non en LatLng
 
   Liste des points d'entrée de l'API:
   
@@ -51,7 +53,11 @@ doc: |
     
   Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
       
-  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml.
+  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml
+  avec un serveur WFS 2.0.0 et GML 3.2.1.
+  
+  Le document http://localhost/yamldoc/?doc=geocats/geoide-zvuln41 permet de tester la classe WfsServerGml
+  avec un serveur WFS 12.0.0 et GML 2.
       
   Résolution:
     zoom = 0, image 256x256
@@ -71,6 +77,8 @@ doc: |
   Des tests unitaires de la transformation GML -> JSON sont définis.
       
 journal:
+  15/9/2018:
+    - ajout gestion Point en GML 2
   12/9/2018:
     - transfert des fichiers Php dans ydclasses
     - chgt urlWfs en wfsUrl
@@ -115,6 +123,11 @@ abstract class WfsServer extends YamlDoc {
       throw new Exception("Erreur dans WfsServer::__construct(): champ wfsUrl obligatoire");
   }
   
+  // effectue soit un new WfsServerJson soit un new WfsServerGml
+  static function new_WfsServer(array $wfsParams) {
+    return isset($wfsParams['wfsOptions']['gml']) ? new WfsServerGml($wfsParams) : new WfsServerJSON($wfsParams);
+  }
+    
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
@@ -294,13 +307,14 @@ abstract class WfsServer extends YamlDoc {
   function getCapabilities(bool $force=false): string {
     //echo "wfsUrl=",$this->wfsUrl,"<br>\n";
     //print_r($this); die();
-    $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl).'-cap.xml';
+    $wfsVersion = ($this->wfsOptions && isset($this->wfsOptions['version'])) ? $this->wfsOptions['version'] : '';
+    $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl.$wfsVersion).'-cap.xml';
     if ((!$force) && file_exists($filepath))
       return file_get_contents($filepath);
     else {
       $query = ['request'=> 'GetCapabilities'];
-      if ($this->wfsOptions && isset($this->wfsOptions['version']))
-        $query['VERSION'] = $this->wfsOptions['version'];
+      if ($wfsVersion)
+        $query['VERSION'] = $wfsVersion;
       $cap = $this->query($query);
       if (!is_dir(self::$capCache))
         mkdir(self::$capCache);
@@ -673,8 +687,16 @@ class WfsServerGml extends WfsServer {
     }
     elseif (substr($pseudo, $pos, 11) == "    Point: ") {
       $pos += 11;
+      if (isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
+        $coordSep = ','; // GML 2
+      else
+        $coordSep = ' '; // GML 3.2
+      if (isset($this->wfsOptions['coordOrderInGml']) && ($this->wfsOptions['coordOrderInGml']=='lngLat'))
+        $coordOrderInGml = 'lngLat'; // GML 2
+      else
+        $coordOrderInGml = 'latLng'; // GML 3.2
       $poseol = strpos($pseudo, "\n", $pos);
-      $poswhite = strpos($pseudo, ' ', $pos);
+      $poswhite = strpos($pseudo, $coordSep, $pos);
       $x = substr($pseudo, $pos, $poswhite-$pos);
       $pos = $poswhite+1;
       //$poswhite = strpos($pseudo, ' ', $pos);
@@ -687,7 +709,7 @@ class WfsServerGml extends WfsServer {
       elseif ($format == 'json')
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"Point\",\n",
-          "    \"coordinates\" : [ $y, $x ]\n",
+          "    \"coordinates\" : ",$coordOrderInGml == 'lngLat' ? "[ $x, $y ]\n" : "[ $y, $x ]\n",
           "  }\n";
       $pos = ($poseol === false) ? -1 : $poseol + 1;
       return $pos;
@@ -939,7 +961,7 @@ class WfsServerGml extends WfsServer {
         ],
       ];
     }
-    elseif (1) { // geoide en WFS 1.0.0
+    elseif (0) { // geoide en WFS 1.0.0 N_VULNERABLE_ZSUP_041 Polygones 
       $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
         .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map';
       $this->_c['wfsOptions'] = [
@@ -961,6 +983,30 @@ class WfsServerGml extends WfsServer {
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
           ],
           'zoom'=> 10,
+        ],
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
+          ],
+          'zoom'=> 10,
+        ],
+      ];
+    }
+    elseif (1) { // geoide en WFS 1.0.0 L_MUSEE_CHATEAU_041 Point 
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f31dbfdd-1038-451b-a539-668ac27b6526.internet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+      $queries = [
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, L_MUSEE_CHATEAU_041",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'L_MUSEE_CHATEAU_041',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-7.294921875,42.09822241119,13.3154296875,51.495064730144',
+          ],
+          'zoom'=> 6,
         ],
       ];
     }
@@ -1091,11 +1137,11 @@ class WfsServerGml extends WfsServer {
     header('Content-type: application/json');
     //header('Content-type: application/xml');
     //header('Content-type: text/plain');
-    if (0) {
+    if (0) { // Sextant GML 3.2 
       $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
       $this->getFeature('ms:DCSMM_SRM_TERRITORIALE_201806_L', [-10,41,16,51], 8);
     }
-    elseif (1) {
+    elseif (0) { // Géo-IDE GML 2 N_VULNERABLE_ZSUP_041 polygones 
       $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
         .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map';
       $this->_c['wfsOptions'] = [
@@ -1104,8 +1150,17 @@ class WfsServerGml extends WfsServer {
       ];
       $this->getFeature('N_VULNERABLE_ZSUP_041', [-8.0,42.4,14.0,51.1], 8);
     }
+    elseif (1) { // Géo-IDE GML 2 L_MUSEE_CHATEAU_041 point 
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f31dbfdd-1038-451b-a539-668ac27b6526.internet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+      $this->getFeature('L_MUSEE_CHATEAU_041', [-7.294921875,42.09822241119,13.3154296875,51.495064730144], 6);
+    }
   }
-
+  
   // affiche le résultat de la requête en GeoJSON
   function printAllFeatures(string $typename, array $bbox=[], int $zoom=-1, string $where=''): void {
     $numberMatched = $this->getNumberMatched($typename, $bbox, $where);

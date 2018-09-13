@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- wfsgml2togeojson.xsl - traduction GML2 en pseudo GeoJSON -->
+<!-- wfsgml2togeojson.xsl - traduction GML2 en pseudo GeoJSON
+En GML2 la géométrie est dans le champ ms:geometry et non ms:msGeometry
+ -->
 <xsl:stylesheet version="1.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:wfs="http://www.opengis.net/wfs"
@@ -45,11 +47,11 @@
             </xsl:if>
           </xsl:for-each>
         </xsl:when>
-      <xsl:when test="*/ms:msGeometry/gml:Point">
-    Point: <xsl:value-of select="*/ms:msGeometry/gml:Point/gml:pos"/>
+      <xsl:when test="*/ms:geometry/gml:Point">
+    Point: <xsl:value-of select="*/ms:geometry/gml:Point/gml:coordinates"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="*/ms:msGeometry"/>
+          <xsl:value-of select="*/ms:geometry"/>
         </xsl:otherwise>
       </xsl:choose>
     </xsl:for-each>

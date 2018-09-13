@@ -208,13 +208,10 @@ class VectorDataset extends YamlDoc {
       }
     }
     if ($this->wfsUrl) {
-      $wfsdoc = ['yamlClass' => 'WfsServerJson', 'wfsUrl'=> $this->wfsUrl];
-      if ($this->wfsOptions) {
-        $wfsdoc['wfsOptions'] = $this->wfsOptions;
-        if (isset($this->wfsOptions['gml']) && $this->wfsOptions['gml'])
-          $wfsdoc['yamlClass'] = 'WfsServerGml';
-      }
-      $this->wfsServer = new $wfsdoc['yamlClass']($wfsdoc);
+      $this->wfsServer = WfsServer::new_WfsServer([
+        'wfsUrl'=> $this->wfsUrl,
+        'wfsOptions'=> $this->wfsOptions ? $this->wfsOptions : [],
+      ]);
     }
     
     //unset($this->_c['layersByTheme']);
@@ -436,7 +433,7 @@ class VectorDataset extends YamlDoc {
         }
         else // cas de description d'une couche standard
           return array_merge(['uri'=> $selfUri], $this->layers[$lyrname]);
-      } catch(Exception $e) {
+      } catch (Exception $e) {
         header('Access-Control-Allow-Origin: *');
         if (!isset($params['bbox']) || ($params['bbox']=='{bbox}')) {
           header('HTTP/1.1 500 Internal Server Error');

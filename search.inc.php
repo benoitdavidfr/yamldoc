@@ -188,11 +188,19 @@ class FullTextSearch {
         continue;
       elseif (is_dir("$storepath/".($ssdir ? "$ssdir/$entry" : $entry)))
         self::scanfiles($global, $ssdir ? "$ssdir/$entry" : $entry, $fileNamePattern);
-      elseif (preg_match('!^(.*)\.(php|pser)$!', $entry))
+      elseif (preg_match('!^(.*)\.(php|xml|png|gif|sql|tsv)$!', $entry))
         continue;
       elseif ($fileNamePattern && !preg_match("!$fileNamePattern!", $entry))
         continue;
       elseif (preg_match('!^(.*)\.yaml$!', $entry, $matches)) {
+        $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
+        if ($global || self::isFileNewer("$dirpath/$entry", $docid))
+          self::indexMainDoc($global, $docid);
+      }
+      elseif (preg_match('!^(.*)\.pser$!', $entry, $matches)) {
+        // je traite uniquement les pser qui n'existe pas en yaml
+        if (is_file("$dirpath/$matches[1].yaml"))
+          continue;
         $docid = ($ssdir ? $ssdir.'/' : '').$matches[1];
         if ($global || self::isFileNewer("$dirpath/$entry", $docid))
           self::indexMainDoc($global, $docid);
