@@ -98,7 +98,7 @@ class CswServer extends YamlDoc {
       $result = $this->query(['request'=> 'GetCapabilities']);
       header('Content-type: application/xml');
       echo $result;
-      $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
+      $dirpath = __DIR__.'/../'.Store::id().'/'.$docuri;
       if (!is_dir($dirpath))
         mkdir($dirpath);
       file_put_contents("$dirpath/capabilities.xml", $result);
@@ -269,7 +269,7 @@ class CswServer extends YamlDoc {
   // Probablement des enregistrements qui ne sont pas compatibles avec le format de sortie ISO demandé
   // ajout possibilité de démarrer à une position quelconque et de s'arrêter avant la fin
   function harvest(string $docuri, int $startposition=1, int $endPosition=-1): void {
-    $dirpath = __DIR__.'/'.Store::id().'/'.$docuri;
+    $dirpath = __DIR__.'/../'.Store::id().'/'.$docuri;
     if (!is_dir($dirpath))
       mkdir($dirpath);
     $dirpath .= '/harvest';
