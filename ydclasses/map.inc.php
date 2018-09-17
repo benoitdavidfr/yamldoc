@@ -45,7 +45,8 @@ class Map extends YamlDoc {
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
+    $this->_id = $docid;
     $this->_c = $yaml;
     if (!is_file(__DIR__."/map-default.yaml"))
       throw new Exception("Erreur dans Map::__construct() le fichier map-default.yaml est absent");
@@ -76,7 +77,8 @@ class Map extends YamlDoc {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "Map::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
@@ -107,8 +109,28 @@ class Map extends YamlDoc {
     return YamlDoc::sextract($this->_c, $ypath);
   }
   
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(),
+      'abstract'=> "documents pour l'affichage d'une carte Leaflet",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/api'=> "retourne les points d'accès de ".get_class(),
+        '/display?latlon={latlon}&zoom={zoom}'=> "génère le code HTML d'affichage de la carte utilisant Leaflet",
+      ]
+    ];
+  }
+
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
+    if (!$ypath || ($ypath=='/')) {
+      return array_merge(['_id'=> $this->_id], $this->_c);
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
     if ($ypath=='/display') {
       $latlon = isset($_GET['latlon']) ? explode(',',$_GET['latlon']) : [];
       $zoom = isset($_GET['zoom']) ? $_GET['zoom']+0 : -1;

@@ -29,10 +29,10 @@ class DumbDoc extends YamlDoc {
   protected $_c;
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml, cela peut aussi être du texte
-  function __construct(&$yaml) { $this->_c = $yaml; }
+  function __construct($yaml, string $docid) { $this->_c = $yaml; $this->_id = $docid; }
   
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docuid, string $ypath): void { showDoc($docuid, YamlDoc::sextract($this->_c, $ypath)); }
+  function show(string $ypath=''): void { showDoc($this->_id, YamlDoc::sextract($this->_c, $ypath)); }
   
   // extrait le sous-élément de l'élément défini par $ypath
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
@@ -52,10 +52,10 @@ class DumbDocP extends YamlDoc {
   public $language;
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml, cela peut aussi être du texte
-  function __construct(&$yaml) { $this->_c = $yaml; }
+  function __construct($yaml, string $docid) { $this->_c = $yaml; $this->_id = $docid; }
   
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docuid, string $ypath): void { showDoc($docuid, YamlDoc::sextract($this->_c, $ypath)); }
+  function show(string $ypath=''): void { showDoc($this->_id, YamlDoc::sextract($this->_c, $ypath)); }
   
   // extrait le sous-élément de l'élément défini par $ypath
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }

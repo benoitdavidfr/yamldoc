@@ -22,7 +22,7 @@ EOT;
 class BasicYamlDoc extends YamlDoc {
   protected $data; // contenu du doc sous forme d'un array Php ou d'un scalaire
   
-  function __construct(&$data) { $this->data = $data; }
+  function __construct($data, string $docid) { $this->data = $data; $this->_id = $docid; }
   
   // permet d'accéder aux champs du document comme si c'était un champ de la classe
   function __get(string $name) {
@@ -38,9 +38,9 @@ class BasicYamlDoc extends YamlDoc {
   }
     
   // affiche le doc ou le fragment si ypath est non vide
-  function show(string $docuid, string $ypath): void {
-    //echo "<pre>"; print_r($this->data); echo "</pre>\n";
-    showDoc($docuid, self::sextract($this->data, $ypath));
+  function show(string $ypath=''): void {
+    //echo "<pre>show(ypath=$ypath) data="; print_r($this->data); echo "</pre>\n";
+    showDoc($this->_id, YamlDoc::sextract($this->data, $ypath));
   }
   
   // vérification de la conformité du document à son schéma

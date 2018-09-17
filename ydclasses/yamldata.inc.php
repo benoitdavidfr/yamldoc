@@ -55,8 +55,9 @@ EOT;
 // class correspondant au niveau document
 // remplace dans la structure Php l'array correspondant à une table par un objet YamlDataTable
 class YamlData extends BasicYamlDoc {
-  function __construct($data) {
+  function __construct($data, string $docid) {
     $this->data = $data;
+    $this->_id = $docid;
     if (isset($this->data['data'])) // le document ne contient qu'une seule table
       $this->data['data'] = new YamlDataTable(
           $this->data['data'],
@@ -73,7 +74,7 @@ class YamlData extends BasicYamlDoc {
       throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(): void { YamlDoc::writePserReally(); }
   
   // complète la table en paramètre avec les enr. de la table du document et renvoie le résultat
   function appendTable(YamlDataTable $table): YamlDataTable {
@@ -162,7 +163,7 @@ class YamlDataTable implements YamlDocElement, IteratorAggregate {
     //echo "<tr><td><pre>nbre=$nbre</pre></td></tr>\n";
   }
   
-  function show(string $docid, string $prefix=''): void {
+  function show(string $prefix=''): void {
     //print_r($this->data);
     //showListOfTuplesAsTable2($this->data, '');
     echo "<table border=1>\n";

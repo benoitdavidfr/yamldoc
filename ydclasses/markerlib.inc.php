@@ -23,7 +23,7 @@ EOT;
 class MarkerLib extends YamlDoc {
   protected $_c; // contenu du doc sous forme d'un array Php
   
-  function __construct(&$yaml) { $this->_c = $yaml; }
+  function __construct($yaml, string $docid) { $this->_c = $yaml; $this->_id = $docid; }
   
   // permet d'accéder aux champs du document comme si c'était un champ de la classe
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
@@ -43,7 +43,8 @@ class MarkerLib extends YamlDoc {
   }
   
   // affiche le doc ou le fragment si ypath est non vide
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
     echo "<h2>",$this->title,"</h2>\n";
     if ($this->abstract) {
@@ -68,7 +69,8 @@ class MarkerLib extends YamlDoc {
   }
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "MarkerLib::extractByUri($docuri, $ypath)\n";
     $docid = dirname($docuri); // $docuri contient /index
     //var_dump($this);
@@ -82,7 +84,7 @@ class MarkerLib extends YamlDoc {
         //echo "<pre>"; print_r($_SERVER);
         //die();
         header('Content-type: image/png');
-        die(file_get_contents(__DIR__."/$sid$_SERVER[PATH_INFO]"));
+        die(file_get_contents(__DIR__."/../$sid$_SERVER[PATH_INFO]"));
       }
       if (!isset($this->markers[$markerid]))
         return null;

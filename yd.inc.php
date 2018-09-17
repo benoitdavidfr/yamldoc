@@ -175,55 +175,55 @@ function yddelete(string $uid) {
 }
 
 // teste si le docuid a été marqué comme accessible en lecture par ydsetReadAccess()
-function ydcheckReadAccess(string $docuid): bool {
+function ydcheckReadAccess(string $docid): bool {
   $storepath = Store::storepath();
-  return (isset($_SESSION['checkedReadAccess']) && in_array("$storepath/$docuid", $_SESSION['checkedReadAccess']));
+  return (isset($_SESSION['checkedReadAccess']) && in_array("$storepath/$docid", $_SESSION['checkedReadAccess']));
 }
 
 // marque le docuid comme accessible en lecture
-function ydsetReadAccess(string $docuid): void {
-  //echo "ydsetReadAccess($docuid)<br>\n";
+function ydsetReadAccess(string $docid): void {
+  //echo "ydsetReadAccess($docid)<br>\n";
   $storepath = Store::storepath();
-  if (!ydcheckReadAccess($storepath, $docuid))
-    $_SESSION['checkedReadAccess'][] = Store::id()."/$docuid";
+  if (!ydcheckReadAccess($storepath, $docid))
+    $_SESSION['checkedReadAccess'][] = Store::id()."/$docid";
 }
 
 // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
-function ydcheckWriteAccessForPhpCode(string $docuid) {
+function ydcheckWriteAccessForPhpCode(string $docid) {
   $storepath = Store::storepath();
   //echo "storepath=$storepath<br>\n";
   $ydcheckWriteAccessForPhpCode = 1;
-  $authorizedWriters = require "$storepath/$docuid.php";
+  $authorizedWriters = require "$storepath/$docid.php";
   //echo "authorizedWriters="; print_r($authorizedWriters);
   $right = (isset($_SESSION['homeCatalog'])
             && is_array($authorizedWriters)
             && in_array($_SESSION['homeCatalog'], $authorizedWriters));
-  ydsetWriteAccess($docuid, $right);
+  ydsetWriteAccess($docid, $right);
 };
 
 // marque le docuid comme accessible ou non en écriture
-function ydsetWriteAccess(string $docuid, bool $right): void {
-  //echo "ydsetWriteAccess($docuid, ",($right ? 1 : 0),")<br>\n";
-  $_SESSION['checkedWriteAccess'][Store::id()."/$docuid"] = ($right ? 1 : 0);
+function ydsetWriteAccess(string $docid, bool $right): void {
+  //echo "ydsetWriteAccess($docid, ",($right ? 1 : 0),")<br>\n";
+  $_SESSION['checkedWriteAccess'][Store::id()."/$docid"] = ($right ? 1 : 0);
 }
 
 // teste si le docuid a été marqué comme accessible en écriture
 // renvoie 1 pour autorisé, 0 pour interdit et -1 pour indéfini
-function ydcheckWriteAccess(string $docuid): int {
+function ydcheckWriteAccess(string $docid): int {
   $storeid = Store::id();
-  return isset($_SESSION['checkedWriteAccess']["$storeid/$docuid"]) ?
-    $_SESSION['checkedWriteAccess']["$storeid/$docuid"]
+  return isset($_SESSION['checkedWriteAccess']["$storeid/$docid"]) ?
+    $_SESSION['checkedWriteAccess']["$storeid/$docid"]
     : -1;
 }
 
 // !!! je ne vois pas l'intérêt de ce mécanisme de lock !!!
-function ydlock(string $docuid): bool {
+function ydlock(string $docid): bool {
   //echo "ydlock($uid)<br>\n";
   $storepath = Store::storepath();
-  if (file_exists(__DIR__."/$storepath/$docuid.lock"))
+  if (file_exists(__DIR__."/$storepath/$docid.lock"))
     return false;
-  file_put_contents(__DIR__."/$storepath/$docuid.lock", 'lock');
-  $_SESSION['locks'][] = Store::id()."/$docuid";
+  file_put_contents(__DIR__."/$storepath/$docid.lock", 'lock');
+  $_SESSION['locks'][] = Store::id()."/$docid";
   return true;
 }
 
@@ -308,7 +308,7 @@ function is_listOfTuples_i($list) {
 function str2html(string $str): string { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
 
 // Je considère qu'une String est une chaine ne contenant pas de \n intermédiaire, sinon c'est un texte
-function showString(string $docuid, $str) {
+function showString(string $docid, $str) {
   // une URL est replacée par une référence avec l'URL comme label
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
     $href = $matches[1];
@@ -324,7 +324,7 @@ function showString(string $docuid, $str) {
       // cas d'un lien interne au doc
       $ypath = substr($href, strlen('?ypath='));
       //echo "<br>ypath=$ypath<br>\n";
-      $href = "?doc=$docuid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
+      $href = "?doc=$docid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
       //$str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
       $link = "<a href='$href'>$label</a>";
     }
@@ -347,7 +347,7 @@ function showString(string $docuid, $str) {
 }
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
-function showListOfAtoms(string $docuid, array $list, string $prefix, int $level=0) {
+function showListOfAtoms(string $docid, array $list, string $prefix, int $level=0) {
   if ($level==0)
     echo "<ul style='margin:0; padding:0px; list-style-position: inside;'>\n";
   else
@@ -355,15 +355,15 @@ function showListOfAtoms(string $docuid, array $list, string $prefix, int $level
   foreach ($list as $i => $elt) {
     echo "<li>";
     if (is_array($elt))
-      showListOfAtoms($docuid, $elt, "$prefix/$i", $level+1);
+      showListOfAtoms($docid, $elt, "$prefix/$i", $level+1);
     else
-      showString($docuid, $elt);
+      showString($docid, $elt);
   }
   echo "</ul>\n";
 }
 
 // affichage d'une liste de tuples comme table Html
-function showListOfTuplesAsTable(string $docuid, array $table, string $prefix) {
+function showListOfTuplesAsTable(string $docid, array $table, string $prefix) {
   $keys = []; // liste des clés d'au moins un tuple
   //echo "<pre>"; print_r($tab); echo "</pre>\n";
   foreach ($table as $tuple) {
@@ -387,7 +387,7 @@ function showListOfTuplesAsTable(string $docuid, array $table, string $prefix) {
         echo "<td align='right'>",$tuple[$key],"</td>";
       else {
         echo "<td>";
-        showDoc($docuid, $tuple[$key], "$prefix/$key");
+        showDoc($docid, $tuple[$key], "$prefix/$key");
         echo "</td>";
       }
     }
@@ -397,30 +397,30 @@ function showListOfTuplesAsTable(string $docuid, array $table, string $prefix) {
 }
 
 // affichage d'un array comme table Html
-function showArrayAsTable(string $docuid, array $data, string $prefix) {
+function showArrayAsTable(string $docid, array $data, string $prefix) {
   echo "<table border=1>\n";
   foreach ($data as $key => $value) {
     echo "<tr><td>$key</td><td>\n";
-    showDoc($docuid, $value, "$prefix/$key");
+    showDoc($docid, $value, "$prefix/$key");
     echo "</td></tr>\n";
   }
   echo "</table>\n";
 }
 
 // aiguille l'affichage en fonction du type du paramètre
-function showDoc(string $docuid, $data, string $prefix=''): void {
+function showDoc(string $docid, $data, string $prefix=''): void {
   if (is_object($data)) {
     if (get_class($data)=='DateTime')
       echo $data->format('Y-m-d H:i:s');
     else
-      $data->show($docuid, $prefix);
+      $data->show($docid, $prefix);
   }
   elseif (is_listOfAtoms($data))
-    showListOfAtoms($docuid, $data, $prefix);
+    showListOfAtoms($docid, $data, $prefix);
   elseif (is_listOfTuples($data))
-    showListOfTuplesAsTable($docuid, $data, $prefix);
+    showListOfTuplesAsTable($docid, $data, $prefix);
   elseif (is_array($data))
-    showArrayAsTable($docuid, $data, $prefix);
+    showArrayAsTable($docid, $data, $prefix);
   elseif (is_null($data))
     echo 'null';
   // un texte derrière un > sera représenté comme chaine et pas comme texte 
@@ -441,33 +441,33 @@ function showDoc(string $docuid, $data, string $prefix=''): void {
       $pattern = '!\(\?(ypath=([^)]*))\)!';
       while (preg_match($pattern, $data, $matches)) {
         $ypath = $matches[2];
-        $replacement = "(?doc=$docuid&amp;ypath=$ypath".(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '').")";
+        $replacement = "(?doc=$docid&amp;ypath=$ypath".(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '').")";
         $data = preg_replace($pattern, $replacement, $data, 1);
       }
       echo MarkdownExtra::defaultTransform($data);
     }
   }
   else
-    showString($docuid, $data);
+    showString($docid, $data);
 }
 
 // crée un Doc à partir du store et du docuid du document
 // retourne null si le document n'existe pas
 // génère une exception si le doc n'est pas du Yaml
-function new_doc(string $docuid): ?Doc {
+function new_doc(string $docid): ?Doc {
   // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
   $storepath = Store::storepath();
-  $filename = __DIR__."/$storepath/$docuid";
+  $filename = __DIR__."/$storepath/$docid";
   //echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php")))
           || (!file_exists("$filename.yaml") && !file_exists("$filename.php")))) {
       //echo "unserialize()<br>\n";
-      return unserialize(@file_get_contents(__DIR__."/$storepath/$docuid.pser"));
+      return unserialize(@file_get_contents("$filename.pser"));
   }
   // Sinon Si le fichier n'existe pas renvoie null
-  if (($text = ydread($docuid)) === FALSE) {
+  if (($text = ydread($docid)) === FALSE) {
     foreach (['odt'=> 'OdtDoc', 'pdf'=> 'PdfDoc'] as $ext => $class) {
       if (file_exists("$filename.$ext")) {
         $filename = "$filename.$ext";
@@ -479,14 +479,14 @@ function new_doc(string $docuid): ?Doc {
   }
   // Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
   if (strncmp($text,'<?php', 5)==0) {
-    //if (!$docuid)
+    //if (!$docid)
       //throw new Exception("Erreur: le paramètre docuid n'est pas défini");
     // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
-    ydcheckWriteAccessForPhpCode($docuid);
+    ydcheckWriteAccessForPhpCode($docid);
     // exécute le script et renvoie son retour qui doit donc être un YamlDoc ou null
     $storepath = Store::storepath();
-    $doc = require "$storepath/$docuid.php";
-    $doc->writePser($docuid);
+    $doc = require "$storepath/$docid.php";
+    $doc->writePser();
     return $doc;
   }
   // Sinon parse le texte dans $data
@@ -495,29 +495,29 @@ function new_doc(string $docuid): ?Doc {
   }
   catch (ParseException $exception) {
     // en cas d'erreur d'analyse Yaml le doc est marqué comme modifiable
-    ydsetWriteAccess($store, $docuid, 1);
+    ydsetWriteAccess($store, $docid, 1);
     // et je relance l'exception
     throw $exception;
   }
-  // si le doc correspond à un texte alors création d'un YamlDoc avec le texte
+  // si le doc correspond à un texte alors création d'un BasicYamlDoc avec le texte
   if (!is_array($data)) {
-    $doc = new BasicYamlDoc($text);
+    $doc = new BasicYamlDoc($text, $docid);
   }
   // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
   elseif (!isset($data['yamlClass'])) {
     // si pas de YamlClass c'est un YamlDoc de base
-    $doc = new BasicYamlDoc($data);
+    $doc = new BasicYamlDoc($data, $docid);
   }
   elseif (class_exists($data['yamlClass'])) {
-    $doc = new $data['yamlClass'] ($data);
+    $doc = new $data['yamlClass'] ($data, $docid);
   }
   else {
     echo "<b>Erreur: la classe $data[yamlClass] n'est pas définie</b><br>\n";
-    $doc = new BasicYamlDoc($data);
+    $doc = new BasicYamlDoc($data, $docid);
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
-  ydsetWriteAccess($docuid, $doc->authorizedWriter());
+  ydsetWriteAccess($docid, $doc->authorizedWriter());
   // si prévu j'écris le .pser
-  $doc->writePser($docuid);
+  $doc->writePser();
   return $doc;
 }

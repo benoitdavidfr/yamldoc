@@ -22,14 +22,15 @@ class PdfDoc extends Doc  {
   public $authorizedReaders, $authRd, $authorizedWriters, $authWr, $yamlPassword , $language;
   private $path = '';
   
-  function __construct(&$path) { $this->path = $path; }
+  function __construct($path, string $docid) { $this->path = $path; $this->_id = $docid; }
   
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "PdfDoc::show<br>\n";
     $dirname = dirname($_SERVER['SCRIPT_NAME']);
     echo("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf\n");
     header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
   } 
   
-  function checkReadAccess(string $docuid): bool { return true; }
+  function checkReadAccess(): bool { return true; }
 };

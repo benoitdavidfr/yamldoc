@@ -210,7 +210,7 @@ catch (ParseException $exception) {
   error(500, $docid);
 }
 
-$fragment = $doc->extractByUri($docid, $ypath);
+$fragment = $doc->extractByUri($ypath);
 if (!$fragment) {
   if (!$index)
     error(404, $docid, $ypath);

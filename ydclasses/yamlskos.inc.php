@@ -101,7 +101,8 @@ class YamlSkos extends YamlDoc {
   protected $schemes; // dictionnaire des micro-thésaurus
   protected $concepts; // dictionnaire des concepts
   
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
+    $this->_id = $docid;
     if (!is_array($yaml))
       throw new Exception("Erreur dans YamlSkos::__construct() : le paramètre doit être un array");
     unset($yaml['yamlClass']);
@@ -151,7 +152,7 @@ class YamlSkos extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(): void { YamlDoc::writePserReally(); }
   
   // traduction dans la bonne langue des noms des champs
   static function keyTranslate(string $key): string {
@@ -171,7 +172,8 @@ class YamlSkos extends YamlDoc {
   }
   
   // affichage du thésaurus ou d'un de ses fragments
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     //echo "<pre> yamlSkos ="; print_r($this); echo "</pre>\n";
     if (!$ypath || ($ypath == '/')) {
       showDoc($_GET['doc'], $this->_c);
@@ -252,7 +254,7 @@ class YamlSkos extends YamlDoc {
   }
   
   // méthode dump
-  function dump(string $ypath): void {
+  function dump(string $ypath=''): void {
     if (!$ypath) {
       var_dump($this);
     }

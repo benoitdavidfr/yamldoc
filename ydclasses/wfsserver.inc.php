@@ -34,22 +34,6 @@ doc: |
       - gml: booléen indiquant si le retour est en GML et non en GeoJSON
       - version: version WFS, par défaut 2.0.0
       - coordOrderInGml: 'lngLat' pour indiquer que les coordonnées GML sont en LngLat et non en LatLng
-
-  Liste des points d'entrée de l'API:
-  
-    - /{document} : description du serveur
-    - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
-    - /{document}/getCap(abilities)? : renvoie en XML les capacités du serveur en rafraichissant le cache
-    - /{document}/cap(abilities)? : renvoie en XML les capacités du serveur sans rafraichir le cache
-    - /{document}/ft : liste en JSON les featureTypes
-    - /{document}/ft/{typeName} : description de la couche en JSON
-    - /{document}/ft/{typeName}/geomPropertyName : nom de la propriété géométrique
-    - /{document}/ft/{typeName}/numberMatched?bbox={bbox}&where={where} : renvoi du nbre d'objets
-      correspondant à la requête définie par bbox et where, where est encodé en UTF-8
-    - /{document}/ft/{typeName}/getFeature?bbox={bbox}&zoom={zoom}&where={where} : affiche en GeoJSON les objets
-      correspondant à la requête définie par bbox, where et zoom, limité à 1000 objets
-    - /{document}/ft/{typeName}/getAllFeatures?bbox={bbox}&zoom={zoom}&where={where} : affiche en GeoJSON les objets
-      correspondant à la requête définie par bbox, where et zoom, utilise la pagination si plus de 100 objets
     
   Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
       
@@ -114,8 +98,9 @@ abstract class WfsServer extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
     $this->_c = [];
+    $this->_id = $docid;
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
@@ -124,15 +109,18 @@ abstract class WfsServer extends YamlDoc {
   }
   
   // effectue soit un new WfsServerJson soit un new WfsServerGml
-  static function new_WfsServer(array $wfsParams) {
-    return isset($wfsParams['wfsOptions']['gml']) ? new WfsServerGml($wfsParams) : new WfsServerJSON($wfsParams);
+  static function new_WfsServer(array $wfsParams, string $docid) {
+    return isset($wfsParams['wfsOptions']['gml']) ?
+          new WfsServerGml($wfsParams, $docid)
+        : new WfsServerJSON($wfsParams, $docid);
   }
     
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "WfsServerJson::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
@@ -142,7 +130,7 @@ abstract class WfsServer extends YamlDoc {
   }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
-  function asArray() { return $this->_c; }
+  function asArray() { return array_merge(['_id'=> $this->_id], $this->_c); }
 
   // extrait le fragment du document défini par $ypath
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
@@ -171,12 +159,38 @@ abstract class WfsServer extends YamlDoc {
     return "POLYGON(($bbox[0] $bbox[1],$bbox[2] $bbox[1],$bbox[2] $bbox[3],$bbox[0] $bbox[3],$bbox[0] $bbox[1]))";
   }
   
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(), 
+      'abstract'=> "document correspondant à un serveur WFS en version 1.0.0 ou 2.0.0",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/api'=> "retourne les points d'accès de ".get_class(),
+        '/query?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en XML ou JSON, le paramètre SERVICE est prédéfini",
+        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, affiche le résultat en XML et raffraichit le cache",
+        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
+        '/ft'=> "retourne la liste des couches (FeatureType) exposées par le serveur avec pour chacune son titre et son résumé",
+        '/ft/{typeName}'=> "retourne la description de la couche {typeName}",
+        '/ft/{typeName}/geom(PropertyName)?'=> "retourne le nom de la propriété géométrique pour la couche {typeName}",
+        '/ft/{typeName}/num(berMatched)?bbox={bbox}&where={where}'=> "retourne le nombre d'objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, where est encodé en UTF-8",
+        '/ft/{typeName}/getFeature?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, limité à 1000 objets",
+        '/ft/{typeName}/getAllFeatures?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, utilise la pagination si plus de 100 objets",
+      ]
+    ];
+  }
+   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "WfsServer::extractByUri($docuri, $ypath)<br>\n";
     $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
-    if (!$ypath || ($ypath=='/'))
-      return $this->_c;
+    if (!$ypath || ($ypath=='/')) {
+      return array_merge(['_id'=> $this->_id], $this->_c);
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
     elseif ($ypath == '/query') {
       //$params = isset($_GET) ? $_GET : (isset($_POST) ? $_POST : []);
       if (isset($params['OUTPUTFORMAT']) && ($params['OUTPUTFORMAT']=='application/json'))
@@ -912,9 +926,18 @@ class WfsServerGml extends WfsServer {
       $this->xsltProcessors['typename']->importStylesheet($stylesheet);
     }
     $getrecords = new DOMDocument();
-    if (!$getrecords->loadXML($xmlstr)) {
-      //echo "xml=",$xmlstr,"\n";
-      throw new Exception("Erreur dans WfsServerGml::wfs2GeoJson() sur loadXML()");
+    if (!@$getrecords->loadXML($xmlstr)) {
+      // En cas d'erreur, essai de modif de l'encodage, cas effectif sur Géo-IDE 
+      // http://localhost/yamldoc/id.php/geocats/geoide/db/items/fr-120066022-jdd-468ef944-fb92-4351-a8a6-2fca649261f8
+      // /wfs/L_SERVITUDE_AC1_MH_S_060?bbox=1.6,48.4,4.2,49.5&zoom=9
+      $xmlstr2 = str_replace(
+        '<?xml version=\'1.0\' encoding="UTF-8" ?>',
+        '<?xml version=\'1.0\' encoding="ISO-8859-1" ?>',
+        $xmlstr);
+      if (!@$getrecords->loadXML($xmlstr2)) {
+        echo "xml=",$xmlstr2,"\n";
+        throw new Exception("Erreur dans WfsServerGml::wfs2GeoJson() sur loadXML()");
+      }
     }
     $pseudo = $this->xsltProcessors['typename']->transformToXML($getrecords);
     if ($format == 'pseudo')
@@ -993,7 +1016,7 @@ class WfsServerGml extends WfsServer {
         ],
       ];
     }
-    elseif (1) { // geoide en WFS 1.0.0 L_MUSEE_CHATEAU_041 Point 
+    elseif (0) { // geoide en WFS 1.0.0 L_MUSEE_CHATEAU_041 Point 
       $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
         .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f31dbfdd-1038-451b-a539-668ac27b6526.internet.map';
       $this->_c['wfsOptions'] = [
@@ -1010,6 +1033,41 @@ class WfsServerGml extends WfsServer {
         ],
       ];
     }
+    elseif (0) { // geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects  
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38062/83c16694-3470-46e5-b0ad-3f374e1337f3.internet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+      $queries = [
+        [ 'title'=> "geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects ",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'L_SERVITUDE_AC1_MH_S_060',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '1.6,48.4,4.2,49.5',
+          ],
+          'zoom'=> 9,
+        ],
+      ];
+    }
+    elseif (1) { // geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects  
+      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38038/fr-120066022-orphan-dc361a37-5280-4804-993d-81daf41ed017.intranet.map';
+      $this->_c['wfsOptions'] = [
+        'version'=> '1.0.0',
+        'coordOrderInGml'=> 'lngLat',
+      ];
+      $queries = [
+        [ 'title'=> "geoide en WFS 1.0.0 N_ZONE_ALEA_PPRN_19960002_S_048 Polygon",
+          'params'=> [
+            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_ZONE_ALEA_PPRN_19960002_S_048',
+            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-9.7,42.3,15.7,51.2',
+          ],
+          'zoom'=> 6,
+        ],
+      ];
+    }
+
     if (!isset($_GET['action'])) {
       echo "<h3>wfs2GeoJson Queries</h3><ul>\n";
       foreach ($queries as $num => $query) {
@@ -1197,5 +1255,5 @@ if (!isset($_SERVER['PATH_INFO'])) {
 
 $testMethod = substr($_SERVER['PATH_INFO'], 1);
 $wfsDoc = ['wfsUrl'=>'test'];
-$wfsServer = new WfsServerGml($wfsDoc);
+$wfsServer = new WfsServerGml($wfsDoc, 'test');
 $wfsServer->$testMethod();

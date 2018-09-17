@@ -20,22 +20,6 @@ doc: |
 
     - referer: définissant le referer à transmettre à chaque appel du serveur.
 
-  Liste des points d'entrée de l'API:
-
-    - /{document} : description du geocat
-    - /{document}/csw/xxx : appelle /xxx sur le serveur Csw sous-jacent
-    - /{document}/buildDb : construit une base de données des métadonnées (BDMD) et l'enregistre
-      dans le document /{document}/db
-    - /{document}/db : retourne la BDMD
-    - /{document}/db/xxx : appelle /xxx sur la BDMD
-    - /{document}/buildSubjects : construit la liste les mots-clés et l'enregistre
-      dans le document /{document}/subjects
-    - /{document}/subjects : liste les cvoc
-    - /{document}/subjects/xxx : appelle /xxx sur la la liste les mots-clés
-    - /{document}/search?subject={subject} : recherche dans les MD le mot-clé {subject}
-    - /{document}/search : appelle /search sur la BDMD
-    - /{document}/items/xxx : appelle /items/xxx sur la BDMD
-    
   Un objet Geocat peut contenir les différents sous-documents suivants dont l'accès est effectué au travers du Geocat:
     
     - un document MetadataDb, correspondant à l'uri {docid}/db,  contient la base de données des MD
@@ -60,11 +44,11 @@ require_once __DIR__.'/inc.php';
 
 class Geocat extends CswServer {
   static $log = __DIR__.'/geocat.log.yaml'; // nom du fichier de log ou '' pour pas de log
-  protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
+    $this->_id = $docid;
     $this->_c = $yaml;
     //echo "<pre>"; print_r($this);
     if (self::$log) {
@@ -91,22 +75,23 @@ class Geocat extends CswServer {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "Geocat::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath == '/')) {
       showDoc($docid, $this->_c);
       return;
     }
     elseif ($ypath == '/listSubjects') {
-      new_doc("$docid/db")->show("$docid/db", '/listSubjects');
+      new_doc("$docid/db")->show('/listSubjects');
       return;
     }
     elseif ($ypath == '/search') {
-      new_doc("$docid/db")->show("$docid/db", '/search');
+      new_doc("$docid/db")->show('/search');
       return;
     }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
-      new_doc("$docid/db")->show("$docid/db", $ypath);
+      new_doc("$docid/db")->show($ypath);
     }
     else {
       showDoc($docid, $this->extract($ypath));
@@ -117,55 +102,86 @@ class Geocat extends CswServer {
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
   // Permet de maitriser l'ordre des champs
-  function asArray() { return $this->_c; }
+  function asArray() { return array_merge($this->_id, $this->_c); }
 
   // extrait le fragment du document défini par $ypath
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
   // Utilisé par YamlDoc::yaml() et YamlDoc::json()
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
+  
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/db'=> "retourne le nbre de MD par catégorie",
+        '/db/{cmde}'=> MetadataDb::api()['api'],
+        '/buildDb'=> "déduit de la moisson la BD des MD et l'enregistre comme document {doc}/db",
+        '/subjects'=> "retourne la liste des vocabulaires",
+        '/subjects/{cmde}'=> SubjectList::api()['api'],
+        '/buildSubjects'=> "déduit de la BDMD la liste des mots-clés et l'enregistre dans le fichier {doc}/subjects.pser",
+        '/search'=> " -> /db/search",
+        '/items/...'=> " -> /db/items/...",
+        '/csw/{cmde}'=> CswServer::api()['api'],
+        '/dump'=> "affiche le dump du document",
+        '/api'=> "retourne les points d'accès",
+      ]
+    ];
+  }
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "Geocat::extractByUri($docuri, $ypath)<br>\n";
-    if (!$ypath || ($ypath=='/'))
-      return $this->_c;
-    // exécute une requête sur le seveur CSW correspondant
-    elseif (preg_match('!^/csw(/.+)$!', $ypath, $matches)) {
-      return parent::extractByUri($docuri, $matches[1]);
+    if (!$ypath || ($ypath=='/')) {
+      return array_merge(['_id'=> $this->_id], $this->_c);
     }
-    // crée la DB à partir de la moissson et l'enregistre comme fichier db.yaml
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
+    elseif ($ypath == '/dump') {
+      $this->dump();
+      return "dump ok";
+    }
+    // exécute une requête sur le seveur CSW correspondant
+    elseif (preg_match('!^/csw(/.+)?$!', $ypath, $matches)) {
+      return parent::extractByUri(isset($matches[1]) ? $matches[1] : '');
+    }
+    // crée la DB à partir de la moissson et l'enregistre comme fichier db.pser
     elseif ($ypath == '/buildDb') {
-      $db = $this->buildDb($docuri);
-      $db->buildHasFormat("$docuri/db");
-      $storepath = Store::storepath();
-      //$filename = __DIR__."/$storepath/$docuri/db.yaml";
-      //file_put_contents($filename, YamlDoc::syaml(self::replaceYDEltByArray($db->asArray())));
-      $db->writePser("$docuri/db");
-      return "buildDb ok, document $docuri/db créé en pser\n";
+      $db = $this->buildDb();
+      $db->buildHasFormat();
+      $db->writePser();
+      return "buildDb ok, document $docuri/db créé en pser";
     }
     elseif ($ypath == '/db') {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", '');
+      return new_doc("$docuri/db")->extractByUri('');
+    }
+    elseif ($ypath == '/db/api') {
+      return MetadataDb::api();
     }
     elseif (preg_match('!^/db(/.*)$!', $ypath, $matches)) {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", $matches[1]);
+      //echo "Geocat::extractByUri($ypath)<br>\n";
+      return new_doc("$docuri/db")->extractByUri($matches[1]);
     }
     elseif ($ypath == '/buildSubjects') {
-      $subjects = new_doc("$docuri/db")->listSubjects("$docuri/db");
-      $subjects->writePser("$docuri/subjects");
-      return "buildSubjects ok, document $docuri/subjects créé en pser\n";
+      $subjects = new_doc("$docuri/db")->listSubjects();
+      $subjects->writePser();
+      return "buildSubjects ok, document $docuri/subjects créé en pser";
     }
     elseif ($ypath == '/subjects') {
-      return new_doc("$docuri/subjects")->extractByUri("$docuri/subjects", '');
+      return new_doc("$docuri/subjects")->extractByUri('');
     }
     elseif (preg_match('!^/subjects(/.*)$!', $ypath, $matches)) {
-      return new_doc("$docuri/subjects")->extractByUri("$docuri/subjects", $matches[1]);
+      return new_doc("$docuri/subjects")->extractByUri($matches[1]);
     }
     elseif ($ypath == '/search') {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
+      return new_doc("$docuri/db")->extractByUri('/search');
     }
     elseif (preg_match('!^/items/(.*)$!', $ypath, $matches)) {
-      return new_doc("$docuri/db")->extractByUri("$docuri/db", $ypath);
+      return new_doc("$docuri/db")->extractByUri($ypath);
     }
     else
       return null;
@@ -193,8 +209,9 @@ class Geocat extends CswServer {
   }
     
   // Fabrique la base de données des MD, la renoie comme objet MetadataDb
-  function buildDb(string $docuri): MetadataDb {
-    $logfilename = __DIR__.'/../'.Store::id()."/$docuri/build.log.yaml";
+  function buildDb(): MetadataDb {
+    $docuri = $this->_id;
+    $logfilename = __DIR__.'/../'.Store::storepath()."/$docuri/build.log.yaml";
     file_put_contents(
         $logfilename,
         YamlDoc::syaml([
@@ -232,7 +249,7 @@ class Geocat extends CswServer {
         ],
       ],
     ];
-    $dirpath = __DIR__.'/../'.Store::id()."/$docuri/harvest";
+    $dirpath = __DIR__.'/../'.Store::storepath()."/$docuri/harvest";
     $dir = dir($dirpath);
     // lecture des différents fichiers issus du moissonnage
     while (false !== ($entry = $dir->read())) {
@@ -286,7 +303,7 @@ class Geocat extends CswServer {
       }
     }
     $dir->close();
-    return new MetadataDb($database);
+    return new MetadataDb($database, "$docuri/db");
   }
   
   // retourne le wfsOptions en fonction du wfsUrl

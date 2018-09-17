@@ -40,9 +40,9 @@ class DataModel extends YamlSkos {
   ];
   protected $objectTypes; // dictionnaire des types
   
-  function __construct(array &$yaml) {
+  function __construct(array $yaml, string $docid) {
     echo "DataModel::__construct()<br>\n";
-    parent::__construct($yaml);
+    parent::__construct($yaml, $docid);
     $this->domainScheme = new DMDomainScheme($this->domainScheme->asArray(), $this->language);
     foreach ($this->domains as $domid => $domain)
       $this->domains[$domid] = new DMDomain($domain->asArray(), $this->language);
@@ -73,9 +73,10 @@ class DataModel extends YamlSkos {
   }
   
   // affiche le document ou un de ses fragments
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     try {
-      parent::show($docid, $ypath);
+      parent::show($ypath);
     }
     catch (Exception $exception) {
       if (preg_match('!^/objectTypes$!', $ypath, $matches)) {
@@ -130,7 +131,7 @@ class DataModel extends YamlSkos {
   }
   
   // dump le document ou un de ses fragments
-  function dump(string $ypath): void {
+  function dump(string $ypath=''): void {
     try {
       parent::dump($ypath);
     }

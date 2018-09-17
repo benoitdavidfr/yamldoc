@@ -10,20 +10,25 @@ $phpDocs['yamldoc.inc.php']['file'] = <<<'EOT'
 name: yamldoc.inc.php
 title: yamldoc.inc.php - classes abstraites Doc et YamlDoc et interface YamlDocElement
 doc: |
-  La classe abstraite Doc correspondant à un document affichable.
+  La classe abstraite Doc correspond à un document affichable ;
+  certains documents ne sont pas des documents YamlDoc comme par exemple PdfDoc ou OdtDoc
   La classe abstraite YamlDoc correspond à un document Yaml.
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal:
+  15/9/2018:
+    - ajout d'une propriété Doc::$docid
+    - modification de la signature des méthodes abstraites Doc::__construct(), Doc::show(), Doc::dump(),
+      YamlDoc::extractByUri(), YamlDoc::writePser(), YamlDoc::writePserReally()
   28/7/2018:
-  - ajout de la classe abstraite Doc
+    - ajout de la classe abstraite Doc
   26/7/2018:
-  - correction d'un bug dans YamlDoc::replaceYDEltByArray()
+    - correction d'un bug dans YamlDoc::replaceYDEltByArray()
   25/7/2018:
-  - ajout fabrication pser pour document php
+    - ajout fabrication pser pour document php
   19/7/2018:
-  - améliorations
+    - améliorations
   18/7/2018:
-  - première version par fork de yd.inc.php
+    - première version par fork de yd.inc.php
 EOT;
 }
 
@@ -45,17 +50,18 @@ EOT;
 }
 
 abstract class Doc {
+  protected $_id;
   // Les méthodes abstraites
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  abstract function __construct(&$yaml);
+  abstract function __construct($yaml, string $docid);
 
   // affiche le sous-élément de l'élément défini par $ypath
-  abstract function show(string $docuid, string $ypath): void;
+  abstract function show(string $ypath=''): void;
   
   // fonction dump par défaut, dump le document et non le fragment
-  function dump(string $ypath): void { var_dump($this); }
+  function dump(string $ypath=''): void { var_dump($this); }
   
   // par défaut un document n'est pas un homeCatalog
   function isHomeCatalog() { return false; }
@@ -96,19 +102,18 @@ abstract class YamlDoc extends Doc {
   // utilisé pour générer un retour à partir d'un URI
   // Par défaut effectue un extract
   // Doit être remplacé par le traitement adapté à chaque classe de documents
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
     $fragment = $this->extract($ypath);
     $fragment = self::replaceYDEltByArray($fragment);
     return $fragment;
   }
   
   // Par défaut aucun .pser n'est produit
-  public function writePser(string $docuid): void { }
+  public function writePser(): void { }
   
   // si une classe crée un .pser, elle doit appeler YamlDoc::writePserReally()
-  protected function writePserReally(string $docuid): void {
-    $storepath = Store::storepath();
-    $filename = __DIR__."/../$storepath/$docuid";
+  protected function writePserReally(): void {
+    $filename = __DIR__.'/../'.Store::storepath().'/'.$this->_id;
     if (!is_file("$filename.pser")
         || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
         || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))
@@ -350,9 +355,9 @@ abstract class YamlDoc extends Doc {
   }
 
   // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
-  function checkReadAccess(string $docuid): bool {
+  function checkReadAccess(): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
-    if (ydcheckReadAccess($docuid))
+    if (ydcheckReadAccess($this->_id))
       return true;
     // Si le document contient un mot de passe
     if ($this->yamlPassword) {
@@ -365,7 +370,7 @@ abstract class YamlDoc extends Doc {
       }
       // sinon  et si il est correct alors retour OK
       if (password_verify($_POST['password'], $this->yamlPassword)) {
-        ydsetReadAccess($docuid);
+        ydsetReadAccess($this->_id);
         return true;
       }
       // sinon c'est qu'il est incorrect
@@ -377,7 +382,7 @@ abstract class YamlDoc extends Doc {
     }
     // Si le document ne contient pas de mot de passe
     if ($this->authorizedReader()) {
-      ydsetReadAccess($docuid);
+      ydsetReadAccess($this->_id);
       return true;
     }
     else

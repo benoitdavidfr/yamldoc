@@ -190,8 +190,9 @@ class VectorDataset extends YamlDoc {
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
     $this->_c = [];
+    $this->_id = $docid;
     foreach ($yaml as $prop => $value) {
       $this->_c[$prop] = $value;
     }
@@ -208,10 +209,13 @@ class VectorDataset extends YamlDoc {
       }
     }
     if ($this->wfsUrl) {
-      $this->wfsServer = WfsServer::new_WfsServer([
-        'wfsUrl'=> $this->wfsUrl,
-        'wfsOptions'=> $this->wfsOptions ? $this->wfsOptions : [],
-      ]);
+      $this->wfsServer = WfsServer::new_WfsServer(
+        [ 'yamlClass'=> 'WfsServer',
+          'wfsUrl'=> $this->wfsUrl,
+          'wfsOptions'=> $this->wfsOptions ? $this->wfsOptions : [],
+        ],
+        "$docid/wfs"
+      );
     }
     
     //unset($this->_c['layersByTheme']);
@@ -240,7 +244,8 @@ class VectorDataset extends YamlDoc {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     //echo "VectorDataset::show($docid, $ypath)<br>\n";
     if (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       $this->showLayer($docid, $matches[1]);
@@ -317,7 +322,12 @@ class VectorDataset extends YamlDoc {
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
   // Permet de maitriser l'ordre des champs
-  function asArray() { return $this->_c; }
+  function asArray() {
+    $result = array_merge(['_id'=> $this->_id], $this->_c);
+    if ($this->wfsServer)
+      $result['wfs'] = $this->wfsServer->asArray();
+    return $result;
+  }
 
   // extrait le fragment du document défini par $ypath
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
@@ -382,24 +392,45 @@ class VectorDataset extends YamlDoc {
         $map['defaultLayers'][] = $lyrid;
     }
         
-    return new Map($map);
+    return new Map($map, "$docuri/map");
+  }
+  
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(),
+      'abstract'=> "document définissant une série de données géo constituée d'un ensemble de couches vecteur",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/api'=> "retourne les points d'accès de ".get_class(),
+        '/map'=> "retourne le contenu de la carte affichant la SD",
+        '/map/{param}'=> Map::api()['api'],
+        '/wfs/{param}'=> WfsServer::api()['api'],
+      ]
+    ];
   }
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
-    if (!$ypath || ($ypath=='/'))
-      return $this->_c;
-    elseif ($ypath == '/map')
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
+    if (!$ypath || ($ypath=='/')) {
+      return $this->asArray();
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
+    elseif ($ypath == '/map') {
       return $this->map($docuri)->asArray();
-    elseif ($ypath == '/map/display') {
-      $latlon = isset($_GET['latlon']) ? explode(',',$_GET['latlon']) : [];
-      $zoom = isset($_GET['zoom']) ? $_GET['zoom']+0 : -1;
-      $this->map($docuri)->display($docuri, $latlon, $zoom);
+    }
+    elseif (preg_match('!^/map(/.*)$!', $ypath, $matches)) {
+      $this->map($docuri)->extractByUri($matches[1]);
       die();
     }
+    elseif ($ypath == '/wfs') {
+      return $this->wfsServer ? $this->wfsServer->asArray() : null;
+    }
     elseif (preg_match('!^/wfs(/.*)$!', $ypath, $matches)) {
-      //print_r($this);
-      return $this->wfsServer->extractByUri("$docuri/wfs", $matches[1]);
+      return $this->wfsServer ? $this->wfsServer->extractByUri($matches[1]) : null;
     }
     // fragment /{lyrname}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
@@ -596,7 +627,7 @@ class VectorDataset extends YamlDoc {
         $props = implode(', ', $props).',';
       else
         $props = '';
-      $bboxwkt = parent::bboxWktLngLat($bbox);
+      $bboxwkt = WfsServer::bboxWktLngLat($bbox);
       
       $sql = "select $props ST_AsText(geom) geom from $dbname.$lyrname\n";
       if ($where)

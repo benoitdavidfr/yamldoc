@@ -5,7 +5,7 @@ title: cswserver.inc.php - document correspondant à un serveur CSW
 functions:
 doc: <a href='/yamldoc/?action=version&name=cswserver.inc.php'>doc intégrée en Php</a>
 */
-{
+{ // phpDocs 
 $phpDocs['cswserver.inc.php'] = <<<'EOT'
 name: cswserver.inc.php
 title: cswserver.inc.php - document correspondant à un serveur CSW
@@ -27,8 +27,9 @@ doc: |
     - /{document}/getCapabilities : lecture des capacités du serveur, les renvoi en XML et les enregistre
       dans le fichier /{document}/capabilities.xml
     - /{document}/numberMatched : renvoi le nbre d'enregistrements
+    - /{document}/numberMatched : renvoi le nbre d'enregistrements
     - /{document}/GetRecordsInIso/{startposition} : affiche en XML les enregistrements ISO à parir de {startposition}
-    - /{document}/GetRecordsInDC/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
+    - /{document}/GetRecordsInDc/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
     - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
       dans les fichiers /{document}/harvest/{startposition}.xml
     - /{document}/harvest/{startPosition} : moisonne les enregistrements ISO à partir de {startPosition}
@@ -59,13 +60,14 @@ class CswServer extends YamlDoc {
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) { $this->_c = $yaml; }
+  function __construct($yaml, string $docid) { $this->_c = $yaml; $this->_id = $docid; }
   
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "CswServer::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
@@ -75,16 +77,44 @@ class CswServer extends YamlDoc {
   }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
-  function asArray() { return $this->_c; }
+  function asArray() { return array_merge($this->_id, $this->_c); }
 
   // extrait le fragment du document défini par $ypath
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
   
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(),
+      'abstract'=> "utilisation d'un serveur CSW, retours en XML, moisson dans un répertoire {doc}/harvest",
+      'api'=> [
+        '/'=> "affiche le document ".get_class(),
+        '/api'=> "liste les points d'accès de ".get_class(),
+        '/query'=> "effectue sur le serveur CSW une requête définie par les paramètres GET ou POST, les paramètres SERVICE et VERSION sont prédéfinis, renvoi le résultat en XML",
+        '/getCapabilities'=> "retourne en XML les capacités du serveur CSW",
+        '/numberMatched'=> "retourne le nbre de fiches ISO",
+        '/numberMatchedInDc'=> "retourne le nbre de fiches Dublin Core",
+        '/getRecords/{startposition}'=> "retourne les fiches en ISO à partir de {startposition}",
+        '/getRecordById/{id}'=> "retourne la fiche {id} en ISO",
+        '/GetRecordsInDc/{startposition}'=> "retourne les fiches DC à partir de {startposition}",
+        '/GetRecordByIdInDc/{id}'=> "retourne la fiche {id} en DC",
+        '/harvest'=> "moisonne toutes les fiches, les pages de fiches sont enregistrées dans {doc}/harvest/{startposition}.xml",
+        '/harvest(/{startposition}'=> "moisonne les fiches à partir de {startposition} jusqu'à la fin",
+        '/harvest(/{startposition}/{endposition}'=> "moisonne les fiches à partir de {startposition} jusqu'à {endposition}",
+       ]
+    ];
+  }
+  
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "CswServer::extractByUri($docuri, $ypath)<br>\n";
-    if (!$ypath || ($ypath=='/'))
-      return $this->_c;
+    if (!$ypath || ($ypath=='/')) {
+      return array_merge(['_id'=> $this->_id], $this->_c);
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
     elseif ($ypath == '/query') {
       $params = isset($_GET) ? $_GET : (isset($_POST) ? $_POST : []);
       if (isset($params['OUTPUTFORMAT']) && ($params['OUTPUTFORMAT']=='application/json'))
@@ -104,25 +134,28 @@ class CswServer extends YamlDoc {
       file_put_contents("$dirpath/capabilities.xml", $result);
       die();
     }
-    elseif ($ypath == '/numberMatched') {
-      return ['numberMatched'=> $this->getNumberMatched()];
+    elseif ($ypath == '/numberMatchedInIso') {
+      return ['numberMatched'=> $this->getNumberMatchedInIso()];
     }
-    elseif (preg_match('!^/GetRecordsInIso/([^/]+)$!', $ypath, $matches)) {
+    elseif ($ypath == '/numberMatchedInDC') {
+      return ['numberMatched'=> $this->getNumberMatchedInDC()];
+    }
+    elseif (preg_match('!^/getRecords/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
       echo $this->GetRecordsInIso($matches[1]);
       die();
     }
-    elseif (preg_match('!^/GetRecordByIdInIso/([^/]+)$!', $ypath, $matches)) {
+    elseif (preg_match('!^/getRecordById/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
       echo $this->GetRecordByIdInIso($matches[1]);
       die();
     }
-    elseif (preg_match('!^/GetRecordsInDC/([^/]+)$!', $ypath, $matches)) {
+    elseif (preg_match('!^/GetRecordsInDc/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
       echo $this->GetRecordsInDC($matches[1]);
       die();
     }
-    elseif (preg_match('!^/GetRecordByIdInDC/([^/]+)$!', $ypath, $matches)) {
+    elseif (preg_match('!^/GetRecordByIdInDc/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
       echo $this->GetRecordByIdInDC($matches[1]);
       die();
@@ -197,8 +230,23 @@ class CswServer extends YamlDoc {
     return $result;
   }
     
-  // retourne le nbre d'objets correspondant au résultat de la requête
+  // retourne le nbre d'enregistrements ISO exposés par le serveur
   function getNumberMatched(): int {
+    $query = [
+      'REQUEST'=> 'GetRecords',
+      'TYPENAMES'=> 'gmd:MD_Metadata',
+      'RESULTTYPE'=> 'hits',
+    ];
+    $result = $this->query($query);
+    if (!preg_match('! numberOfRecordsMatched="(\d+)" !', $result, $matches)) {
+      //echo "result=",$result,"\n";
+      throw new Exception("Erreur dans CswServer::getNumberMatchedInIso() : no match on result $result");
+    }
+    return (int)$matches[1];
+  }
+    
+  // retourne le nbre d'enregistrements DC exposés par le serveur
+  function getNumberMatchedInDc(): int {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'csw:Record',
@@ -207,13 +255,13 @@ class CswServer extends YamlDoc {
     $result = $this->query($query);
     if (!preg_match('! numberOfRecordsMatched="(\d+)" !', $result, $matches)) {
       //echo "result=",$result,"\n";
-      throw new Exception("Erreur dans CswServer::getNumberMatched() : no match on result $result");
+      throw new Exception("Erreur dans CswServer::getNumberMatchedInDc() : no match on result $result");
     }
     return (int)$matches[1];
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format ISO
-  function GetRecordsInIso(int $startposition=1): string {
+  function GetRecords(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'gmd:MD_Metadata',
@@ -226,7 +274,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format ISO
-  function GetRecordByIdInIso(string $id): string {
+  function GetRecordById(string $id): string {
     $query = [
       'REQUEST'=> 'GetRecordById',
       'TYPENAMES'=> 'gmd:MD_Metadata',
@@ -239,7 +287,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format DC
-  function GetRecordsInDC(int $startposition=1): string {
+  function GetRecordsInDc(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'csw:Record',
@@ -252,7 +300,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format DC
-  function GetRecordByIdInDC(string $id): string {
+  function GetRecordByIdInDc(string $id): string {
     $query = [
       'REQUEST'=> 'GetRecordById',
       'TYPENAMES'=> 'csw:Record',
@@ -269,7 +317,7 @@ class CswServer extends YamlDoc {
   // Probablement des enregistrements qui ne sont pas compatibles avec le format de sortie ISO demandé
   // ajout possibilité de démarrer à une position quelconque et de s'arrêter avant la fin
   function harvest(string $docuri, int $startposition=1, int $endPosition=-1): void {
-    $dirpath = __DIR__.'/../'.Store::id().'/'.$docuri;
+    $dirpath = __DIR__.'/../'.Store::storepath().'/'.$docuri;
     if (!is_dir($dirpath))
       mkdir($dirpath);
     $dirpath .= '/harvest';
@@ -280,7 +328,7 @@ class CswServer extends YamlDoc {
     // $numberOfRecordsMatched est calculé à la première itération
     while (true) {
       if (!is_file("$dirpath/$startposition.xml")) {
-        $result = $this->GetRecordsInIso($startposition);
+        $result = $this->GetRecords($startposition);
         file_put_contents("$dirpath/$startposition.xml", $result);
       }
       else

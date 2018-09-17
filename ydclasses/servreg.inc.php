@@ -14,7 +14,7 @@ journal: |
 class Servreg extends BasicYamlDoc {
   function title() { return $this->phpDoc['title']; }
   
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
     echo "<h2>",$this->title(),"</h2>\n";
     echo "<h3>phpDoc</h3>\n";
     showDoc($_GET['doc'], $this->phpDoc);

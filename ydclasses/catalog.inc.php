@@ -27,8 +27,9 @@ use Symfony\Component\Yaml\Yaml;
 // classe des catalogues
 class YamlCatalog extends BasicYamlDoc {
   
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
     //echo "<pre>"; print_r($this->data); echo "</pre>\n";
+    $docid = $this->_id;
     $storepath = Store::storepath();
     if (is_dir(__DIR__."/../$storepath/$docid")) {
       //echo "$_GET[doc] est un répertoire";

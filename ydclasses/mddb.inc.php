@@ -23,8 +23,7 @@ journal:
 EOT;
 }
 //require_once __DIR__.'/yamldoc.inc.php';
-//require_once __DIR__.'/search.inc.php';
-//require_once __DIR__.'/isometadata.inc.php';
+require_once __DIR__.'/../search.inc.php';
 
 class MetadataDb extends YData {
   static $log = __DIR__.'/mddb.log.yaml'; // nom du fichier de log ou '' pour pas de log
@@ -32,8 +31,9 @@ class MetadataDb extends YData {
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
     $this->_c = $yaml;
+    $this->_id = $docid;
     //echo "<pre>"; print_r($this);
     if (self::$log) {
       if (php_sapi_name() <> 'cli') {
@@ -59,7 +59,8 @@ class MetadataDb extends YData {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "MetadataDb::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath == '/')) {
       showDoc($docid, $this->_c);
@@ -77,16 +78,45 @@ class MetadataDb extends YData {
     }
     elseif (($ypath == '/search') && isset($_GET['subject'])) {
       echo "<ul>\n";
-      foreach($this->searchOnSubject($docid, $_GET['subject'])['results'] as $md) {
+      foreach($this->searchOnSubject($_GET['subject'])['results'] as $md) {
         echo "<li><a href='?doc=$docid&amp;ypath=/items/$md[id]'>$md[title]</a>\n";
       }
       echo "</ul>\n";
-      echo "<pre>"; print_r($this->searchOnSubject($docid, $_GET['subject']));
+      echo "<pre>"; print_r($this->searchOnSubject($_GET['subject']));
       return;
     }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
       $mdid = $matches[1];
-      parent::show($docid, "/tables/data/data/$mdid");
+      foreach(['data','services','maps','nonGeographicDataset','others'] as $table) {
+        $hasFormats = null;
+        if ($md = parent::extractByUri("/tables/$table/data/$mdid")) {
+          if (isset($md['hasFormat'])) {
+            $hasFormats = $md['hasFormat'];
+            unset($md['hasFormat']);
+          }
+          //parent::show($docid, "/tables/$table/data/$mdid");
+          showDoc($docid, $md);
+          if ($hasFormats) {
+            showDoc($docid, $hasFormats);
+            echo "<h3>Liens</h3><ul>\n";
+            foreach ($hasFormats as $hasFormat) {
+              if (isset($hasFormat['protocol']) && ($hasFormat['protocol'] == 'http:link')) {
+                echo "<li><a href='$hasFormat[url]'>Téléchargement</a></li>\n";
+              }
+              elseif (isset($hasFormat['protocol']) && ($hasFormat['protocol'] == 'OGC:WMS')) {
+                echo "<li><a href='$hasFormat[url]'>Lien WMS</a></li>\n";
+              }
+              elseif (isset($hasFormat['protocol']) && ($hasFormat['protocol'] == 'OGC:WFS')) {
+                echo "<li><a href='$hasFormat[url]'>Lien WFS</a></li>\n";
+                $fileId = $md['fileIdentifier'];
+                echo "fileId=$fileId<br>\n";
+                echo "<li><a href='id.php/geocats/geoide/items/$fileId/wfs/map/display'>Lien WFS</a></li>\n";
+              }
+            }
+            echo "</url>\n";
+          }
+        }
+      }
     }
     else {
       showDoc($docid, $this->extract($ypath));
@@ -104,27 +134,94 @@ class MetadataDb extends YData {
   // Utilisé par YamlDoc::yaml() et YamlDoc::json()
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
+  
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(),
+      'abstract'=> "exploitation de la base des MD issue d'une moisson d'un serveur CSW",
+      'api'=> [
+        '/'=> "retourne le nbre de MD par catégorie",
+        '/data'=> "retourne les fichches de MD de données avec leur titre",
+        '/data'=> "retourne les fiches de MD de série de données avec leur titre",
+        '/services'=> "retourne les fiches de MD de service avec leur titre",
+        '/maps'=> "retourne les fiches de MD de carte avec leur titre",
+        '/nonGeographicDataset'=> "retourne les fiches de MD de SD non géographique avec leur titre",
+        '/others'=> "retourne les autres fiches de MD avec leur titre",
+        '/api'=> "retourne les points d'accès de ".get_class()  ,
+        '/buildHasFormat'=> "déduit pour chaque MDD un champ hasFormat et réenregistre la BDMD",
+        '/proj/{fields}'=> "retourne les champs {fields} des MDD",
+        '/wfs'=> "test",
+        '/wfs2'=> "test",
+        '/wfsGeoide'=> "test",
+        '/search?text={text}'=> "recherche plein texte le paramètre GET text,"
+          ." retourne un array ['search'=> paramètre de recherche, 'nbreOfResults'=> nbreOfResults, 'results'=> [['title'=> title]]] ",
+        '/search?subject={subject}'=> "recherche le mot-clé défini par le paramètre GET subject,"
+          ." retourne un array ['search'=> paramètre de recherche, 'nbreOfResults'=> nbreOfResults, 'results'=> [['title'=> title]]] ",
+        '/items'=> "retourne toutes les fiches de MD",
+        '/items/{id}'=> "retourne la fiche de MD identifiée par {id}",
+        '/items/{id}/directDwnld'=> "retourne le contenu de la SD (sous la forme d'un VectorDataset) correspondant à la MDD définie par {id}",
+        '/items/{id}/directDwnld/{params}'=> VectorDataset::api()['api'],
+      ]
+    ];
+  }
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
-    if (!$ypath || ($ypath=='/'))
-      return $this->_c;
+    if (!$ypath || ($ypath=='/')) {
+      $result = [
+        '_id'=> $this->_id,
+        'title'=> $this->title,
+        'yamlClass'=> $this->yamlClass,
+      ];
+      foreach(['data','services','maps','nonGeographicDataset','others'] as $table) {
+        if ($this->tables[$table]['data']) {
+          $result[$table] = [
+            'title'=> $this->tables[$table]['title'],
+            'nbre'=> count($this->tables[$table]['data']),
+          ];
+        }
+      }
+      return $result;
+    }
+    elseif (preg_match('!^/(data|services|maps|nonGeographicDataset|others)$!', $ypath, $matches)) {
+      $table = $matches[1];
+      $result = [
+        '_id'=> ($this->_id).$ypath,
+        'title'=> $this->tables[$table]['title'],
+        'nbre'=> count($this->tables[$table]['data']),
+        'data'=> [],
+      ];
+      if ($this->tables[$table]['data']) {
+        foreach ($this->tables[$table]['data'] as $id => $file)
+          $result['data'][$id]['title'] = $file['title'];
+      }
+      return $result;
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
     elseif ($ypath == '/buildHasFormat') {
       // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
       $this->buildHasFormat($docuri);
-      $this->writePser($docuri);
+      $this->writePser();
       return "buildHasFormat ok, document $docuri/db enregistré en pser\n";
     }
     // projection sur certains champs
     elseif (preg_match('!^/proj/(.*)$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($ypath)<br>\n";
       $fields = explode(',', $matches[1]);
-      return $this->proj($docuri, $fields);
+      //print_r($fields);
+      if (!is_array($fields))
+        $fields = [$fields];
+      return $this->proj($fields);
     }
     // retourne les MDD ayant une relation avec protocole WFS
     elseif (preg_match('!^/wfs$!', $ypath, $matches)) {
       $result = [];
-      foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+      foreach (parent::extractByUri('/data')['data'] as $id => $metadata) {
         if (isset($metadata['relation'])) {
           foreach ($metadata['relation'] as $relation) {
             //print_r($relation);
@@ -146,7 +243,7 @@ class MetadataDb extends YData {
     // retourne les relation ayant un protocole WFS
     elseif (preg_match('!^/wfs2$!', $ypath, $matches)) {
       $result = [];
-      foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+      foreach (parent::extractByUri('/data')['data'] as $id => $metadata) {
         if (isset($metadata['relation'])) {
           foreach ($metadata['relation'] as $relation) {
             //print_r($relation);
@@ -218,36 +315,54 @@ class MetadataDb extends YData {
       if (isset($_GET['text']))
         return FullTextSearch::search($docuri, '', $_GET['text']);
       elseif (isset($_GET['subject']))
-        return $this->searchOnSubject($docuri, $_GET['subject']);
+        return $this->searchOnSubject($_GET['subject']);
       else
         return "search incompris";
     }
     // accès à une MD par son id
+    elseif ($ypath == '/items') {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
+      $result = [
+        '_id'=> ($this->_id).$ypath,
+        'title'=> $this->title,
+      ];
+      foreach(['data','services','maps','nonGeographicDataset','others'] as $table) {
+        if ($this->tables[$table]['data']) {
+          foreach ($this->tables[$table]['data'] as $id => $file)
+            $result[$table][$id] = $file;
+        }
+      }
+      return $result;
+    }
     elseif (preg_match('!^/items/([^/]+)$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
       $mdid = $matches[1];
       foreach(['data','services','maps','nonGeographicDataset','others'] as $table) {
-        if ($md = parent::extractByUri($docuri, "/tables/$table/data/$mdid"))
-          return $md;
+        if (isset($this->tables[$table]['data'][$mdid]))
+          return $this->tables[$table]['data'][$mdid];
       }
       return null;
     }
     // renvoie le VectorDataset correspondant au WFS
-    elseif (preg_match('!^/items/([^/]+)/wfs$!', $ypath, $matches)) {
-      return $this->wfs($docuri, $matches[1])->asArray();
+    elseif (preg_match('!^/items/([^/]+)/directDwnld$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
+      return $this->directDwnld($docuri, $matches[1])->asArray();
     }
-    elseif (preg_match('!^/items/([^/]+)/wfs/(.*)$!', $ypath, $matches)) {
-      $vds = $this->wfs($docuri, $matches[1]);
-      return $vds->extractByUri("$docuri/items/$matches[1]/wfs", "/$matches[2]");
+    elseif (preg_match('!^/items/([^/]+)/directDwnld/(.*)$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
+      $vds = $this->directDwnld($docuri, $matches[1]);
+      return $vds->extractByUri("/$matches[2]");
     }
     else
       return null;
   }
   
   // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
-  function listSubjects(string $docuri): SubjectList {
-    $yaml = [];
-    $subjects = new SubjectList($yaml);
-    foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
+  function listSubjects(): SubjectList {
+    $docid = $this->_id;
+    $geocatid = dirname($docid);
+    $subjects = new SubjectList([], "$geocatid/subjects");
+    foreach (parent::extractByUri('/data')['data'] as $id => $metadata) {
       //echo "subjects = "; print_r($metadata['subject']); echo "<br>\n";
       $mainMdLanguage = (is_string($metadata['mdLanguage']) ? $metadata['mdLanguage'] : $metadata['mdLanguage'][0]);
       if (isset($metadata['subject'])) {
@@ -261,31 +376,32 @@ class MetadataDb extends YData {
     return $subjects;
   }
   
-  function proj(string $docuri, array $fields) {
-    $proj = [];
-    foreach (parent::extractByUri($docuri, '/data')['data'] as $id => $metadata) {
-      $eltproj = [];
+  function proj(array $fields) {
+    $result = [];
+    foreach ($this->tables['data']['data'] as $id => $metadata) {
+      $proj = [];
       foreach ($fields as $field) {
-        if ($field=='id')
-          $eltproj[$field] = $id;
+        if ($field=='_id')
+          $proj[$field] = $id;
         elseif (isset($metadata[$field]))
-          $eltproj[$field] = $metadata[$field];
+          $proj[$field] = $metadata[$field];
       }
-      $proj[] = $eltproj;
+      if ($proj)
+        $result[$id] = $proj;
     }
-    return $proj;
+    return $result;
   }
   
-  function searchOnSubject($docuri, $searchedSubject) {
+  function searchOnSubject(string $searchedSubject) {
     //echo "MetadataDb::searchOnSubject($docuri, $searchedSubject)<br>\n";
     $results = [];
-    foreach (parent::extractByUri("$docuri/db", '/data')['data'] as $id => $metadata) {
+    foreach ($this->tables['data']['data'] as $id => $metadata) {
 //      print_r($metadata['subject']); echo "<br>\n";
       if (isset($metadata['subject'])) {
         foreach ($metadata['subject'] as $subject) {
           if ($subject['value'] == $searchedSubject) {
             //echo "<b>$metadata[title]</b><br>\n";
-            $results[] = ['id'=> $id, 'title'=> $metadata['title']];
+            $results[$id] = ['title'=> $metadata['title']];
             break;
           }
         }
@@ -302,8 +418,8 @@ class MetadataDb extends YData {
     s'il existe des MD de service [[ 'serviceType'=> serviceType, 'serviceId'=> serviceId ]]
     sinon [ 'url'=> url, 'protocol'=> protocol ] / protocol in ('OGC:WMS', 'OGC:WFS', 'IETF:ATOM', 'http:link')
   */
-  function buildHasFormat(string $docuri): void {
-    if ($docuri == 'geocats/geoide/db') {
+  function buildHasFormat(): void {
+    if ($this->_id == 'geocats/geoide/db') {
       $this->buildHasFormatForGeoide();
       return;
     }
@@ -370,7 +486,7 @@ class MetadataDb extends YData {
   }
   
   // renvoie la VectorDataset correspondant à la fiche de MDD $dsid ou génère une exception si cela n'est pas possible
-  function wfs(string $docuri, string $dsid): VectorDataset {
+  function directDwnld(string $dbid, string $dsid): VectorDataset {
     if (!isset($this->tables['data']['data'][$dsid]))
       throw new Exception("Erreur: MDD inexistante");
     $dataset = $this->tables['data']['data'][$dsid];
@@ -397,10 +513,10 @@ class MetadataDb extends YData {
     if (!$wfsUrl)
       throw new Exception("Aucun service WFS");
     //echo "wfsUrl=$wfsUrl<br>\n";
-    $geocat = new_doc(dirname($docuri));
-    $wfsOptions = $geocat->wfsOptions($wfsUrl);
+    $geocatid = new_doc(dirname($dbid));
+    $wfsOptions = $geocatid->wfsOptions($wfsUrl);
     $wfsParams = ['wfsUrl'=> $wfsUrl, 'wfsOptions'=> $wfsOptions];
-    $wfsServer = WfsServer::new_WfsServer($wfsParams);
+    $wfsServer = WfsServer::new_WfsServer($wfsParams, "$dbid/items/$dsid/wfs");
     $featureTypeList = $wfsServer->featureTypeList($dataset['identifier'][0]['code']);
     // Si aucun featureType n'est trouvé alors le filtre est supprimé
     if (!$featureTypeList)
@@ -411,6 +527,6 @@ class MetadataDb extends YData {
       $dataset['layers'][$typename] = [ 'title'=> $featureType['Title'], 'typename'=> $typename ];
     }
     //die("FIN ligne ".__LINE__."\n");
-    return new VectorDataset($dataset);
+    return new VectorDataset($dataset, "$dbid/items/$dsid/directDwnld");
   }
 };

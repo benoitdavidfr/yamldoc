@@ -5,7 +5,7 @@ title: gestion d'un texte juridique
 doc: |
   voir le code
 */
-{
+{ // doc 
 $phpDocs[basename(__FILE__)]['file'] = <<<EOT
 name: legaldoc.inc.php
 title: legaldoc.inc.php - gestion d'un texte juridique
@@ -35,7 +35,7 @@ require_once __DIR__.'/mlstring.inc.php';
 //use Symfony\Component\Yaml\Yaml;
 //use Michelf\MarkdownExtra;
 
-{
+{ // doc 
 $phpDocs[basename(__FILE__)]['classes']['LegalDoc'] = <<<EOT
 name: class LegalDoc
 title: définition de la classe LegalDoc gérant un texte juridique
@@ -66,8 +66,8 @@ class LegalDoc extends YamlSkos {
   protected $notes; // [key => MLString]
   protected $annexes;  // [key => LegalPart]
   
-  function __construct(&$yaml) {
-    parent::__construct($yaml);
+  function __construct($yaml, string $docid) {
+    parent::__construct($yaml, $docid);
     if (isset($this->_c['visa'])) {
       $this->visa = new MLString($this->_c['visa'], $this->language);
       unset($this->_c['visa']);
@@ -120,7 +120,8 @@ class LegalDoc extends YamlSkos {
   }
   
   // affichage du document ou d'un fragment
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     if (!$ypath) {
       echo '<h1>',$this->title,"</h1>\n";
       if ($this->alternative)
@@ -142,7 +143,7 @@ class LegalDoc extends YamlSkos {
       echo "<a href='?doc=$docid&amp;ypath=/parent'>Vocabulaires définis par ce texte</a><br>\n";
     }
     elseif ($ypath == '/parent') {
-      parent::show($docid, '');
+      parent::show();
     }
     elseif (preg_match('!^/(visa|signature)$!', $ypath, $matches)) {
       $prop = $matches[1];
@@ -218,12 +219,12 @@ class LegalDoc extends YamlSkos {
       throw new Exception("Erreur LegalDoc::extract(ypath=$ypath), ypath non reconnu");
   }
   
-  function dump(string $ypath): void {
+  function dump(string $ypath=''): void {
     echo "<pre>"; var_dump($this); echo "</pre>\n";
   }
 };
 
-{
+{ // doc 
 $phpDocs[basename(__FILE__)]['classes']['LegalPart'] = <<<'EOT'
 name: class LegalPart
 title: définition de la classe LegalPart, élément directement identifiable d'un LegalDoc (article, chapitre, ...)

@@ -44,8 +44,9 @@ class YData extends YamlDoc {
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
-  function __construct(&$yaml) {
+  function __construct($yaml, string $docid) {
     $this->_c = [];
+    $this->_id = $docid;
     foreach ($yaml as $prop => $value) {
       if ($prop == 'data')
         $this->_c['data'] = new YDataTable($value);
@@ -70,7 +71,8 @@ class YData extends YamlDoc {
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     echo "YData::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
@@ -80,7 +82,7 @@ class YData extends YamlDoc {
   }
   
   // fonction dump par défaut, dump le document et non le fragment
-  function dump(string $ypath): void { var_dump($this->_c); }
+  function dump(string $ypath=''): void { var_dump($this->_c); }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
@@ -112,7 +114,8 @@ class YData extends YamlDoc {
     
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   // implémnte un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "YData::extractByUri($docuri, $ypath)<br>\n";
     $fragment = $this->extract($ypath);
     $fragment = self::replaceYDEltByArray($fragment);
@@ -138,7 +141,7 @@ class YData extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(): void { YamlDoc::writePserReally(); }
 };
 
 // contenu d'une table

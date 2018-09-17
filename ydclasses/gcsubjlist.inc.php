@@ -39,7 +39,7 @@ class SubjectList extends YamlDoc {
   private $cvocs = []; // [ cvocname => Cvoc ]
   
   // à la création l'objet est vide et sa constitution s'effectue en ajoutant des mots-clés avec la méthode add()
-  function __construct(&$yaml) { }
+  function __construct($yaml, string $docid) { $this->_id = $docid; }
   
   // liste des langues présentes dans le doc courant
   function language() {
@@ -58,7 +58,8 @@ class SubjectList extends YamlDoc {
   }
   
   // affiche le sous-élément de l'élément défini par $ypath
-  function show(string $docid, string $ypath): void {
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
     if (($ypath=='') || ($ypath=='/')) {
       //echo "<pre>language="; print_r($this->language()); echo "</pre>\n";
       echo "<h3>Liste des vocabulaires</h3><ul>\n";
@@ -96,9 +97,22 @@ class SubjectList extends YamlDoc {
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   // A REVOIR
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
+  
+  static function api(): array {
+    $api = [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe",
+      'api'=> [
+        '/'=> "affiche la liste des cvocs",
+        '/api'=> "liste les points d'accès",
+      ]
+    ];
+    return $api;
+  }
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  function extractByUri(string $docuri, string $ypath) {
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
     //echo "SubjectList::extractByUri($docuri, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/')) {
       // affichage de la liste des cvocs sans les mots clés
@@ -140,7 +154,7 @@ class SubjectList extends YamlDoc {
   }
   
   // Le document est stocké uniquement sous la forme d'un .pser
-  function writePser(string $docuid): void { YamlDoc::writePserReally($docuid); }
+  function writePser(): void { YamlDoc::writePserReally(); }
 
   // ajoute un mot-clé aux cvoc
   function add(array $subject, string $defaultMdLanguage): void {

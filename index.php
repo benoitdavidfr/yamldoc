@@ -454,7 +454,7 @@ if (!isset($_GET['action'])) {
         $_SESSION['language'][$docuid] = $doc->language;
     }
     if (!isset($_GET['format']))
-      $doc->show($docuid, $ypath);
+      $doc->show($ypath);
     elseif ($_GET['format']=='yaml')
       echo "<pre>",str2html($doc->yaml($ypath)),"</pre>\n";
     elseif ($_GET['format']=='json')
@@ -508,7 +508,7 @@ if ($_GET['action']=='store') {
     //git_commit($_GET['doc'], $ext);
     try {
       $doc = new_doc($_GET['doc']);
-      $doc->show($_GET['doc'], isset($_GET['ypath']) ? $_GET['ypath'] : '');
+      $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
     }
     catch (ParseException $exception) {
       printf("<b>Analyse YAML erronée: %s</b>", $exception->getMessage());

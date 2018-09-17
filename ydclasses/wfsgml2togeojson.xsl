@@ -31,18 +31,18 @@ En GML2 la géométrie est dans le champ ms:geometry et non ms:msGeometry
           exterior: <xsl:value-of select="gml:outerBoundaryIs/gml:LinearRing/gml:coordinates"/>
             <xsl:if test="gml:interior">
           interior:<xsl:for-each select="gml:interior">
-          - <xsl:value-of select="gml:LinearRing/gml:posList"/>
+          - <xsl:value-of select="gml:LinearRing/gml:coordinates"/>
               </xsl:for-each>
             </xsl:if>
           </xsl:for-each>
         </xsl:when>
-        <xsl:when test="*/ms:msGeometry/gml:Polygon">
-    MultiSurface:<xsl:for-each select="*/ms:msGeometry/gml:Polygon">
-      - Polygon<xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList/@srsDimension"/>:
-          exterior: <xsl:value-of select="gml:exterior/gml:LinearRing/gml:posList"/>
-            <xsl:if test="gml:interior">
-          interior:<xsl:for-each select="gml:interior">
-          - <xsl:value-of select="gml:LinearRing/gml:posList"/>
+        <xsl:when test="*/ms:geometry/gml:Polygon">
+    MultiSurface:<xsl:for-each select="*/ms:geometry/gml:Polygon">
+      - Polygon2:
+          exterior: <xsl:value-of select="gml:outerBoundaryIs/gml:LinearRing/gml:coordinates"/>
+            <xsl:if test="gml:innerBoundaryIs">
+          interior:<xsl:for-each select="gml:innerBoundaryIs">
+          - <xsl:value-of select="gml:LinearRing/gml:coordinates"/>
               </xsl:for-each>
             </xsl:if>
           </xsl:for-each>
