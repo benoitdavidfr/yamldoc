@@ -1,0 +1,167 @@
+<?xml version='1.0' encoding="UTF-8" ?>
+<!-- fichier GML2 de test -->
+<wfs:FeatureCollection
+   xmlns:ms="http://mapserver.gis.umn.edu/mapserver"
+   xmlns:wfs="http://www.opengis.net/wfs"
+   xmlns:gml="http://www.opengis.net/gml"
+   xmlns:ogc="http://www.opengis.net/ogc"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.opengis.net/wfs http://schemas.opengis.net/wfs/1.0.0/WFS-basic.xsd 
+                       http://mapserver.gis.umn.edu/mapserver http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?map=/opt/data/carto/geoide-catalogue/1.4/org_38038/fr-120066022-orphan-dc361a37-5280-4804-993d-81daf41ed017.intranet.map&amp;SERVICE=WFS&amp;VERSION=1.0.0&amp;REQUEST=DescribeFeatureType&amp;TYPENAME=N_ZONE_ALEA_PPRN_19960002_S_048&amp;OUTPUTFORMAT=XMLSCHEMA">
+    <gml:boundedBy>
+    	<gml:Box srsName="EPSG:4326">
+    		<gml:coordinates>3.379785,44.483325 3.424691,44.518865</gml:coordinates>
+    	</gml:Box>
+    </gml:boundedBy>
+    <gml:featureMember><!-- Polygon -->
+      <ms:N_ZONE_ALEA_PPRN_19960002_S_048>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:4326">
+        		<gml:coordinates>3.385525,44.503392 3.387060,44.505563</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:geometry>
+        <gml:Polygon srsName="EPSG:4326">
+          <gml:outerBoundaryIs>
+            <gml:LinearRing>
+              <gml:coordinates>3.387010,44.503392 3.386718,44.503740 3.386736,44.503781 3.386363,44.504324 3.386255,44.504481 3.386055,44.504779 3.385993,44.504872 3.385957,44.504926 3.385525,44.505563 3.385681,44.505501 3.385817,44.505443 3.385880,44.505416 3.385945,44.505388 3.385992,44.505369 3.386064,44.505338 3.386116,44.505317 3.386398,44.505125 3.386462,44.505066 3.386596,44.504943 3.386773,44.504704 3.386833,44.504608 3.386908,44.504407 3.386945,44.504297 3.386959,44.504257 3.386974,44.504212 3.387010,44.504125 3.387023,44.504068 3.387060,44.503892 3.387034,44.503591 3.387030,44.503561 3.387020,44.503471 3.387010,44.503392 </gml:coordinates>
+            </gml:LinearRing>
+          </gml:outerBoundaryIs>
+        </gml:Polygon>
+        </ms:geometry>
+        <ms:ID_MAP>1</ms:ID_MAP>
+        <ms:ID_ZONE>A48199600020001</ms:ID_ZONE>
+        <ms:ID_GASPAR>48DDT19960002</ms:ID_GASPAR>
+        <ms:DESCRIPT>Beb2</ms:DESCRIPT>
+        <ms:CODERISQUE>1230000</ms:CODERISQUE>
+        <ms:NOMRISQUE>Mouvement de terrain - Éboulement, chutes de pierres et de blocs</ms:NOMRISQUE>
+        <ms:MULTI_ALEA>non</ms:MULTI_ALEA>
+        <ms:NIVALEA>M</ms:NIVALEA>
+        <ms:NIVALEA_ST>02</ms:NIVALEA_ST>
+        <ms:SRCE_GEOM>BD Ortho IGN</ms:SRCE_GEOM>
+        <ms:SRCE_ANNEE>1996</ms:SRCE_ANNEE>
+        <ms:PRECISION>M</ms:PRECISION>
+        <ms:TITRECARTE>Carte d&#39;aléa</ms:TITRECARTE>
+        <ms:DATECARTE>1996-01-00T00:00:00Z</ms:DATECARTE>
+        <ms:TYPECARTE>03</ms:TYPECARTE>
+        <ms:NOMFIC></ms:NOMFIC>
+        <ms:URLFIC></ms:URLFIC>
+        <ms:OBSERVATIO></ms:OBSERVATIO>
+        <ms:DATE_MAJ></ms:DATE_MAJ>
+      </ms:N_ZONE_ALEA_PPRN_19960002_S_048>
+    </gml:featureMember>
+    <gml:featureMember><!-- Polygon avce trou -->
+      <ms:N_ZONE_ALEA_PPRN_19960002_S_048>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:4326">
+        		<gml:coordinates>3.388820,44.510714 3.396054,44.516113</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:geometry>
+        <gml:Polygon srsName="EPSG:4326">
+          <gml:outerBoundaryIs>
+            <gml:LinearRing>
+              <gml:coordinates>3.394384,44.516113 3.394747,44.515773 3.395153,44.515387 3.395508,44.515011 3.395834,44.514622 3.395908,44.514536 3.395989,44.514262 3.396054,44.514032 3.396050,44.513855 3.396005,44.513523 3.395949,44.513285 3.395784,44.512878 3.395647,44.512558 3.395468,44.512251 3.395198,44.511832 3.395085,44.511663 3.394938,44.511544 3.394729,44.511402 3.394622,44.511355 3.393460,44.510906 3.393107,44.510777 3.392786,44.510740 3.391966,44.510714 3.391395,44.510917 3.390814,44.511135 3.390215,44.511596 3.389879,44.511887 3.389309,44.512639 3.388820,44.513456 3.388879,44.513459 3.388953,44.513463 3.389043,44.513468 3.389262,44.513837 3.389329,44.513950 3.389885,44.514681 3.390082,44.514941 3.390036,44.515330 3.390284,44.515349 3.390580,44.515468 3.391123,44.515142 3.391390,44.515280 3.391679,44.515435 3.391755,44.515476 3.392276,44.515757 3.392711,44.515787 3.393153,44.516068 3.393232,44.516111 3.393511,44.515979 3.393597,44.515975 3.393785,44.515967 3.394030,44.515955 3.394384,44.516113 </gml:coordinates>
+            </gml:LinearRing>
+          </gml:outerBoundaryIs>
+          <gml:innerBoundaryIs>
+            <gml:LinearRing>
+              <gml:coordinates>3.392517,44.512036 3.392823,44.512211 3.393080,44.512056 3.393392,44.511867 3.393453,44.511846 3.393707,44.511993 3.393848,44.512965 3.395013,44.513845 3.393703,44.514910 3.393584,44.514893 3.393395,44.514865 3.393049,44.514814 3.392601,44.514638 3.392155,44.514356 3.392013,44.513719 3.391979,44.513565 3.391940,44.513203 3.392075,44.512987 3.392191,44.512799 3.392517,44.512036 </gml:coordinates>
+            </gml:LinearRing>
+          </gml:innerBoundaryIs>
+        </gml:Polygon>
+        </ms:geometry>
+        <ms:ID_MAP>6</ms:ID_MAP>
+        <ms:ID_ZONE>A48199600020006</ms:ID_ZONE>
+        <ms:ID_GASPAR>48DDT19960002</ms:ID_GASPAR>
+        <ms:DESCRIPT>Reb1</ms:DESCRIPT>
+        <ms:CODERISQUE>1230000</ms:CODERISQUE>
+        <ms:NOMRISQUE>Mouvement de terrain - Éboulement, chutes de pierres et de blocs</ms:NOMRISQUE>
+        <ms:MULTI_ALEA>non</ms:MULTI_ALEA>
+        <ms:NIVALEA>F</ms:NIVALEA>
+        <ms:NIVALEA_ST>04</ms:NIVALEA_ST>
+        <ms:SRCE_GEOM>BD Ortho IGN</ms:SRCE_GEOM>
+        <ms:SRCE_ANNEE>1996</ms:SRCE_ANNEE>
+        <ms:PRECISION>M</ms:PRECISION>
+        <ms:TITRECARTE>Carte d&#39;aléa</ms:TITRECARTE>
+        <ms:DATECARTE>1996-01-00T00:00:00Z</ms:DATECARTE>
+        <ms:TYPECARTE>03</ms:TYPECARTE>
+        <ms:NOMFIC></ms:NOMFIC>
+        <ms:URLFIC></ms:URLFIC>
+        <ms:OBSERVATIO></ms:OBSERVATIO>
+        <ms:DATE_MAJ></ms:DATE_MAJ>
+      </ms:N_ZONE_ALEA_PPRN_19960002_S_048>
+    </gml:featureMember>
+    <gml:featureMember><!-- MultiPolygon -->
+      <ms:L_SERVITUDE_AC1_MH_S_060>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:4326">
+        		<gml:coordinates>3.006707,49.196224 3.020692,49.205267</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:geometry>
+        <gml:MultiPolygon srsName="EPSG:4326">
+        <gml:polygonMember>
+          <gml:Polygon>
+            <gml:outerBoundaryIs>
+              <gml:LinearRing>
+                <gml:coordinates>3.013501,49.205266 3.013722,49.205267 3.013996,49.205266 3.014269,49.205258 3.014542,49.205242 3.014813,49.205220 3.015083,49.205190 3.015351,49.205154 3.015617,49.205110 3.015879,49.205060 3.016139,49.205003 3.016394,49.204939 3.016646,49.204868 3.016893,49.204791 3.017135,49.204708 3.017372,49.204619 3.017603,49.204523 3.017828,49.204422 3.018047,49.204314 3.018260,49.204201 3.018465,49.204083 3.018663,49.203960 3.018853,49.203831 3.019035,49.203698 3.019209,49.203560 3.019374,49.203417 3.019531,49.203270 3.019679,49.203120 3.019817,49.202966 3.019946,49.202808 3.020065,49.202647 3.020174,49.202483 3.020273,49.202316 3.020362,49.202147 3.020440,49.201976 3.020508,49.201803 3.020566,49.201628 3.020613,49.201452 3.020649,49.201274 3.020674,49.201096 3.020688,49.200918 3.020692,49.200739 3.020692,49.200733 3.020691,49.200688 3.020683,49.200502 3.020663,49.200316 3.020631,49.200132 3.020587,49.199948 3.020532,49.199766 3.020466,49.199585 3.020388,49.199406 3.020299,49.199230 3.020199,49.199056 3.020088,49.198885 3.019966,49.198717 3.019834,49.198552 3.019691,49.198391 3.019538,49.198235 3.019376,49.198082 3.019204,49.197934 3.019023,49.197791 3.018833,49.197652 3.018634,49.197519 3.018427,49.197392 3.018212,49.197270 3.017990,49.197154 3.017760,49.197044 3.017524,49.196941 3.017282,49.196844 3.017033,49.196753 3.016779,49.196670 3.016520,49.196593 3.016256,49.196523 3.015989,49.196461 3.015717,49.196406 3.015442,49.196358 3.015164,49.196317 3.014885,49.196285 3.014603,49.196259 3.014320,49.196242 3.014056,49.196232 3.013844,49.196227 3.013553,49.196224 3.013261,49.196230 3.012969,49.196243 3.012679,49.196265 3.012391,49.196294 3.012104,49.196331 3.011820,49.196377 3.011540,49.196430 3.011263,49.196491 3.010990,49.196559 3.010722,49.196636 3.010460,49.196719 3.010203,49.196810 3.009952,49.196907 3.009707,49.197012 3.009470,49.197123 3.009240,49.197241 3.009018,49.197365 3.008804,49.197495 3.008599,49.197631 3.008402,49.197772 3.008215,49.197919 3.008038,49.198070 3.007871,49.198227 3.007714,49.198388 3.007568,49.198553 3.007433,49.198722 3.007308,49.198895 3.007196,49.199071 3.007094,49.199250 3.007004,49.199432 3.006927,49.199616 3.006861,49.199802 3.006807,49.199989 3.006766,49.200178 3.006763,49.200191 3.006755,49.200240 3.006729,49.200411 3.006713,49.200581 3.006707,49.200751 3.006711,49.200921 3.006724,49.201091 3.006748,49.201260 3.006781,49.201429 3.006824,49.201597 3.006877,49.201764 3.006939,49.201929 3.007011,49.202092 3.007093,49.202254 3.007183,49.202414 3.007283,49.202571 3.007392,49.202725 3.007510,49.202877 3.007636,49.203026 3.007771,49.203172 3.007914,49.203314 3.008066,49.203452 3.008225,49.203587 3.008392,49.203717 3.008566,49.203844 3.008748,49.203966 3.008937,49.204083 3.009132,49.204196 3.009334,49.204304 3.009541,49.204406 3.009755,49.204504 3.009974,49.204596 3.010198,49.204682 3.010427,49.204763 3.010661,49.204839 3.010899,49.204908 3.011140,49.204972 3.011385,49.205029 3.011634,49.205081 3.011885,49.205126 3.012138,49.205165 3.012394,49.205198 3.012651,49.205224 3.012910,49.205244 3.013170,49.205258 3.013430,49.205265 3.013501,49.205266 </gml:coordinates>
+              </gml:LinearRing>
+            </gml:outerBoundaryIs>
+          </gml:Polygon>
+        </gml:polygonMember>
+        </gml:MultiPolygon>
+        </ms:geometry>
+        <ms:INSEE>60320</ms:INSEE>
+        <ms:Commune>Ivors</ms:Commune>
+        <ms:Type_monument>Portail d&#39;entrée</ms:Type_monument>
+        <ms:Type_inscript>classé</ms:Type_inscript>
+        <ms:Date_inscript>1977-01-00T00:00:00Z</ms:Date_inscript>
+        <ms:Id_Merimee>PA00114718</ms:Id_Merimee>
+        <ms:Lien_Merimee>http://www.culture.gouv.fr/public/mistral/merimee_fr?ACTION=CHERCHER&amp;FIELD_1=REF&amp;VALUE_1=PA00114718</ms:Lien_Merimee>
+      </ms:L_SERVITUDE_AC1_MH_S_060>
+    </gml:featureMember>
+    <gml:featureMember><!-- Point -->
+      <ms:L_MUSEE_CHATEAU_041>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:4326">
+        		<gml:coordinates>1.332121,47.586086 1.332121,47.586086</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:geometry>
+        <gml:Point srsName="EPSG:4326">
+          <gml:coordinates>1.332121,47.586086</gml:coordinates>
+        </gml:Point>
+        </ms:geometry>
+        <ms:Commune>Blois</ms:Commune>
+        <ms:Adresse>Place du Château</ms:Adresse>
+        <ms:CodPos>41000</ms:CodPos>
+        <ms:type>Château</ms:type>
+        <ms:AdeGeocod>Place du Château 41000 Blois</ms:AdeGeocod>
+        <ms:adresse_tr>Place du Château 41000 Blois</ms:adresse_tr>
+        <ms:score>0.936809090909</ms:score>
+      </ms:L_MUSEE_CHATEAU_041>
+    </gml:featureMember>
+    <gml:featureMember><!-- Point -->
+      <ms:L_MUSEE_CHATEAU_041>
+        <gml:boundedBy>
+        	<gml:Box srsName="EPSG:4326">
+        		<gml:coordinates>1.431157,47.477408 1.431157,47.477408</gml:coordinates>
+        	</gml:Box>
+        </gml:boundedBy>
+        <ms:geometry>
+        <gml:Point srsName="EPSG:4326">
+          <gml:coordinates>1.431157,47.477408</gml:coordinates>
+        </gml:Point>
+        </ms:geometry>
+        <ms:Commune>Cheverny</ms:Commune>
+        <ms:Adresse>Château du Breuil</ms:Adresse>
+        <ms:CodPos>41700</ms:CodPos>
+        <ms:type>Château du Breuil</ms:type>
+        <ms:AdeGeocod>Château du Breuil 41700 Cheverny</ms:AdeGeocod>
+        <ms:adresse_tr>Chemin du Breuil 41700 Cheverny</ms:adresse_tr>
+        <ms:score>0.569054545455</ms:score>
+      </ms:L_MUSEE_CHATEAU_041>
+    </gml:featureMember>
+</wfs:FeatureCollection>
+

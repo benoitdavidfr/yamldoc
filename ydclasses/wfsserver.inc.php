@@ -61,6 +61,9 @@ doc: |
   Des tests unitaires de la transformation GML -> JSON sont définis.
       
 journal:
+  17-18/9/2018:
+    - modification du format intermédiaire pour passage de GML en GeoJSON
+    - l'utilisation d'un pseudo JSON ne fonctionnait pas dans certains cas
   15/9/2018:
     - ajout gestion Point en GML 2
   12/9/2018:
@@ -485,6 +488,15 @@ class WfsServerJson extends WfsServer {
   }
 };
 
+// teste si la sous-chaine de $mainstr commencant à la position pos est identique à la chaine $substr
+// si c'est le cas avance pos de de longueur de substr
+function substrcmpp(string $mainstr, int &$pos, string $substr): bool {
+  $cmp = (substr($mainstr, $pos, strlen($substr)) == $substr);
+  if ($cmp)
+    $pos += strlen($substr);
+  return $cmp;
+}
+
 // Essai d'une classe implémentant les requêtes pour un serveur WFS ne parlant pas JSON
 class WfsServerGml extends WfsServer {
   private $xsltProcessors=[];
@@ -587,16 +599,16 @@ class WfsServerGml extends WfsServer {
       if ($property['localType']=='string') {
         //echo '$property = '; print_r($property);
         $name = $property['name'];
-        $xsl_properties .= "<xsl:if test=\"*/$targetPrefix:$name\">\n"
-          ."      $name: <xsl:value-of select=\"*/$targetPrefix:$name\"/>\n"
-          ."      </xsl:if>";
+        $xsl_properties .= "<xsl:if test=\"*/$targetPrefix:$name\">"
+          ."<property name='$name'><xsl:value-of select=\"*/$targetPrefix:$name\"/></property>"
+          ."</xsl:if>\n";
         //echo "xsl=$xsl_properties\n";
       }
     }
     if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
-      $xslsrc = file_get_contents(__DIR__.'/wfsgml2togeojson.xsl'); // GML 2
+      $xslsrc = file_get_contents(__DIR__.'/wfsgml2simpl.xsl'); // GML 2
     else
-      $xslsrc = file_get_contents(__DIR__.'/wfsgml32togeojson.xsl'); // GML 3.2
+      $xslsrc = file_get_contents(__DIR__.'/wfsgml3simpl.xsl'); // GML 3.2
     $targetNamespaceDef = "xmlns:$targetPrefix=\"$targetNamespace\"";
     $xslsrc = str_replace('{targetNamespaceDef}', $targetNamespaceDef, $xslsrc);
     $xslsrc = str_replace('{xslProperties}', $xsl_properties, $xslsrc);
@@ -604,9 +616,9 @@ class WfsServerGml extends WfsServer {
     return $xslsrc;
   }
   
-  // effectue la transformation de pseudo GeoJSON en un GeoJSON
-  function pseudo2GeoJson(string $pseudo, string $format, array $bbox, int $zoom): void {
-    //die($pseudo);
+  // effectue la transformation de simpleXml en GeoJSON
+  function simple2GeoJson(string $simpleXml, string $format, array $bbox, int $zoom): void {
+    //die($simpleXml);
     $res = 0;
     if ($zoom <> -1) {
       $res = 360.0 / (2 ** ($zoom+8)); // resolution en fonction du zoom
@@ -615,92 +627,117 @@ class WfsServerGml extends WfsServer {
       file_put_contents(
           self::$log,
           YamlDoc::syaml([
-            'call'=> 'pseudo2GeoJson',
+            'call'=> 'simple2GeoJson',
             'zoom'=> $zoom,
             'res'=> $res,
           ]),
           FILE_APPEND
       );
     }
+    $strings = [
+      'FeatureCollection'=> '<FeatureCollection xmlns="http://georef.eu/yamldoc" xmlns:wfs="http://www.opengis.net/wfs" xmlns:gml="http://www.opengis.net/gml" xmlns:ms="http://mapserver.gis.umn.edu/mapserver">',
+    ];
     $pos = 0;
     $nofeature = 0;
     while ($pos != -1) {
-      if (substr($pseudo, $pos, 1)=="\n") {
-        $pos++;
+      if (substrcmpp($simpleXml, $pos, "<?xml version=\"1.0\"?>\n")) {
         if ($format=='verbose')
-          echo "ligne vide reconnue\n";
+          echo "ligne en-tête reconnue\n";
       }
-      elseif (substr($pseudo, $pos, 11) == "- Feature:\n") {
-        $pos += 11;
+      elseif (substrcmpp($simpleXml, $pos, '<FeatureCollection')) {
+        $pos = strpos($simpleXml, '<', $pos); // je pointe sur le prochain '<' pour sauter les déclarations d'espaces
+        if ($format=='verbose')
+          echo "FeatureCollection reconnu\n";
+      }
+      elseif (substrcmpp($simpleXml, $pos, '</FeatureCollection>')) {
+        if ($format=='verbose')
+          echo "/FeatureCollection reconnu\n";
+        return;
+      }
+      elseif (substrcmpp($simpleXml, $pos, '<Feature>')) {
         if ($format=='json')
           echo $nofeature?",\n":'',"{ \"type\":\"Feature\",\n";
-        $pos = $this->decodeFeature($pseudo, $pos, $format, $bbox, $res);
+        $pos = $this->decodeFeature($simpleXml, $pos, $format, $bbox, $res);
+        if (!substrcmpp($simpleXml, $pos, '</Feature>'))
+          throw new Exception("Erreur dans simple2GeoJson pos=$pos sur '".substr($simpleXml,$pos, 1000)."' line ".__LINE__);
         if ($format=='json')
           echo "}";
         $nofeature++;
       }
       else {
-        throw new Exception("Erreur dans pseudo2GeoJson pos=$pos sur '".substr($pseudo,$pos, 1000)."' line ".__LINE__);
+        throw new Exception("Erreur dans simple2GeoJson pos=$pos sur '".substr($simpleXml,$pos, 1000)."' line ".__LINE__);
       }
     }
     if ($format=='json')
       echo "\n";
   }
   
-  function decodeFeature(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
-    if (substr($pseudo, $pos, 16) != "    properties:\n")
-      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
-    $pos += 16;
+  function decodeFeature(string $simpleXml, int $pos, string $format, array $bbox, float $res): int {
+    if (!substrcmpp($simpleXml, $pos, '<properties>'))
+      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
     if ($format == 'json')
       echo "  \"properties\": {";
     $noprop = 0;
-    while (substr($pseudo, $pos, 6) == "      ") {
-      $pos += 6;
-      $possep = strpos($pseudo, ':', $pos);
-      $name = substr($pseudo, $pos, $possep - $pos);
-      $posret = strpos($pseudo, "\n", $possep);
-      if ($posret === false)
-        throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
-      $value = substr($pseudo, $possep + 2, $posret - $possep - 2);
+    while (substrcmpp($simpleXml, $pos, '<property name="')) {
+      $possep = strpos($simpleXml, '"', $pos);
+      $name = substr($simpleXml, $pos, $possep - $pos);
+      $pos = $possep + 1;
+      if (substrcmpp($simpleXml, $pos, '>')) {
+        $posend = strpos($simpleXml, '<', $pos);
+        if ($posend === false)
+          throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
+        $value = substr($simpleXml, $pos, $posend - $pos);
+        $value = str_replace("\n", '\n', $value);
+        $pos = $posend;
+        if (!substrcmpp($simpleXml, $pos, '</property>'))
+          throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
+      }
+      elseif (substrcmpp($simpleXml, $pos, '/>')) {
+        $value = '';
+      }
+      else
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
       if ($format == 'verbose')
         echo "property: name=$name, value=$value\n";
       elseif ($format == 'json')
         echo $noprop?",\n":"\n","    \"$name\" : \"$value\"";
-      $pos = $posret + 1;
       $noprop++;
     }
+    if (!substrcmpp($simpleXml, $pos, '</properties>'))
+      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
     if ($format == 'json')
       echo "\n  },\n";
-    if (substr($pseudo, $pos, 16) == "    MultiCurve:\n") {
-      $pos += 16;
+    if (substrcmpp($simpleXml, $pos, '<MultiLineString>')) {
       if ($format == 'verbose')
-        echo "MultiCurve détectée pos=$pos\n";
+        echo "MultiLineString détectée pos=$pos\n";
       elseif ($format == 'json')
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"MultiLineString\",\n",
           "    \"coordinates\" : [\n";
-      $pos = $this->decodeMultiCurve($pseudo, $pos, $format, $bbox, $res);
+      $pos = $this->decodeMultiLineString($simpleXml, $pos, $format, $bbox, $res);
+      if (!substrcmpp($simpleXml, $pos, '</MultiLineString>'))
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
       if ($format == 'json')
         echo "    ]\n",
           "  }\n";
       return $pos;
     }
-    elseif (substr($pseudo, $pos, 18) == "    MultiSurface:\n") {
-      $pos += 18;
+    elseif (substrcmpp($simpleXml, $pos, '<MultiPolygon>')) {
       if ($format == 'verbose')
-        echo "MultiSurface détectée pos=$pos\n";
+        echo "MultiPolygon détecté pos=$pos\n";
       elseif ($format == 'json')
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"MultiPolygon\",\n",
           "    \"coordinates\" : [\n";
-      $pos = $this->decodeMultiSurface($pseudo, $pos, $format, $bbox, $res);
+      $pos = $this->decodeMultiPolygon($simpleXml, $pos, $format, $bbox, $res);
+      if (!substrcmpp($simpleXml, $pos, '</MultiPolygon>'))
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
       if ($format == 'json')
         echo "    ]\n",
           "  }\n";
       return $pos;
     }
-    elseif (substr($pseudo, $pos, 11) == "    Point: ") {
-      $pos += 11;
+    elseif (substrcmpp($simpleXml, $pos, '<Point>')) {
       if (isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
         $coordSep = ','; // GML 2
       else
@@ -709,37 +746,45 @@ class WfsServerGml extends WfsServer {
         $coordOrderInGml = 'lngLat'; // GML 2
       else
         $coordOrderInGml = 'latLng'; // GML 3.2
-      $poseol = strpos($pseudo, "\n", $pos);
-      $poswhite = strpos($pseudo, $coordSep, $pos);
-      $x = substr($pseudo, $pos, $poswhite-$pos);
+      $poseoc = strpos($simpleXml, '<', $pos);
+      $poswhite = strpos($simpleXml, $coordSep, $pos);
+      $x = substr($simpleXml, $pos, $poswhite-$pos);
       $pos = $poswhite+1;
       //$poswhite = strpos($pseudo, ' ', $pos);
-      if ($poseol === false)
-        $y = substr($pseudo, $pos);
+      if ($poseoc === false)
+        $y = substr($simpleXml, $pos);
       else
-        $y = substr($pseudo, $pos, $poseol-$pos);
+        $y = substr($simpleXml, $pos, $poseoc-$pos);
       if ($format == 'verbose')
-        echo "Point détecté pos=$pos\n";
+        echo "Point détecté pos=$pos, x=$x, y=$y\n";
       elseif ($format == 'json')
         echo "  \"geometry\" : {\n",
           "    \"type\" : \"Point\",\n",
           "    \"coordinates\" : ",$coordOrderInGml == 'lngLat' ? "[ $x, $y ]\n" : "[ $y, $x ]\n",
           "  }\n";
-      $pos = ($poseol === false) ? -1 : $poseol + 1;
+      $pos = ($poseoc === false) ? -1 : $poseoc;
+      if (!substrcmpp($simpleXml, $pos, '</Point>'))
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur '".substr($simpleXml,$pos, 1000)."' line ".__LINE__);
       return $pos;
     }
-    else {
-      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($pseudo,$pos, 1000)." line ".__LINE__);
-    }
+    else
+      throw new Exception("Erreur dans decodeFeature pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
   }
   
-  function decodeMultiCurve(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
+  function decodeMultiLineString(string $simpleXml, int $pos, string $format, array $bbox, float $res): int {
     $nols = 0;
-    while (($pos != -1) && substr($pseudo, $pos, 21) == "      - LineString2: ") {
-      $pos += 21;
+    while (($pos != -1) && substrcmpp($simpleXml, $pos, '<LineString>')) {
+      if (substrcmpp($simpleXml, $pos, '<srsDimension>2</srsDimension>'))
+        $pos += 0; // en GML 3.2 dimension
       if ($format == 'verbose')
-        echo "LineString2 détectée pos=$pos\n";
-      $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
+        echo "LineString détectée pos=$pos\n";
+      if (substrcmpp($simpleXml, $pos, '<posList>'))
+        $pos += 0; // en GML 3.2 dimension
+      $pts = $this->decodeListPoints2($simpleXml, $pos, $format, $bbox, $res);
+      if (substrcmpp($simpleXml, $pos, '</posList>'))
+        $pos += 0; // en GML 3.2 dimension
+      if (!substrcmpp($simpleXml, $pos, '</LineString>'))
+        throw new Exception("Erreur dans decodeFeature pos=$pos sur '".substr($simpleXml,$pos, 1000)."' line ".__LINE__);
       if (($format == 'json') && $pts) {
         echo $nols?",\n":'',"      [";
         $this->encodeListPoints2($pts, $format);
@@ -752,16 +797,17 @@ class WfsServerGml extends WfsServer {
     return $pos;
   }
   
-  function decodeMultiSurface(string $pseudo, int $pos, string $format, array $bbox, float $res): int {
-    $nosurf = 0;
-    while (($pos != -1) && substr($pseudo, $pos, 18) == "      - Polygon2:\n") {
-      $pos += 18;
+  function decodeMultiPolygon(string $simpleXml, int $pos, string $format, array $bbox, float $res): int {
+    $nopol = 0;
+    while (($pos != -1) && substrcmpp($simpleXml, $pos, '<Polygon>')) {
       if ($format == 'verbose')
-        echo "Polygon2 détecté pos=$pos\n";
-      $header = ($nosurf?",\n":'')."     [\n";
+        echo "Polygon détecté pos=$pos\n";
+      $header = ($nopol?",\n":'')."     [\n";
       $footer = "     ]";
-      if ($this->decodePolygon2($pseudo, $pos, $format, $bbox, $res, $header, $footer))
-        $nosurf++;
+      if ($this->decodePolygon2($simpleXml, $pos, $format, $bbox, $res, $header, $footer))
+        $nopol++;
+      if (!substrcmpp($simpleXml, $pos, '</Polygon>'))
+        throw new Exception("Erreur dans decodeMultiPolygon pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
     }
     if ($format == 'json')
         echo "\n";
@@ -772,13 +818,16 @@ class WfsServerGml extends WfsServer {
   // modifie $pos avec la position après la fin de ligne ou -1
   // retourne true si le polygone intersecte la bbox, false sinon
   // $header et $footer sont affichés avant et après si le polygone intersecte la bbox et si format json
-  function decodePolygon2(string $pseudo, int &$pos, string $format, array $bbox, float $res, string $header, string $footer): bool {
-    if (substr($pseudo, $pos, 20) != "          exterior: ")
-      throw new Exception("Erreur dans decodePolygon2 exterior non détecté\n");
-    $pos += 20;
+  function decodePolygon2(string $simpleXml, int &$pos, string $format, array $bbox, float $res, string $header, string $footer): bool {
+    if (substrcmpp($simpleXml, $pos, '<srsDimension>2</srsDimension>'))
+      $pos += 0; // en GML 3.2 dimension
+    if (!substrcmpp($simpleXml, $pos, '<outerBoundaryIs>'))
+      throw new Exception("Erreur dans decodePolygon2 outerBoundaryIs non détecté pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
     if ($format == 'verbose')
-      echo "Polygon2 exterior détecté\n";
-    $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
+      echo "Polygon2 outerBoundaryIs détecté\n";
+    $pts = $this->decodeListPoints2($simpleXml, $pos, $format, $bbox, $res);
+    if (!substrcmpp($simpleXml, $pos, '</outerBoundaryIs>'))
+      throw new Exception("Erreur dans decodePolygon2 pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
     if (!$pts) {
       $polygonIntersects = false;
       if ($format == 'verbose')
@@ -793,19 +842,15 @@ class WfsServerGml extends WfsServer {
         $this->encodeListPoints2($pts, $format);
       }
     }
-    if (substr($pseudo, $pos, 20) == "          interior:\n") {
-      $pos += 20;
+    while (substrcmpp($simpleXml, $pos, '<innerBoundaryIs>')) {
       if ($format == 'verbose')
-        echo "Polygon2 interior détecté\n";
-      while (substr($pseudo, $pos, 12) == "          - ") {
-        $pos += 12;
-        if ($format == 'verbose')
-          echo "Polygon2interior LineString2 détectée\n";
-        $pts = $this->decodeListPoints2($pseudo, $pos, $format, $bbox, $res);
-        if (($format == 'json') && $polygonIntersects && $pts) {
-          echo "],\n      [";
-          $this->encodeListPoints2($pts, $format);
-        }
+        echo "Polygon2interior détecté\n";
+      $pts = $this->decodeListPoints2($simpleXml, $pos, $format, $bbox, $res);
+      if (!substrcmpp($simpleXml, $pos, '</innerBoundaryIs>'))
+        throw new Exception("Erreur dans decodePolygon2 pos=$pos sur ".substr($simpleXml,$pos, 1000)." line ".__LINE__);
+      if (($format == 'json') && $polygonIntersects && $pts) {
+        echo "],\n      [";
+        $this->encodeListPoints2($pts, $format);
       }
     }
     if (($format == 'json') && $polygonIntersects)
@@ -817,7 +862,7 @@ class WfsServerGml extends WfsServer {
   // modifie $pos avec la position après la fin de ligne ou -1
   // renvoie la liste de points ou [] si aucun point n'est dans la qbbox
   // un filtre est effectué sur les points en fonction de la résolution $res si $res <> 0
-  function decodeListPoints2(string $pseudo, int &$pos, string $format, array $qbbox, float $res): array {
+  function decodeListPoints2(string $simpleXml, int &$pos, string $format, array $qbbox, float $res): array {
     if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0'))
       $gmlVersion = '2'; // GML 2
     else
@@ -827,27 +872,26 @@ class WfsServerGml extends WfsServer {
     $ptprec = []; // le dernier point retenu dans $pts
     $ptLost = []; // mémorise le dernier point traité s'il n'a pas été retenu, sinon []
     $bbox = []; // le bbox de la liste de points
-    $poseol = strpos($pseudo, "\n", $pos);
+    $poseoc = strpos($simpleXml, '<', $pos);
     while (1) {
       if ($gmlVersion == '2')
-        $poswhite = strpos($pseudo, ',', $pos);
+        $poswhite = strpos($simpleXml, ',', $pos);
       else
-        $poswhite = strpos($pseudo, ' ', $pos);
-      //echo "poswhite=$poswhite, poseol=$poseol, pos=$pos\n";
-      if (($poswhite === false) || (($poseol !== FALSE) && ($poswhite > $poseol))) {
+        $poswhite = strpos($simpleXml, ' ', $pos);
+      if (($poswhite === false) || (($poseoc !== FALSE) && ($poswhite > $poseoc))) {
         if ($ptLost) // je force à retenir le dernier point s'il ne l'avait pas été
           $pts[] = $ptLost;
         break;
       }
-      $x = substr($pseudo, $pos, $poswhite-$pos);
+      $x = substr($simpleXml, $pos, $poswhite-$pos);
       //echo "x=$x\n";
       $pos = $poswhite+1;
-      $poswhite = strpos($pseudo, ' ', $pos);
+      $poswhite = strpos($simpleXml, ' ', $pos);
       //  echo "poswhite=$poswhite, posret=$posret\n";
-      if (($poswhite === false) || (($poseol !== FALSE) && ($poswhite > $poseol))) {
-        die("Erreur dans step=$step sur ".substr($pseudo,$pos,1000));
+      if (($poswhite === false) || (($poseoc !== FALSE) && ($poswhite > $poseoc))) {
+        throw new Exception("Erreur dans step=$step sur ".substr($simpleXml,$pos,1000));
       }
-      $y = substr($pseudo, $pos, $poswhite-$pos);
+      $y = substr($simpleXml, $pos, $poswhite-$pos);
       $pos = $poswhite+1;
       if ($format=='verbose')
         echo "  pos=$pos, nopt=$nbpts, x=$x, y=$y\n";
@@ -875,10 +919,10 @@ class WfsServerGml extends WfsServer {
       else // le point courant n'est pas conservé dans $pts, il est mémorisé dans $ptLost
         $ptLost = [$x,$y];
     }
-    if ($poseol === FALSE)
+    if ($poseoc === FALSE)
       $pos = -1;
     else
-      $pos = $poseol + 1;
+      $pos = $poseoc;
     $xmin = max($qbbox[0], $bbox[0]);
     $ymin = max($qbbox[1], $bbox[1]);
     $xmax = min($qbbox[2], $bbox[2]);
@@ -939,18 +983,18 @@ class WfsServerGml extends WfsServer {
         throw new Exception("Erreur dans WfsServerGml::wfs2GeoJson() sur loadXML()");
       }
     }
-    $pseudo = $this->xsltProcessors['typename']->transformToXML($getrecords);
-    if ($format == 'pseudo')
-      die($pseudo); // pour afficher le pseudo intermédiaire
-    $this->pseudo2GeoJson($pseudo, $format, $bbox, $zoom);
+    $simpleXml = $this->xsltProcessors['typename']->transformToXML($getrecords);
+    if ($format == 'simpleXml')
+      die($simpleXml); // pour afficher le simpleXml intermédiaire
+    $this->simple2GeoJson($simpleXml, $format, $bbox, $zoom);
   }
   
   // Test unitaire de la méthode WfsServerGml::wfs2GeoJson()
   function wfs2GeoJsonTest() {
-    if (0) { // sextant en WFS 2.0.0
-      $this->_c['wfsUrl'] = 'http://www.ifremer.fr/services/wfs/dcsmm';
+    if (1) {
       $queries = [
-        [ 'title'=> "ESPACES_TERRESTRES_P MultiSurface GML 3.2.1 EPSG:4326",
+        [ 'title'=> "sextant/WFS 2.0.0 ESPACES_TERRESTRES_P MultiSurface GML 3.2.1 EPSG:4326",
+          'wfsUrl'=> 'http://www.ifremer.fr/services/wfs/dcsmm',
           'params'=> [
             'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:ESPACES_TERRESTRES_P', 'RESULTTYPE'=> 'results',
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
@@ -958,7 +1002,8 @@ class WfsServerGml extends WfsServer {
           ],
           'zoom'=> 9,
         ],
-        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=-1",
+        [ 'title'=> "sextant/WFS 2.0.0 DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=-1",
+          'wfsUrl'=> 'http://www.ifremer.fr/services/wfs/dcsmm',
           'params'=> [
             'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
             'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
@@ -966,7 +1011,8 @@ class WfsServerGml extends WfsServer {
           ],
           'zoom'=> -1,
         ],
-        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=1",
+        [ 'title'=> "sextant/WFS 2.0.0 DCSMM_SRM_TERRITORIALE_201806_L MultiCurve 41,-10,51,16 zoom=1",
+          'wfsUrl'=> 'http://www.ifremer.fr/services/wfs/dcsmm',
           'params'=> [
             'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_L',
             'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '41,-10,51,16',
@@ -974,7 +1020,8 @@ class WfsServerGml extends WfsServer {
           ],
           'zoom'=> 1,
         ],
-        [ 'title'=> "DCSMM_SRM_TERRITORIALE_201806_P MultiPolygone bbox=-7,47,-2,49",
+        [ 'title'=> "sextant/WFS 2.0.0 DCSMM_SRM_TERRITORIALE_201806_P MultiPolygone bbox=-7,47,-2,49",
+          'wfsUrl'=> 'http://www.ifremer.fr/services/wfs/dcsmm',
           'params'=> [
             'VERSION'=> '2.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAMES'=> 'ms:DCSMM_SRM_TERRITORIALE_201806_P',
             'RESULTTYPE'=> 'results', 'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '47,-7,49,-2',
@@ -982,83 +1029,42 @@ class WfsServerGml extends WfsServer {
           ],
           'zoom'=> 9,
         ],
-      ];
-    }
-    elseif (0) { // geoide en WFS 1.0.0 N_VULNERABLE_ZSUP_041 Polygones 
-      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
-        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map';
-      $this->_c['wfsOptions'] = [
-        'version'=> '1.0.0',
-        'coordOrderInGml'=> 'lngLat',
-      ];
-
-      $queries = [
-        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
+        // GeoIde
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041 Polygones",
+          'wfsUrl'=> 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+            .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f19f7c24-c605-43f5-b4a0-74676524d00a.internet.map',
+          'wfsOptions' => ['version'=> '1.0.0', 'coordOrderInGml'=> 'lngLat' ],
           'params'=> [
             'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
           ],
           'zoom'=> 18,
         ],
-        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
-          'params'=> [
-            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
-            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
-          ],
-          'zoom'=> 10,
-        ],
-        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, N_VULNERABLE_ZSUP_041",
-          'params'=> [
-            'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_VULNERABLE_ZSUP_041',
-            'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-8.0,42.4,14.0,51.1',
-          ],
-          'zoom'=> 10,
-        ],
-      ];
-    }
-    elseif (0) { // geoide en WFS 1.0.0 L_MUSEE_CHATEAU_041 Point 
-      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
-        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f31dbfdd-1038-451b-a539-668ac27b6526.internet.map';
-      $this->_c['wfsOptions'] = [
-        'version'=> '1.0.0',
-        'coordOrderInGml'=> 'lngLat',
-      ];
-      $queries = [
-        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, L_MUSEE_CHATEAU_041",
+        [ 'title'=> "GeoIde, WFS 1.0.0, GML 2, L_MUSEE_CHATEAU_041 Point",
+          'wfsUrl'=> 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+            .'map=/opt/data/carto/geoide-catalogue/1.4/org_38024/f31dbfdd-1038-451b-a539-668ac27b6526.internet.map',
+          'wfsOptions'=> ['version'=> '1.0.0', 'coordOrderInGml'=> 'lngLat'],
           'params'=> [
             'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'L_MUSEE_CHATEAU_041',
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-7.294921875,42.09822241119,13.3154296875,51.495064730144',
           ],
           'zoom'=> 6,
         ],
-      ];
-    }
-    elseif (0) { // geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects  
-      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
-        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38062/83c16694-3470-46e5-b0ad-3f374e1337f3.internet.map';
-      $this->_c['wfsOptions'] = [
-        'version'=> '1.0.0',
-        'coordOrderInGml'=> 'lngLat',
-      ];
-      $queries = [
         [ 'title'=> "geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects ",
+          'wfsUrl'=> 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+            .'map=/opt/data/carto/geoide-catalogue/1.4/org_38062/83c16694-3470-46e5-b0ad-3f374e1337f3.internet.map',
+          'wfsOptions'=> ['version'=> '1.0.0','coordOrderInGml'=> 'lngLat'],
           'params'=> [
             'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'L_SERVITUDE_AC1_MH_S_060',
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '1.6,48.4,4.2,49.5',
           ],
           'zoom'=> 9,
         ],
-      ];
-    }
-    elseif (1) { // geoide en WFS 1.0.0 L_SERVITUDE_AC1_MH_S_060 caractères incorrects  
-      $this->_c['wfsUrl'] = 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
-        .'map=/opt/data/carto/geoide-catalogue/1.4/org_38038/fr-120066022-orphan-dc361a37-5280-4804-993d-81daf41ed017.intranet.map';
-      $this->_c['wfsOptions'] = [
-        'version'=> '1.0.0',
-        'coordOrderInGml'=> 'lngLat',
-      ];
-      $queries = [
-        [ 'title'=> "geoide en WFS 1.0.0 N_ZONE_ALEA_PPRN_19960002_S_048 Polygon",
+        [ 'title'=> "geoide en WFS 1.0.0 N_ZONE_ALEA_PPRN_19960002_S_048 Polygon avec trou + eol dans propriété",
+          'wfsUrl'=> 'http://ogc.geo-ide.developpement-durable.gouv.fr/wxs?'
+            .'map=/opt/data/carto/geoide-catalogue/1.4/org_38038/'
+            .'fr-120066022-orphan-dc361a37-5280-4804-993d-81daf41ed017.intranet.map',
+          'wfsOptions'=> ['version'=> '1.0.0','coordOrderInGml'=> 'lngLat'],
           'params'=> [
             'VERSION'=> '1.0.0', 'REQUEST'=> 'GetFeature', 'TYPENAME'=> 'N_ZONE_ALEA_PPRN_19960002_S_048',
             'SRSNAME'=> 'EPSG:4326', 'BBOX'=> '-9.7,42.3,15.7,51.2',
@@ -1071,42 +1077,47 @@ class WfsServerGml extends WfsServer {
     if (!isset($_GET['action'])) {
       echo "<h3>wfs2GeoJson Queries</h3><ul>\n";
       foreach ($queries as $num => $query) {
+        $this->_c['wfsUrl'] = $query['wfsUrl'];
+        if (isset($query['wfsOptions']))
+          $this->_c['wfsOptions'] = $query['wfsOptions'];
         $url = $this->url($query['params']);
         echo "<li>$query[title] ",
           "(<a href='$url'>url</a>, ", // appel de l'URL du WFS
           "<a href='?action=wfs&query=$num'>wfs</a>, ", // appel du WFS et stockage
           "<a href='?action=xml&query=$num'>xml</a>, ", // si en cache affiche
           "<a href='?action=xsl&query=$num'>xsl</a>, ", // affiche la feuille de style
-          "<a href='?action=geojson&query=$num&format=pseudo'>pseudoGeoJSON</a>, ",
+          "<a href='?action=geojson&query=$num&format=simpleXml'>simpleXml</a>, ",
           "<a href='?action=geojson&query=$num&format=verbose'>GeoJSON verbose</a>, ",
           "<a href='?action=geojson&query=$num&format=json'>GeoJSON json</a>)\n"; // transforme en GeoJSON
       }
-      echo "</ul>\n",
-        "<a href='?action=ex0.txt'>Appel de pseudo2GeoJson() sur le fichier ex0.txt</a><br>\n";
-      die();
-    }
-
-    if ($_GET['action']=='xsl') {
-      header('Content-type: text/xml');
-      $query = $queries[$_GET['query']];
-      $typename = isset($query['params']['TYPENAMES']) ? $query['params']['TYPENAMES'] : $query['params']['TYPENAME'];
-      echo $this->xslForGeoJson($typename);
+      echo "</ul>\n";
+      //echo "<a href='?action=ex0.txt'>Appel de pseudo2GeoJson() sur le fichier ex0.txt</a><br>\n";
       die();
     }
     
-    if ($_GET['action']=='ex0.txt') {
+    /*if ($_GET['action']=='ex0.txt') {
       //header('Content-type: application/json');
       header('Content-type: text/plain');
       echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
       $this->pseudo2GeoJson(file_get_contents(__DIR__.$_SERVER['PATH_INFO']."/ex0.txt"), 'json');
       echo "]}\n";
       die();
-    }
+    }*/
 
-    // le nom du du fichier de cache du résultat de la requête est construit avec le MD5 de la requete
     $query = $queries[$_GET['query']];
+    $this->_c['wfsUrl'] = $query['wfsUrl'];
+    if (isset($query['wfsOptions']))
+      $this->_c['wfsOptions'] = $query['wfsOptions'];
+    // le nom du du fichier de cache du résultat de la requête est construit avec le MD5 de la requete
     $md5 = md5($this->url($query['params']));
     $filepath = __DIR__.$_SERVER['PATH_INFO']."/$md5.xml";
+
+    if ($_GET['action']=='xsl') {
+      header('Content-type: text/xml');
+      $typename = isset($query['params']['TYPENAMES']) ? $query['params']['TYPENAMES'] : $query['params']['TYPENAME'];
+      die($this->xslForGeoJson($typename));
+    }
+
     if ($_GET['action']=='wfs') {
       $getrecords = $this->query($query['params']);
       file_put_contents($filepath, $getrecords);
@@ -1125,11 +1136,14 @@ class WfsServerGml extends WfsServer {
       die($getrecords);
     }
     if ($_GET['action']=='geojson') {
-      if ($_GET['format']=='json')
+      if ($_GET['format']=='json') {
         header('Content-type: application/json');
+        echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
+      }
+      elseif ($_GET['format']=='simpleXml')
+        header('Content-type: text/xml');
       else
         header('Content-type: text/plain');
-      echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
       $typename = isset($query['params']['TYPENAMES']) ? $query['params']['TYPENAMES'] : $query['params']['TYPENAME'];
       $this->wfs2GeoJson(
         $typename,
