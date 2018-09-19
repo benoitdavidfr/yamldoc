@@ -104,8 +104,20 @@ require_once __DIR__.'/git.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-ini_set('memory_limit', '1024M');
+ini_set('memory_limit', '2048M');
 ini_set('max_execution_time', 600);
+
+//printf ("memory_get_usage=%.2f Mo<br>\n", memory_get_usage(true)/1024/1024);
+
+$logfile = __DIR__.'/index.log.yaml';
+if ($logfile) {
+  file_put_contents($logfile, YamlDoc::syaml([
+    'date'=> date(DateTime::ATOM),
+    '_GET'=> $_GET,
+    'memory_get_usage'=> sprintf("%.2f Mo", memory_get_usage(true)/1024/1024),
+  ]));
+  $t0 = microtime(true);
+}
 
 // Affichage du menu et du fil d'ariane comme array de docid
 function show_menu(string $store, array $breadcrumb) {
@@ -461,6 +473,15 @@ if (!isset($_GET['action'])) {
       echo "<pre>",str2html($doc->json($ypath)),"</pre>\n";
     else
       echo "<b>Erreur: format d'export '$_GET[format]' non reconnu</b><br>\n";
+  }
+  if ($logfile) {
+    file_put_contents(
+      $logfile,
+      YamlDoc::syaml([
+        'dtime'=> microtime(true) - $t0,
+        'memory_get_usage'=> sprintf("%.2f Mo", memory_get_usage(true)/1024/1024),
+      ]),
+      FILE_APPEND);
   }
   die();
 }

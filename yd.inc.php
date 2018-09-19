@@ -463,7 +463,7 @@ function new_doc(string $docid): ?Doc {
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php")))
           || (!file_exists("$filename.yaml") && !file_exists("$filename.php")))) {
-      //echo "unserialize()<br>\n";
+      //echo "unserialize($filename.pser)<br>\n";
       return unserialize(@file_get_contents("$filename.pser"));
   }
   // Sinon Si le fichier n'existe pas renvoie null

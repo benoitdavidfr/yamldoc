@@ -78,8 +78,8 @@ class MetadataDb extends YData {
     }
     elseif (($ypath == '/search') && isset($_GET['subject'])) {
       echo "<ul>\n";
-      foreach($this->searchOnSubject($_GET['subject'])['results'] as $md) {
-        echo "<li><a href='?doc=$docid&amp;ypath=/items/$md[id]'>$md[title]</a>\n";
+      foreach($this->searchOnSubject($_GET['subject'])['results'] as $id => $md) {
+        echo "<li><a href='?doc=$docid&amp;ypath=/items/$id'>$md[title]</a>\n";
       }
       echo "</ul>\n";
       echo "<pre>"; print_r($this->searchOnSubject($_GET['subject']));
@@ -107,10 +107,11 @@ class MetadataDb extends YData {
                 echo "<li><a href='$hasFormat[url]'>Lien WMS</a></li>\n";
               }
               elseif (isset($hasFormat['protocol']) && ($hasFormat['protocol'] == 'OGC:WFS')) {
-                echo "<li><a href='$hasFormat[url]'>Lien WFS</a></li>\n";
+                //echo "<li><a href='$hasFormat[url]'>Lien WFS</a></li>\n";
                 $fileId = $md['fileIdentifier'];
-                echo "fileId=$fileId<br>\n";
-                echo "<li><a href='id.php/geocats/geoide/items/$fileId/wfs/map/display'>Lien WFS</a></li>\n";
+                //echo "fileId=$fileId<br>\n";
+                echo "<li><a href='id.php/geocats/geoide/items/$fileId/directDwnld/map/display'>",
+                  "Affichage de la carte des objets</a></li>\n";
               }
             }
             echo "</url>\n";

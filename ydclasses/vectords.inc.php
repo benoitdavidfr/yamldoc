@@ -405,7 +405,12 @@ class VectorDataset extends YamlDoc {
         '/api'=> "retourne les points d'accès de ".get_class(),
         '/map'=> "retourne le contenu de la carte affichant la SD",
         '/map/{param}'=> Map::api()['api'],
+        '/wfs'=> "Affiche le WfsServer sous-jacent",
         '/wfs/{param}'=> WfsServer::api()['api'],
+        '/{lyrname}'=> "Affiche les caractéritiques de la couche {lyrname} de la SD",
+        '/{lyrname}?bbox={bbox}&zoom={zoom}'=> "Si les paramètres contiennent les chaines alors retourne les caractéritiques de la couche, sinon retourne les objets sélectionnés",
+        '/{lyrname}/properties'=> "Retourne la liste des propriétés de la couche",
+        '/{lyrname}/id/{id}'=> "Retourne l'objet {id} de la couche {lyrname} (non implémenté)",
       ]
     ];
   }
