@@ -1,30 +1,44 @@
 <?php
 /*PhpDoc:
-name: tileserver.inc.php
-title: tileserver.inc.php - serveur de tuiles
+name: viewds.inc.php
+title: viewds.inc.php - Série de données de consultation
 functions:
-doc: <a href='/yamldoc/?action=version&name=tileserver.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=viewds.inc.php'>doc intégrée en Php</a>
 */
 { // doc 
-$phpDocs['tileserver.inc.php']['file'] = <<<'EOT'
-name: tileserver.inc.php
-title: tileserver.inc.php - serveur de tuiles
+$phpDocs['viewds.inc.php']['file'] = <<<'EOT'
+name: viewds.inc.php
+title: viewds.inc.php - serveur de tuiles
 doc: |
-  La classe TileServer définit des serveurs de tuiles à partir de serveurs WMS/WMTS.
-
+  La classe ViewDataset définit série de données (SD) de consultation à partir de serveurs WMS/WMTS.  
+  Une telle SD est constituée de couches de consultation.
+  
   Outre les champs de métadonnées, le document doit définir les champs suivants:
 
-    - servers: différents serveurs chacun identifié par un nom et contenant les champs suivants:
-      - url : url du serveur
-      - protocol : protocole du serveur (WMS, WMTS)
-      - referer: referer à transmettre à chaque appel du serveur.
-    - layers
+    - layersByGroups: liste de couches de la SD structurée par sous-liste, chaque couche identifiée est définie par:
+      - title: son titre (obligatoire)
+      - server: l'id du document définissant son serveur qui doit être un WmsServer ou un WmtsServer (obligatoire)
+      - name: identifiant de la couche dans le serveur (obligatoire)
+      - abstract: résumé expliquant le contenu de la couche
+      - doc:
+        - soit l'URL d'une doc complémentaire,
+        - soit si la doc dépend du zoom un un array avec comme clé le niveau de zoom minimum et comme champs:
+          - max: le zoom maximum correspondant à cette doc
+          - title: le titre
+          - www: l'URL de la doc
+      - format: le format d'images de la couche (obligatoire)
+      - minZoom: zoom minimum pour lequel la couche est définie (obligatoire)
+      - maxZoom: zoom maximum pour lequel la couche est définie (obligatoire ?)
 
-  Il peut aussi définir les champs suivants:
-
+  A faire:
+    - Tester l'utilisation des styles
+    - Génération de la carte
+      
+  Exemples:
+  - view/igngp.yaml
 
 journal:
-  22/9/2018:
+  23/9/2018:
     - création
 EOT;
 }
@@ -33,17 +47,27 @@ EOT;
 //require_once __DIR__.'/../isometadata.inc.php';
 //require_once __DIR__.'/inc.php';
 
-class TileServer extends YamlDoc {
-  static $log = __DIR__.'/tileserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
+class ViewDataset extends YamlDoc {
+  static $log = __DIR__.'/viewds.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs
+  protected $layers = []; // les couches [ id => ViewLayer ]
+  protected $servers = []; // les serveurs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   function __construct($yaml, string $docid) {
     $this->_c = $yaml;
     $this->_id = $docid;
-    if (!$this->servers)
-      throw new Exception("Erreur dans TileServer::__construct(): champ servers obligatoire");
+    if (!$this->layersByGroup)
+      throw new Exception("Erreur dans ViewDataset::__construct(): champ layersByGroup obligatoire");
+    foreach ($this->layersByGroup as $group) {
+      foreach ($group as $lyrid => $layer) {
+        if (!isset($this->servers[$layer['server']]))
+          $layer['server'] = new_doc($layer['server']);
+        else
+          $layer['server'] = $this->servers[$layer['server']];
+        $this->layers[$lyrid] = new ViewLayer($lyrid, $layer);
+      }
+    }
   }
   
   // lit les champs
@@ -52,11 +76,73 @@ class TileServer extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "TileServer::show($docid, $ypath)<br>\n";
-    if (!$ypath || ($ypath=='/'))
-      showDoc($docid, $this->_c);
-    else
-      showDoc($docid, $this->extract($ypath));
+    echo "ViewDataset::show($docid, $ypath)<br>\n";
+    if (!$ypath || ($ypath=='/')) {
+      echo "<h1>",$this->title,"</h1>\n";
+      showDoc($docid, ['abstract'=> $this->abstract]);
+      echo "<h2>Couches</h2>";
+      foreach ($this->layersByGroup as $gid => $group) {
+        echo "<h3>$gid</h3><ul>\n";
+        foreach ($group as $lyrid => $layer) {
+          echo "<li><a href='?doc=$docid&amp;ypath=/$lyrid'>$layer[title]</a></li>\n";
+        }
+        echo "</ul>\n";
+      }
+    }
+    elseif (preg_match('!^/([^/]+)(/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
+      $lyrName = $matches[1];
+      $style = (isset($matches[2]) && $matches[2]) ? $matches[3] : '';
+      echo "style='$style'<br>\n";
+      $layer = $this->layers[$lyrName];
+      //print_r($layer);
+      //$layer['styles'] = $this->styles($lyrid);
+      foreach ($layer->styles() as $styleName => $s) {
+        $href = "?doc=$docid&amp;ypath=/$lyrName/$styleName"
+          .(isset($matches[4]) ? "/$matches[5]/$matches[6]/$matches[7]" : '');
+        $layer['styles'][$styleName]['title'] = "<html>\n<a href='$href'>$s[title]</a>";
+      }
+      $layer->show();
+      $zoom = isset($matches[4]) ? $matches[5]: 2;
+      $col = isset($matches[4]) ? max($matches[6], 0) : 0;
+      $cmin = isset($matches[4]) ? max($matches[6]-1, 0) : 0;
+      $cmax = isset($matches[4]) ? min($matches[6]+2, 2**$zoom - 1) : 2**$zoom - 1;
+      $row = isset($matches[4]) ? $matches[7] : 0;
+      $rmin = isset($matches[4]) ? max($matches[7]-1, 0) : 0;
+      $rmax = isset($matches[4]) ? min($matches[7]+2, 2**$zoom - 1): 2**$zoom - 1;
+      if ($style)
+        $lyrName = "$lyrName/$style";
+      echo "<table style='border:1px solid black; border-collapse:collapse;'>\n";
+      if ($zoom) {
+        $href = sprintf("?doc=$docid&amp;ypath=/$lyrName/%d/%d/%d", $zoom-1, $col/2, $row/2);
+        echo "<tr><td><a href='$href'>$zoom</a></td>";
+      }
+      else
+        echo "<tr><td>$zoom</td>";
+      for($col=$cmin; $col <= $cmax; $col++) {
+        echo "<td align='center'>col=$col</td>";
+      }
+      echo "<tr>\n";
+      for($row=$rmin; $row <= $rmax; $row++) {
+        echo "<tr><td>row=<br>$row</td>";
+        for($col=$cmin; $col <= $cmax; $col++) {
+          if (($row==$rmin) || ($row==$rmax) || ($col==$cmin) || ($col==$cmax))
+            $href = sprintf("?doc=$docid&amp;ypath=/$lyrName/%d/%d/%d", $zoom, $col, $row);
+          else
+            $href = sprintf("?doc=$docid&amp;ypath=/$lyrName/%d/%d/%d", $zoom+1, $col*2, $row*2);
+          $style = " style='border:1px solid blue;'";
+          $style = " style='border-collapse: collapse;'";
+          $style = " style='padding: 0px; border:1px solid blue;'";
+          $src = "http://$_SERVER[SERVER_NAME]/yamldoc/id.php/$docid/$lyrName/$zoom/$col/$row";
+          $img = "<img src='$src' alt='$lyrName/$zoom/$col/$row' height='256' width='256'>";
+          echo "<td$style><a href='$href'>$img</a></td>\n";
+        }
+        echo "</tr>\n";
+      }
+    }
+    else {
+      $lyrid = substr($ypath, 1);
+      showDoc($docid, $this->layers[$lyrid]);
+    }
     //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
   }
   
@@ -70,26 +156,107 @@ class TileServer extends YamlDoc {
     return [
       'class'=> get_class(), 
       'title'=> "description de l'API de la classe ".get_class(), 
-      'abstract'=> "document correspondant à un serveur de tuiles",
+      'abstract'=> "série de données de consultation",
       'api'=> [
         '/'=> "retourne le contenu du document ".get_class(),
         '/api'=> "retourne les points d'accès de ".get_class(),
-        '/servers'=> "liste les serveurs sous-jacents",
-        '/servers/{name}?{params}'=> "liste les serveurs sous-jacents",
-        
-        '/query?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en XML ou JSON, le paramètre SERVICE est prédéfini",
-        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, affiche le résultat en XML et raffraichit le cache",
-        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
-        '/ft'=> "retourne la liste des couches (FeatureType) exposées par le serveur avec pour chacune son titre et son résumé",
-        '/ft/{typeName}'=> "retourne la description de la couche {typeName}",
-        '/ft/{typeName}/geom(PropertyName)?'=> "retourne le nom de la propriété géométrique pour la couche {typeName}",
-        '/ft/{typeName}/num(berMatched)?bbox={bbox}&where={where}'=> "retourne le nombre d'objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, where est encodé en UTF-8",
-        '/ft/{typeName}/getFeature?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, limité à 1000 objets",
-        '/ft/{typeName}/getAllFeatures?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, utilise la pagination si plus de 100 objets",
+        '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
+        '/{layerName}'=> "retourne la description de la couche {layerName}",
+        '/{layerName}/{z}/{x}/{y}'=> "retourne la tuile {z} {x} {y} de la couche {layerName}",
+        '/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} dans le format {fmt}",
+        '/{layerName}/{style}/{z}/{x}/{y}'=>
+            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style}",
+        '/{layerName}/{style}/{z}/{x}/{y}.{fmt}'=>
+            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
+        '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
+        '/map/{param}'=> Map::api()['api'],
       ]
     ];
   }
-   
+
+  // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
+  function extractByUri(string $ypath) {
+    $docuri = $this->_id;
+    //echo "WfsServer::extractByUri($docuri, $ypath)<br>\n";
+    $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
+    if (!$ypath || ($ypath=='/')) {
+      return array_merge(['_id'=> $this->_id], $this->_c);
+    }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
+    elseif ($ypath == '/layers') {
+      $layers = [];
+      foreach ($this->layers as $lyrid => $lyr) {
+        $layer = $lyr->asArray();
+        $layers[$lyrid] = [
+          'title'=> $layer['title'],
+          'abstract'=> $layer['abstract'],
+          'doc'=> $layer['doc'],
+        ];
+      }
+      return $layers;
+    }
+    elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
+      return $this->layers[$matches[1]]->asArray();
+    }
+    elseif (preg_match('!^/([^/]+)(/.*)$!', $ypath, $matches)) {
+      return $this->layers[$matches[1]]->extractByUri($matches[2]);
+    }
+    else
+      return null;
+  }
+};
+
+
+class ViewLayer {
+  private $_id;
+  private $title;
+  private $server;
+  private $name;
+  private $abstract;
+  private $doc;
+  private $format;
+  private $minZoom;
+  private $maxZoom;
+  
+  function __construct(string $lyrid, array $layer) {
+    $this->_id = $lyrid;
+    $this->title = $layer['title'];
+    $this->server = $layer['server'];
+    $this->name = $layer['name'];
+    $this->abstract = isset($layer['abstract']) ? $layer['abstract'] : null;
+    $this->doc = isset($layer['doc']) ? $layer['doc'] : null;
+    $this->format = isset($layer['format']) ? $layer['format'] : null;
+    $this->minZoom = isset($layer['minZoom']) ? $layer['minZoom'] : null;
+    $this->maxZoom = isset($layer['maxZoom']) ? $layer['maxZoom'] : null;
+  }
+  
+  function asArray(): array {
+    return [
+      '_id'=> $this->_id,
+      'title'=> $this->title,
+      'server'=> $this->server->asArray(),
+      'name'=> $this->name,
+      'abstract'=> $this->abstract,
+      'doc'=> $this->doc,
+      'format'=> $this->format,
+      'minZoom'=> $this->minZoom,
+      'maxZoom'=> $this->maxZoom,
+    ];
+  }
+  
+  function styles(): array { return []; }
+  
+  function show(): void {  }
+  
+  function extractByUri(string $ypath) {
+    if (preg_match('!^(/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
+      $this->server->tile($this->name, $matches[1] ? $matches[2] : '',
+          $matches[3], $matches[4], $matches[5],
+          isset($matches[6]) ? $matches[6] : '');
+    }
+  }
 };
 
 

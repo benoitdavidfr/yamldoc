@@ -17,7 +17,7 @@ doc: |
   
   Voir la carte geodata/testmap.yaml comme exemple et spécification.
   
-  La carte peut aussi être généré dynamiquement par un autre document, par un VectorDataset.
+  La carte peut aussi être généré dynamiquement par un autre document, par un FeatureDataset.
   Voir comme exemple id.php/geodata/route500/map
   
 journal:

@@ -145,8 +145,8 @@ class MetadataDb extends YData {
         '/'=> "retourne le nbre de MD par catégorie",
         '/api'=> "retourne les points d'accès de ".get_class()  ,
         '/(data|services|maps|nonGeographicDataset|others)'=> "retourne les fiches de MD de la catégorie avec leur titre",
-        '/vds'=> "retourne le catalogue comme VectorDataset",
-        '/vds/{params}'=> VectorDataset::api()['api'],
+        '/fds'=> "retourne le catalogue comme FeatureDataset",
+        '/fds/{params}'=> FeatureDataset::api()['api'],
         '/buildHasFormat'=> "déduit pour chaque MDD un champ hasFormat et réenregistre la BDMD",
         '/proj/{fields}'=> "retourne les champs {fields} des MDD",
         '/wfs'=> "test",
@@ -158,8 +158,8 @@ class MetadataDb extends YData {
           ." retourne un array ['search'=> paramètre de recherche, 'nbreOfResults'=> nbreOfResults, 'results'=> [['title'=> title]]] ",
         '/items'=> "retourne toutes les fiches de MD",
         '/items/{id}'=> "retourne la fiche de MD identifiée par {id}",
-        '/items/{id}/directDwnld'=> "retourne le contenu de la SD (sous la forme d'un VectorDataset) correspondant à la MDD définie par {id}",
-        '/items/{id}/directDwnld/{params}'=> VectorDataset::api()['api'],
+        '/items/{id}/directDwnld'=> "retourne le contenu de la SD (sous la forme d'un FeatureDataset) correspondant à la MDD définie par {id}",
+        '/items/{id}/directDwnld/{params}'=> FeatureDataset::api()['api'],
       ]
     ];
   }
@@ -381,7 +381,7 @@ class MetadataDb extends YData {
       }
       return null;
     }
-    // renvoie le VectorDataset correspondant au WFS
+    // renvoie le FeatureDataset correspondant au WFS
     elseif (preg_match('!^/items/([^/]+)/directDwnld$!', $ypath, $matches)) {
       //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
       return $this->directDwnld($docuri, $matches[1])->asArray();
@@ -395,17 +395,17 @@ class MetadataDb extends YData {
       return null;
   }
   
-  // création d'un VectorDataset
+  // création d'un FeatureDataset
   function vds() {
     $dataset = [
-      'yamlClass'=> 'VectorDataset',
+      'yamlClass'=> 'FeatureDataset',
       'wfsUrl'=> 'xx',
       'layers'=> [
         'data'=> ['title'=> "MD de données", 'typename'=> 'data'],
       ],
     ];
     $dbid = $this->_id;
-    return new VectorDataset($dataset, "$dbid/vds");
+    return new FeatureDataset($dataset, "$dbid/vds");
   }
   
   // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
@@ -551,8 +551,8 @@ class MetadataDb extends YData {
     return ($matches[1]);
   }
   
-  // renvoie la VectorDataset correspondant à la fiche de MDD $dsid ou génère une exception si cela n'est pas possible
-  function directDwnld(string $dbid, string $dsid): VectorDataset {
+  // renvoie la FeatureDataset correspondant à la fiche de MDD $dsid ou génère une exception si cela n'est pas possible
+  function directDwnld(string $dbid, string $dsid): FeatureDataset {
     if (!isset($this->tables['data']['data'][$dsid]))
       throw new Exception("Erreur: MDD inexistante");
     $dataset = $this->tables['data']['data'][$dsid];
@@ -588,11 +588,11 @@ class MetadataDb extends YData {
     if (!$featureTypeList)
       $featureTypeList = $wfsServer->featureTypeList();
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList); echo "</pre>\n";
-    $dataset = ['yamlClass'=> 'VectorDataset', 'wfsUrl'=> $wfsUrl, 'wfsOptions'=> $wfsOptions];
+    $dataset = ['yamlClass'=> 'FeatureDataset', 'wfsUrl'=> $wfsUrl, 'wfsOptions'=> $wfsOptions];
     foreach ($featureTypeList as $typename => $featureType) {
       $dataset['layers'][$typename] = [ 'title'=> $featureType['Title'], 'typename'=> $typename ];
     }
     //die("FIN ligne ".__LINE__."\n");
-    return new VectorDataset($dataset, "$dbid/items/$dsid/directDwnld");
+    return new FeatureDataset($dataset, "$dbid/items/$dsid/directDwnld");
   }
 };

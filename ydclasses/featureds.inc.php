@@ -1,14 +1,14 @@
 <?php
 /*PhpDoc:
-name: vectords.inc.php
-title: vectords.inc.php - document définissant une série de données géo constituée d'un ensemble de couches vecteur
+name: featureds.inc.php
+title: featureds.inc.php - document définissant une série de données géo constituée d'un ensemble de couches d'objets
 functions:
-doc: <a href='/yamldoc/?action=version&name=vectords.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=featureds.inc.php'>doc intégrée en Php</a>
 */
 { // doc 
-$phpDocs['vectords.inc.php']['file'] = <<<'EOT'
-name: vectords.inc.php
-title: vectords.inc.php - document définissant une série de données géo constituée d'un ensemble de couches vecteur
+$phpDocs['featureds.inc.php']['file'] = <<<'EOT'
+name: featureds.inc.php
+title: featureds.inc.php - document définissant une série de données géo constituée d'un ensemble de couches d'objets
 doc: |
   objectifs:
   
@@ -22,6 +22,8 @@ doc: |
     - spécifier formellement (en JSON-Schema ?) le contenu d'un VectorDS
   
 journal:
+  23/9/2018:
+    - chgt de nom de classe de VectoDataset en FeatureDataset, évite la confusion avec ViewDataset (vds)
   4/9/2018:
     - WfsServer remplacé par WfsServerJson
   3/9/2018:
@@ -71,13 +73,13 @@ journal:
 EOT;
 }
 { // specs des docs 
-$phpDocs['vectords.inc.php']['docSpecs'] = <<<'EOT'
-title: spécification du document définissant une série de données géo constituéen d'un ensemble de couches vecteur
+$phpDocs['featureds.inc.php']['docSpecs'] = <<<'EOT'
+title: spécification du document définissant une série de données géo constituéen d'un ensemble de couches d'objets
 doc: |
-  Une SD vecteur (VectorDataset) est composée de couches vecteur, chacune correspondant à une FeatureCollection
+  Une SD d'objets (FeatureDataset) est composée de couches d'objets, chacune correspondant à une FeatureCollection
   [GeoJSON](https://tools.ietf.org/html/rfc7946) ;
   chaque couche est composée d'objets vecteur, cad des Feature GeoJSON.  
-  Un document décrivant une SD vecteur, d'une part, peut s'afficher et, d'autre part, expose une API
+  Un document décrivant une SD d'objets, d'une part, peut s'afficher et, d'autre part, expose une API
   constituée des 6 points d'entrée suivants :
   
     1. {docid} : description de la SD en JSON (ou en Yaml), y compris la liste de ses couches
@@ -98,7 +100,7 @@ doc: |
     6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
       ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
 
-  Un document VectorDataset contient:
+  Un document FeatureDataset contient:
   
     - des métadonnées génériques
     - des infos générales par exemple permettant de charger les SHP en base
@@ -183,8 +185,8 @@ require_once __DIR__.'/../../ogr2php/feature.inc.php';
 require_once __DIR__.'/../../phplib/mysql.inc.php';
 //require_once __DIR__.'/yamldoc.inc.php';
 
-class VectorDataset extends YamlDoc {
-  static $log = __DIR__.'/vectords.log.yaml'; // nom du fichier de log ou '' pour pas de log
+class FeatureDataset extends YamlDoc {
+  static $log = __DIR__.'/featureds.log.yaml'; // nom du fichier de log ou '' pour pas de log
   protected $_c; // contient les champs du document
   protected $wfsServer = null;
   
@@ -246,7 +248,7 @@ class VectorDataset extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    //echo "VectorDataset::show($docid, $ypath)<br>\n";
+    //echo "FeatureDataset::show($docid, $ypath)<br>\n";
     if (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       $this->showLayer($docid, $matches[1]);
       return;
@@ -340,10 +342,10 @@ class VectorDataset extends YamlDoc {
   // retourne le nom de la base MySql dans laquelle les données sont stockées
   function dbname() {
     if (!$this->mysql_database)
-      throw new Exception("Erreur dans VectorDataset::dbname() : champ mysql_database non défini");
+      throw new Exception("Erreur dans FeatureDataset::dbname() : champ mysql_database non défini");
     $mysqlServer = MySql::server();
     if (!isset($this->mysql_database[$mysqlServer])) 
-      throw new Exception("Erreur dans VectorDataset::dbname() : champ mysql_database non défini pour $mysqlServer");
+      throw new Exception("Erreur dans FeatureDataset::dbname() : champ mysql_database non défini pour $mysqlServer");
     return $this->mysql_database[$mysqlServer];
   }
   
@@ -503,7 +505,7 @@ class VectorDataset extends YamlDoc {
         return null;
       elseif (isset($this->layers[$lyrname]['select'])) {
         if (!preg_match("!^([^ ]+) / (.*)$!", $this->layers[$lyrname]['select'], $matches))
-          throw new Exception("In VectorDataset::extractByUri() No match on ".$this->layers[$lyrname]['select']);
+          throw new Exception("In FeatureDataset::extractByUri() No match on ".$this->layers[$lyrname]['select']);
         $table = $matches[1];
         return $this->properties($table);
       }
@@ -590,13 +592,13 @@ class VectorDataset extends YamlDoc {
   // Ne fonctionne pas si zoom et where sont tous les 2 définis
   function queryFeaturesPrep(string $lyrname, string $bboxstr, string $zoom) {
     if (($zoom<>'') && !is_numeric($zoom))
-      throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : zoom '$zoom' incorrect");
+      throw new Exception("Erreur dans FeatureDataset::queryFeaturesPrep() : zoom '$zoom' incorrect");
     $bbox = WfsServer::decodeBbox($bboxstr);
     
     if (isset($this->layers[$lyrname]['select'])) {
       //print_r($this->layers[$lyrname]);
       if (!preg_match("!^([^ ]+)( / (.*))?$!", $this->layers[$lyrname]['select'], $matches))
-        throw new Exception("Erreur dans VectorDataset::queryFeaturesPrep() : "
+        throw new Exception("Erreur dans FeatureDataset::queryFeaturesPrep() : "
             .'select "'.$this->layers[$lyrname]['select'].'" incorrect');
       return $this->queryFeatures($matches[1], $bbox, $zoom, isset($matches[3]) ? $matches[3] : '');
     }
@@ -612,7 +614,7 @@ class VectorDataset extends YamlDoc {
       elseif (isset($this->layers[$lyrname]['ogrPath']) || isset($this->layers[$lyrname]['typename']))
         return $this->queryFeatures($lyrname, $bbox, $zoom, $select == 'all' ? '' : $select);
       else
-        throw new Exception("Dans VectorDataset::queryFeaturesPrep: onZoomGeo de $lyrname incorrect");
+        throw new Exception("Dans FeatureDataset::queryFeaturesPrep: onZoomGeo de $lyrname incorrect");
     }
     else {
       return $this->queryFeatures($lyrname, $bbox, $zoom, '');
@@ -621,7 +623,7 @@ class VectorDataset extends YamlDoc {
   
   // étape 2: traite ogrPath et typename
   function queryFeatures(string $lyrname, array $bbox, string $zoom, string $where) {
-    //echo "VectorDataset::queryFeatures($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
+    //echo "FeatureDataset::queryFeatures($lyrname, (",implode(',',$bbox),"), $zoom, $where)<br>\n";
     // requête dans MySQL
     if (isset($this->layers[$lyrname]['ogrPath'])) {
       MySql::open(require(__DIR__.'/../mysqlparams.inc.php'));
@@ -669,7 +671,7 @@ class VectorDataset extends YamlDoc {
       if (self::$log) {
         file_put_contents(self::$log,
             YamlDoc::syaml([
-              'method'=> 'VectorDataset::queryFeatures',
+              'method'=> 'FeatureDataset::queryFeatures',
               'zoom'=> $zoom,
             ]),
             FILE_APPEND
@@ -679,7 +681,7 @@ class VectorDataset extends YamlDoc {
       if (self::$log) {
         file_put_contents(self::$log,
             YamlDoc::syaml([
-              'method'=> 'VectorDataset::queryFeatures',
+              'method'=> 'FeatureDataset::queryFeatures',
               'typename'=> $typename,
               'bbox'=> $bbox,
               'zoom'=> $zoom,
@@ -698,7 +700,7 @@ class VectorDataset extends YamlDoc {
       die();  
     }
     else {
-      throw new Exception("Erreur dans VectorDataset::queryFeatures() : cas non prévu pour la couche $lyrname");
+      throw new Exception("Erreur dans FeatureDataset::queryFeatures() : cas non prévu pour la couche $lyrname");
     }
   }
     

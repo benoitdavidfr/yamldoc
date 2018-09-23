@@ -56,7 +56,7 @@ class WmsServer extends YamlDoc {
       foreach ($this->layers() as $lyrid => $layer)
         $c['layers'] .= "- [$layer[title]](?ypath=/layers/$lyrid)\n";
       $c['capabilities'] = "http://$_SERVER[SERVER_NAME]/yamldoc/id.php/$docid/capabilities";
-      $c['displayMap'] = "http://$_SERVER[SERVER_NAME]/yamldoc/id.php/$docid/map/display";
+      $c['mapDisplay'] = "http://$_SERVER[SERVER_NAME]/yamldoc/id.php/$docid/map/display";
       showDoc($docid, $c);
     }
     elseif ($ypath == '/layers') {
@@ -250,14 +250,21 @@ class WmsServer extends YamlDoc {
       }
       $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
     }
-    if (($result = file_get_contents($url, false, $context)) === false) {
-      var_dump($http_response_header);
-      if (self::$log) { // log
-        file_put_contents(
-            self::$log,
-            YamlDoc::syaml(['http_response_header'=> $http_response_header]),
-            FILE_APPEND
-        );
+    if (($result = @file_get_contents($url, false, $context)) === false) {
+      if (isset($http_response_header)) {
+        if (self::$log) { // log
+          file_put_contents(
+              self::$log,
+              YamlDoc::syaml(['http_response_header'=> $http_response_header]),
+              FILE_APPEND
+          );
+        }
+        if (preg_match('!^HTTP/1.. !', $http_response_header[0]))
+          throw new Exception("Erreur http '$http_response_header[0]' dans WmsServer::query() : sur url=$url");
+        else {
+          echo "http_response_header=";
+          var_dump($http_response_header);
+        }
       }
       throw new Exception("Erreur dans WmsServer::query() : sur url=$url");
     }
@@ -337,14 +344,9 @@ class WmsServer extends YamlDoc {
       $y0 - $size * $iy,
     ];
   }
-  
+    
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     //$style = (isset($layers[$layername]['style']) ? $layers[$layername]['style'] : '');
-    if (0) echo '';
-    elseif ($fmt == '.png')
-      header('Content-type: image/png');
-    else
-      header('Content-type: image/jpg');
     $query = [
       'version'=> '1.3.0',
       'request'=> 'GetMap',
@@ -358,7 +360,31 @@ class WmsServer extends YamlDoc {
     ];
     if ($fmt == '.png')
       $query['transparent'] = 'true';
-    die($this->query($query));
+    try {
+      $image = $this->query($query);
+      if (0) echo '';
+      elseif ($fmt == '.png')
+        header('Content-type: image/png');
+      else
+        header('Content-type: image/jpg');
+      die($image);
+    }
+    catch(Exception $e) {
+      if (self::$log) { // log
+        file_put_contents(
+            self::$log,
+            YamlDoc::syaml([
+              'date'=> date(DateTime::ATOM),
+              'appel'=> 'WmsServer::tile',
+              'erreur'=> $e->getMessage(),
+            ]),
+            FILE_APPEND
+        );
+      }
+      if (preg_match("!^Erreur http '([^']*)'!", $e->getMessage(), $matches))
+        header($matches[1]);
+      die($e->getMessage());
+    }
   }
   
   // fabrique la carte d'affichage des couches de la base
