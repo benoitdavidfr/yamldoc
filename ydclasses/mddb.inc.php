@@ -143,13 +143,10 @@ class MetadataDb extends YData {
       'abstract'=> "exploitation de la base des MD issue d'une moisson d'un serveur CSW",
       'api'=> [
         '/'=> "retourne le nbre de MD par catégorie",
-        '/data'=> "retourne les fichches de MD de données avec leur titre",
-        '/data'=> "retourne les fiches de MD de série de données avec leur titre",
-        '/services'=> "retourne les fiches de MD de service avec leur titre",
-        '/maps'=> "retourne les fiches de MD de carte avec leur titre",
-        '/nonGeographicDataset'=> "retourne les fiches de MD de SD non géographique avec leur titre",
-        '/others'=> "retourne les autres fiches de MD avec leur titre",
         '/api'=> "retourne les points d'accès de ".get_class()  ,
+        '/(data|services|maps|nonGeographicDataset|others)'=> "retourne les fiches de MD de la catégorie avec leur titre",
+        '/vds'=> "retourne le catalogue comme VectorDataset",
+        '/vds/{params}'=> VectorDataset::api()['api'],
         '/buildHasFormat'=> "déduit pour chaque MDD un champ hasFormat et réenregistre la BDMD",
         '/proj/{fields}'=> "retourne les champs {fields} des MDD",
         '/wfs'=> "test",
@@ -187,6 +184,9 @@ class MetadataDb extends YData {
       }
       return $result;
     }
+    elseif ($ypath == '/api') {
+      return self::api();
+    }
     elseif (preg_match('!^/(data|services|maps|nonGeographicDataset|others)$!', $ypath, $matches)) {
       $table = $matches[1];
       $result = [
@@ -201,8 +201,45 @@ class MetadataDb extends YData {
       }
       return $result;
     }
-    elseif ($ypath == '/api') {
-      return self::api();
+    elseif ($ypath == '/vds') {
+      return $this->vds()->asArray();
+    }
+    elseif (preg_match('!^/vds/(.*)$!', $ypath, $matches)) {
+      //echo "MetadataDb::extractByUri($docuri, $ypath)<br>\n";
+      $params = array_merge($_GET, $_POST);
+      if (!isset($params['bbox'])) {
+        $vds = $this->vds();
+        return $vds->extractByUri("/$matches[1]");
+      }
+      else {
+        header('Content-type: application/json');
+        $bbox = explode(',', $params['bbox']);
+        $no = 0;
+        echo "{\"type\":\"FeatureCollection\",\"features\":[\n";
+        foreach ($this->tables['data']['data'] as $id => $mdd) {
+          $pt = null;
+          if (isset($mdd['spatial'])) {
+            foreach ($mdd['spatial'] as $i => $sp) {
+              if ($sp['westlimit'] && $sp['eastlimit'] && $sp['southlimit'] && $sp['northlimit']) {
+                $pt = [($sp['westlimit'] + $sp['eastlimit'])/2, ($sp['southlimit'] + $sp['northlimit'])/2];
+                break;
+              }
+            }
+          }
+          if ($pt && ($pt[0] >= $bbox[0]) && ($pt[1] >= $bbox[1]) && ($pt[0] <= $bbox[2]) && ($pt[1] <= $bbox[3])) {
+            echo $no ? ",\n":'',
+              "  { \"type\":\"Feature\",\n",
+              "    \"properties\":{\n",
+              "      \"title\": \"",str_replace(['"',"\t"], ['\"','\t'], $mdd['title']),"\"\n",
+              "    },\n",
+              "    \"geometry\":{\"type\":\"Point\", \"coordinates\": [$pt[0], $pt[1]]}\n",
+              "  }";
+            $no++;
+          }
+        }
+        echo " ]}\n";
+        die();
+      }
     }
     elseif ($ypath == '/buildHasFormat') {
       // echo "MetadataDatabase::extractByUri($docuri, $ypath)<br>\n";
@@ -358,17 +395,45 @@ class MetadataDb extends YData {
       return null;
   }
   
+  // création d'un VectorDataset
+  function vds() {
+    $dataset = [
+      'yamlClass'=> 'VectorDataset',
+      'wfsUrl'=> 'xx',
+      'layers'=> [
+        'data'=> ['title'=> "MD de données", 'typename'=> 'data'],
+      ],
+    ];
+    $dbid = $this->_id;
+    return new VectorDataset($dataset, "$dbid/vds");
+  }
+  
   // fabrique la liste des mots-clés organisée par vocabulaire contrôlé
   function listSubjects(): SubjectList {
     $docid = $this->_id;
     $geocatid = dirname($docid);
     $subjects = new SubjectList([], "$geocatid/subjects");
-    foreach (parent::extractByUri('/data')['data'] as $id => $metadata) {
+    foreach ($this->tables['data']['data'] as $id => $metadata) {
       //echo "subjects = "; print_r($metadata['subject']); echo "<br>\n";
-      $mainMdLanguage = (is_string($metadata['mdLanguage']) ? $metadata['mdLanguage'] : $metadata['mdLanguage'][0]);
+      //echo "metadata = "; print_r($metadata); echo "<br>\n";
+      $mainMdLanguage = null;
+      if (!isset($metadata['mdLanguage']))
+        $mainMdLanguage = 'fre';
+      elseif (is_string($metadata['mdLanguage']))
+        $mainMdLanguage = $metadata['mdLanguage'];
+      elseif (is_array($metadata['mdLanguage'])) {
+        foreach ($metadata['mdLanguage'] as $mdLang) {
+          if ($mdLang) {
+            $mainMdLanguage = $mdLang;
+            break;
+          }
+        }
+      }
+      if (!$mainMdLanguage)
+        $mainMdLanguage = 'fre';
       if (isset($metadata['subject'])) {
         foreach ($metadata['subject'] as $subject) {
-          //echo "subject = "; print_r($subject); echo "<br>\n";
+          //echo "subject = "; print_r($subject); echo "<br>\nmainMdLanguage=$mainMdLanguage<br>\n";
           $subjects->add($subject, $mainMdLanguage);
         }
       }

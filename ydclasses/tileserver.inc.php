@@ -1,131 +1,58 @@
 <?php
 /*PhpDoc:
-name: wfsserver.inc.php
-title: wfsserver.inc.php - document correspondant à un serveur WFS
+name: tileserver.inc.php
+title: tileserver.inc.php - serveur de tuiles
 functions:
-doc: <a href='/yamldoc/?action=version&name=wfsserver.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=tileserver.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['wfsserver.inc.php'] = <<<'EOT'
-name: wfsserver.inc.php
-title: wfsserver.inc.php - document correspondant à un serveur WFS
+{ // doc 
+$phpDocs['tileserver.inc.php']['file'] = <<<'EOT'
+name: tileserver.inc.php
+title: tileserver.inc.php - serveur de tuiles
 doc: |
-  La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de générer du GeoJSON.
-  La classe WfsServerGml expose différentes méthodes utilisant un serveur WFS capable de générer du GML EPSG:4306.
-  Un GetFeature avec un WfsServerGml réalise un filtrage en fonction du bbox et du zoom:
-    1) les polygones, les trous ou les linestring qui n'intersectent pas la bbox sont rejetés,
-    2) les polygones, les trous ou les linestring dont la taille est inférieure à la résolution sont rejetés,
-    3) dans les lignes et les contours, si un point est trop proche du point précédent alors il est rejeté.
-    4) Si un Feature ne contient finalement aucune géométrie, le centre d'une des bbox est affecté comme point
-    La résolution est fixée à 360 / 2**(zoom+8) degrés, cad au zoom 0 res = 360°/256
-  
-  évolutions à réaliser:
-  
-    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
-  
+  La classe TileServer définit des serveurs de tuiles à partir de serveurs WMS/WMTS.
+
   Outre les champs de métadonnées, le document doit définir les champs suivants:
-  
-    - wfsUrl: fournissant l'URL du serveur à compléter avec les paramètres,
-  
+
+    - servers: différents serveurs chacun identifié par un nom et contenant les champs suivants:
+      - url : url du serveur
+      - protocol : protocole du serveur (WMS, WMTS)
+      - referer: referer à transmettre à chaque appel du serveur.
+    - layers
+
   Il peut aussi définir les champs suivants:
-  
-    - wfsOptions: définit des options parmi les suivantes
-      - referer: définissant le referer à transmettre à chaque appel du serveur,
-      - gml: booléen indiquant si le retour est en GML et non en GeoJSON (par défaut)
-      - version: version WFS, par défaut 2.0.0, possible '1.0.0'
-      - coordOrderInGml: 'lngLat' pour indiquer que les coordonnées GML sont en LngLat et non en LatLng
-    
-  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
-      
-  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml
-  avec un serveur WFS 2.0.0 et GML 3.2.1.
-  
-  Le document http://localhost/yamldoc/?doc=geocats/geoide-zvuln41 permet de tester la classe WfsServerGml
-  avec un serveur WFS 1.0.0 et GML 2.
-      
-  Résolution:
-    zoom = 0, image 256x256
-    resolution(zoom=0) Lng à l'équateur = 360/256
-    A chaque zoom supérieur, division par 2 de la résolution
-    256 = 2 ** 8
-    => resolution = 360 / 2**(zoom+8) degrés
-  
-  Sur le serveur WFS IGN:
-  
-    - un DescribeFeatureType sans paramètre typename n'est pas utilisable
-      - en JSON, le schema de chaque type est bien fourni mais les noms de type ne comportent pas l'espace de noms,
-        générant ainsi un risque de confusion entre typename
-      - en XML, le schéma de chaque type n'est pas fourni
-      - la solution retenue consiste à effectuer un appel JSON par typename et à le bufferiser en JSON 
-  
-  Des tests unitaires de la transformation GML -> JSON sont définis.
-      
+
+
 journal:
-  17-19/9/2018:
-    - modification du format intermédiaire pour passage de GML en GeoJSON
-    - l'utilisation d'un pseudo JSON ne fonctionnait pas dans certains cas
-    - traitement de certaines erreurs rencontrées dans Géo-IDE
-  15/9/2018:
-    - ajout gestion Point en GML 2
-  12/9/2018:
-    - transfert des fichiers Php dans ydclasses
-    - chgt urlWfs en wfsUrl
-    - structuration wfsOptions avec l'option referer et l'option gml
-    - ajout option version et possibilité d'interroger le serveur en WFS 1.0.0
-  5-9/9/2018:
-    - développement de la classe WfsServerGml implémentant les requêtes pour un serveur WFS EPSG:4326 + GML
-    - mise en oeuvre du filtrage défini plus haut
-  4/9/2018:
-    - remplacement du prefixe t par ft pour featureType
-    - refonte de la gestion du cache indépendamment du stockage du document car le doc peut être volatil
-    - ajout de la récupération du nom de la propriété géométrique qui n'est pas toujours le même
-  3/9/2018:
-    - ajout d'une classe WfsServerGml implémentant les requêtes pour un serveur WFS GML + EPSG:4326
-    en cours
-  15/8/2018:
+  22/9/2018:
     - création
 EOT;
 }
+//require_once __DIR__.'/yamldoc.inc.php';
+//require_once __DIR__.'/search.inc.php';
+//require_once __DIR__.'/../isometadata.inc.php';
+//require_once __DIR__.'/inc.php';
 
-//require_once __DIR__.'/../yd.inc.php';
-//require_once __DIR__.'/../store.inc.php';
-require_once __DIR__.'/inc.php';
-
-use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\Yaml\Exception\ParseException;
-
-// classe simplifiant l'envoi de requêtes WFS
-abstract class WfsServer extends YamlDoc {
-  static $log = __DIR__.'/wfsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  static $capCache = __DIR__.'/wfscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML
-                                           // de capacités ainsi que les DescribeFeatureType en json
+class TileServer extends YamlDoc {
+  static $log = __DIR__.'/tileserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   function __construct($yaml, string $docid) {
-    $this->_c = [];
+    $this->_c = $yaml;
     $this->_id = $docid;
-    foreach ($yaml as $prop => $value) {
-      $this->_c[$prop] = $value;
-    }
-    if (!$this->wfsUrl)
-      throw new Exception("Erreur dans WfsServer::__construct(): champ wfsUrl obligatoire");
+    if (!$this->servers)
+      throw new Exception("Erreur dans TileServer::__construct(): champ servers obligatoire");
   }
   
-  // effectue soit un new WfsServerJson soit un new WfsServerGml
-  static function new_WfsServer(array $wfsParams, string $docid) {
-    return isset($wfsParams['wfsOptions']['gml']) ?
-          new WfsServerGml($wfsParams, $docid)
-        : new WfsServerJSON($wfsParams, $docid);
-  }
-    
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "WfsServerJson::show($docid, $ypath)<br>\n";
+    echo "TileServer::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else
@@ -139,38 +66,17 @@ abstract class WfsServer extends YamlDoc {
   // extrait le fragment du document défini par $ypath
   function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
   
-  // retourne bbox [lngMin, latMin, lngMax, latMax] à partir d'un bbox sous forme de chaine
-  static function decodeBbox(string $bboxstr): array {
-    if (!$bboxstr)
-      return [];
-    $bbox = explode(',', $bboxstr);
-    if ((count($bbox)<>4) || !is_numeric($bbox[0]) || !is_numeric($bbox[1]) || !is_numeric($bbox[2]) || !is_numeric($bbox[3]))
-      throw new Exception("Erreur dans WfsServer::decodeBbox() : bbox '$bboxstr' incorrect");
-    return [(float)$bbox[0], (float)$bbox[1], (float)$bbox[2], (float)$bbox[3]];
-  }
-  
-  // retourne un polygon WKT LatLng à partir d'un bbox [lngMin, latMin, lngMax, latMax]
-  static function bboxWktLatLng(array $bbox) {
-    if (!$bbox)
-      return '';
-    return "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
-  }
-  
-  // retourne un polygon WKT LngLat à partir d'un bbox [lngMin, latMin, lngMax, latMax]
-  static function bboxWktLngLat(array $bbox) {
-    if (!$bbox)
-      return '';
-    return "POLYGON(($bbox[0] $bbox[1],$bbox[2] $bbox[1],$bbox[2] $bbox[3],$bbox[0] $bbox[3],$bbox[0] $bbox[1]))";
-  }
-  
   static function api(): array {
     return [
       'class'=> get_class(), 
       'title'=> "description de l'API de la classe ".get_class(), 
-      'abstract'=> "document correspondant à un serveur WFS en version 1.0.0 ou 2.0.0",
+      'abstract'=> "document correspondant à un serveur de tuiles",
       'api'=> [
         '/'=> "retourne le contenu du document ".get_class(),
         '/api'=> "retourne les points d'accès de ".get_class(),
+        '/servers'=> "liste les serveurs sous-jacents",
+        '/servers/{name}?{params}'=> "liste les serveurs sous-jacents",
+        
         '/query?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en XML ou JSON, le paramètre SERVICE est prédéfini",
         '/getCap(abilities)?'=> "envoi une requête GetCapabilities, affiche le résultat en XML et raffraichit le cache",
         '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
@@ -184,6 +90,15 @@ abstract class WfsServer extends YamlDoc {
     ];
   }
    
+};
+
+
+if (basename(__FILE__)<>basename($_SERVER['SCRIPT_NAME'])) return;
+
+// classe simplifiant l'envoi de requêtes WFS
+abstract class WfsServerxx {
+    
+
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
     $docuri = $this->_id;
@@ -374,7 +289,7 @@ abstract class WfsServer extends YamlDoc {
 };
 
 // classe simplifiant l'envoi de requêtes WFS capable de fournir des données GeoJSON
-class WfsServerJson extends WfsServer {
+class WfsServerJsonxx {
   
   function describeFeatureType(string $typeName): array {
     $filepath = self::$capCache.'/wfs'.md5($this->wfsUrl."/$typeName").'-ft.json';
@@ -489,17 +404,8 @@ class WfsServerJson extends WfsServer {
   }
 };
 
-// teste si la sous-chaine de $mainstr commencant à la position pos est identique à la chaine $substr
-// si c'est le cas avance pos de de longueur de substr
-function substrcmpp(string $mainstr, int &$pos, string $substr): bool {
-  $cmp = (substr($mainstr, $pos, strlen($substr)) == $substr);
-  if ($cmp)
-    $pos += strlen($substr);
-  return $cmp;
-}
-
 // Essai d'une classe implémentant les requêtes pour un serveur WFS ne parlant pas JSON
-class WfsServerGml extends WfsServer {
+class WfsServerGmlxx {
   private $xsltProcessors=[];
   
   function describeFeatureType(string $typeName): array {

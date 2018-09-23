@@ -211,7 +211,10 @@ class Geocat extends CswServer {
   // Fabrique la base de données des MD, la renoie comme objet MetadataDb
   function buildDb(): MetadataDb {
     $docuri = $this->_id;
-    $logfilename = __DIR__.'/../'.Store::storepath()."/$docuri/build.log.yaml";
+    $dirpath = __DIR__.'/../'.Store::storepath()."/$docuri";
+    if (!is_dir($dirpath))
+      throw new Exception("Erreur: Le serveur n'a pas été moissonné");
+    $logfilename = "$dirpath/build.log.yaml";
     file_put_contents(
         $logfilename,
         YamlDoc::syaml([

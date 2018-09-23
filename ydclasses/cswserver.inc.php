@@ -19,24 +19,6 @@ doc: |
   Il peut aussi définir les champs suivants:
   
     - referer: définissant le referer à transmettre à chaque appel du serveur.
-
-  Liste des points d'entrée de l'API:
-  
-    - /{document} : description du serveur
-    - /{document}/query?{params} : envoi d'une requête, les champs SERVICE et VERSION sont prédéfinis, retour XML
-    - /{document}/getCapabilities : lecture des capacités du serveur, les renvoi en XML et les enregistre
-      dans le fichier /{document}/capabilities.xml
-    - /{document}/numberMatched : renvoi le nbre d'enregistrements
-    - /{document}/numberMatched : renvoi le nbre d'enregistrements
-    - /{document}/GetRecordsInIso/{startposition} : affiche en XML les enregistrements ISO à parir de {startposition}
-    - /{document}/GetRecordsInDc/{startposition} : affiche en XML les enregistrements DC à parir de {startposition}
-    - /{document}/harvest : moisonne les enregistrements ISO et les enregistre
-      dans les fichiers /{document}/harvest/{startposition}.xml
-    - /{document}/harvest/{startPosition} : moisonne les enregistrements ISO à partir de {startPosition}
-      et les enregistre dans les fichiers /{document}/harvest/{startposition}.xml
-    - /{document}/harvest/{startPosition}/{startPosition} : moisonne les enregistrements ISO à partir de {startPosition}
-      et au plus jusqu'à la position {endPosition}
-      et les enregistre dans les fichiers /{document}/harvest/{startposition}.xml
     
   Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
   
@@ -96,8 +78,8 @@ class CswServer extends YamlDoc {
         '/numberMatchedInDc'=> "retourne le nbre de fiches Dublin Core",
         '/getRecords/{startposition}'=> "retourne les fiches en ISO à partir de {startposition}",
         '/getRecordById/{id}'=> "retourne la fiche {id} en ISO",
-        '/GetRecordsInDc/{startposition}'=> "retourne les fiches DC à partir de {startposition}",
-        '/GetRecordByIdInDc/{id}'=> "retourne la fiche {id} en DC",
+        '/getRecordsInDc/{startposition}'=> "retourne les fiches DC à partir de {startposition}",
+        '/getRecordByIdInDc/{id}'=> "retourne la fiche {id} en DC",
         '/harvest'=> "moisonne toutes les fiches, les pages de fiches sont enregistrées dans {doc}/harvest/{startposition}.xml",
         '/harvest(/{startposition}'=> "moisonne les fiches à partir de {startposition} jusqu'à la fin",
         '/harvest(/{startposition}/{endposition}'=> "moisonne les fiches à partir de {startposition} jusqu'à {endposition}",
@@ -134,30 +116,30 @@ class CswServer extends YamlDoc {
       file_put_contents("$dirpath/capabilities.xml", $result);
       die();
     }
-    elseif ($ypath == '/numberMatchedInIso') {
-      return ['numberMatched'=> $this->getNumberMatchedInIso()];
+    elseif ($ypath == '/numberMatched') {
+      return ['numberMatched'=> $this->getNumberMatched()];
     }
     elseif ($ypath == '/numberMatchedInDC') {
       return ['numberMatched'=> $this->getNumberMatchedInDC()];
     }
     elseif (preg_match('!^/getRecords/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
-      echo $this->GetRecordsInIso($matches[1]);
+      echo $this->getRecords($matches[1]);
       die();
     }
     elseif (preg_match('!^/getRecordById/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
-      echo $this->GetRecordByIdInIso($matches[1]);
+      echo $this->getRecordById($matches[1]);
       die();
     }
-    elseif (preg_match('!^/GetRecordsInDc/([^/]+)$!', $ypath, $matches)) {
+    elseif (preg_match('!^/getRecordsInDc/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
-      echo $this->GetRecordsInDC($matches[1]);
+      echo $this->getRecordsInDC($matches[1]);
       die();
     }
-    elseif (preg_match('!^/GetRecordByIdInDc/([^/]+)$!', $ypath, $matches)) {
+    elseif (preg_match('!^/getRecordByIdInDc/([^/]+)$!', $ypath, $matches)) {
       header('Content-type: application/xml');
-      echo $this->GetRecordByIdInDC($matches[1]);
+      echo $this->getRecordByIdInDC($matches[1]);
       die();
     }
     elseif (preg_match('!^/harvest(/([^/]+))?(/([^/]+))?$!', $ypath, $matches)) {
@@ -261,7 +243,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format ISO
-  function GetRecords(int $startposition=1): string {
+  function getRecords(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'gmd:MD_Metadata',
@@ -274,7 +256,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format ISO
-  function GetRecordById(string $id): string {
+  function getRecordById(string $id): string {
     $query = [
       'REQUEST'=> 'GetRecordById',
       'TYPENAMES'=> 'gmd:MD_Metadata',
@@ -287,7 +269,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format DC
-  function GetRecordsInDc(int $startposition=1): string {
+  function getRecordsInDc(int $startposition=1): string {
     $query = [
       'REQUEST'=> 'GetRecords',
       'TYPENAMES'=> 'csw:Record',
@@ -300,7 +282,7 @@ class CswServer extends YamlDoc {
   }
   
   // retourne en XML le résultat d'une requête GetRecords en format DC
-  function GetRecordByIdInDc(string $id): string {
+  function getRecordByIdInDc(string $id): string {
     $query = [
       'REQUEST'=> 'GetRecordById',
       'TYPENAMES'=> 'csw:Record',
@@ -312,7 +294,7 @@ class CswServer extends YamlDoc {
     return $this->query($query);
   }
   
-  // effectue des GetRecordsInIso à partir de 1 jusqu'à nextRecord > numberOfRecordsMatched
+  // effectue des getRecords à partir de 1 jusqu'à nextRecord > numberOfRecordsMatched
   // Pas optimal: beaucoup de requêtes pour rien
   // Probablement des enregistrements qui ne sont pas compatibles avec le format de sortie ISO demandé
   // ajout possibilité de démarrer à une position quelconque et de s'arrêter avant la fin
@@ -328,7 +310,7 @@ class CswServer extends YamlDoc {
     // $numberOfRecordsMatched est calculé à la première itération
     while (true) {
       if (!is_file("$dirpath/$startposition.xml")) {
-        $result = $this->GetRecords($startposition);
+        $result = $this->getRecords($startposition);
         file_put_contents("$dirpath/$startposition.xml", $result);
       }
       else
