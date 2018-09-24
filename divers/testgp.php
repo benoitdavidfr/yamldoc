@@ -1,6 +1,6 @@
 <?php
 // Benoit DAVID - 24/9/2018
-// explicitation du bug sur bug sur la clé choisirgeoportail
+// explicitation du bug sur la clé choisirgeoportail
 // Lors d'un appel en Php au travers de file_get_contents(), la clé pratique génère une image
 // alors que la clé choisirgeoportail génère une erreur 'HTTP/1.1 500 Internal Server Error'
 
