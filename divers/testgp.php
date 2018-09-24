@@ -7,7 +7,7 @@
 if (!isset($_GET['key']) && !isset($_GET['action'])) {
   // affichage de 2 images, l'une avec la clé pratique et l'autre avec la clé choisirgeoportail
   foreach (['pratique','choisirgeoportail'] as $key) {
-    echo "<a href='?key=$key'><img src='?key=$key'></a><br>\n";
+    echo "<a href='?key=$key'><img src='?key=$key' alt='erreur'></a><br>\n";
   }
   echo "<a href='?action=src'>Affichage du source Php<br>\n";
   
