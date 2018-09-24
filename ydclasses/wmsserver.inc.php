@@ -29,8 +29,8 @@ require_once __DIR__.'/../isometadata.inc.php';
 require_once __DIR__.'/inc.php';
 
 class WmsServer extends YamlDoc {
-  //static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  static $log = false; // nom du fichier de log ou false pour pas de log
+  static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  //static $log = false; // nom du fichier de log ou false pour pas de log
   static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
   protected $_c; // contient les champs
   
@@ -65,18 +65,19 @@ class WmsServer extends YamlDoc {
         $layers .= "- [$layer[title]](?ypath=/layers/$lyrid)\n";
       showDoc("$docid/layers", $layers);
     }
-    elseif (preg_match('!^/layers/([^/]+)(/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
       $lyrName = $matches[1];
       $style = (isset($matches[2]) && $matches[2]) ? $matches[3] : '';
       echo "style='$style'<br>\n";
       $layer = $this->layer($lyrName);
       //print_r($layer);
       foreach ($layer['styles'] as $styleName => $s) {
-        $href = "?doc=$docid&amp;ypath=/layers/$lyrName/$styleName"
+        $href = "?doc=$docid&amp;ypath=/layers/$lyrName/style/$styleName"
           .(isset($matches[4]) ? "/$matches[5]/$matches[6]/$matches[7]" : '');
         $layer['styles'][$styleName]['title'] = "<html>\n<a href='$href'>$s[title]</a>";
       }
       showDoc($docid, $layer);
+      echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>Capacités de la couche</a><br>\n";
       $zoom = isset($matches[4]) ? $matches[5]: 2;
       $col = isset($matches[4]) ? max($matches[6], 0) : 0;
       $cmin = isset($matches[4]) ? max($matches[6]-1, 0) : 0;
@@ -85,7 +86,7 @@ class WmsServer extends YamlDoc {
       $rmin = isset($matches[4]) ? max($matches[7]-1, 0) : 0;
       $rmax = isset($matches[4]) ? min($matches[7]+2, 2**$zoom - 1): 2**$zoom - 1;
       if ($style)
-        $lyrName = "$lyrName/$style";
+        $lyrName = "$lyrName/style/$style";
       echo "<table style='border:1px solid black; border-collapse:collapse;'>\n";
       if ($zoom) {
         $href = sprintf("?doc=$docid&amp;ypath=/layers/$lyrName/%d/%d/%d", $zoom-1, $col/2, $row/2);
@@ -139,10 +140,9 @@ class WmsServer extends YamlDoc {
         '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
         '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
         '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
-        '/layers/{layerName}/{style}/{z}/{x}/{y}.{fmt}'=>
+        '/layers/{layerName}/style/{style}/{z}/{x}/{y}.{fmt}'=>
             "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
-        '/{layerName}'=> "retourne la description de la couche {layerName}",
-        '/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {x} {y} de la couche {layerName} en {fmt}",
+        '/layers/{layerName}/capabilities'=> "affiche le fragment XML des capacités de la couche",
         '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
         '/map/{param}'=> Map::api()['api'],
       ]
@@ -192,10 +192,13 @@ class WmsServer extends YamlDoc {
     elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
     }
-    elseif (preg_match('!^/layers/([^/]+)(/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
       $this->tile($matches[1], $matches[2] ? $matches[3] : '',
           $matches[4], $matches[5], $matches[6],
           isset($matches[7]) ? $matches[7] : '');
+    }
+    elseif (preg_match('!^/layers/([^/]+)/capabilities$!', $ypath, $matches)) {
+      $this->layerCap($matches[1]);
     }
     elseif ($ypath == '/map') {
       return $this->map()->asArray();
@@ -330,6 +333,25 @@ class WmsServer extends YamlDoc {
     return [];
   }
   
+  function layerCap(string $name): void {
+    $cap = new SimpleXMLElement($this->getCapabilities());
+    //echo "<pre>"; print_r($cap); echo "</pre>\n";
+    foreach ($cap->Capability->Layer->Layer as $layer) {
+      if ((string)$layer->Name == $name) {
+        //echo "<pre>"; print_r($layer); echo "</pre>\n";
+        header('Content-type: application/xml');
+        echo '<?xml version="1.0" encoding="UTF-8"?>',
+          '<WMS_Capabilities',
+          ' xmlns="http://www.opengis.net/wms"',
+          ' xmlns:xlink="http://www.w3.org/1999/xlink">',
+          $layer->asXml(),
+          '</WMS_Capabilities>';
+        die();
+      }
+    }
+    die("Layer $name not found");
+  }
+  
   // renvoie un bbox en EPSG:3857 à partir du no de tuile
   static function bbox(int $zoom, int $ix, int $iy): array {
     $base = 20037508.3427892476320267;
@@ -360,13 +382,13 @@ class WmsServer extends YamlDoc {
     ];
     if ($fmt == '.png')
       $query['transparent'] = 'true';
+    $this->sendImageOrError($query);
+  }
+  
+  function sendImageOrError(array $query): void {
     try {
       $image = $this->query($query);
-      if (0) echo '';
-      elseif ($fmt == '.png')
-        header('Content-type: image/png');
-      else
-        header('Content-type: image/jpg');
+      header("Content-type: $query[format]");
       die($image);
     }
     catch(Exception $e) {

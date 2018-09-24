@@ -26,9 +26,11 @@ doc: |
           - max: le zoom maximum correspondant à cette doc
           - title: le titre
           - www: l'URL de la doc
-      - format: le format d'images de la couche (obligatoire)
-      - minZoom: zoom minimum pour lequel la couche est définie (obligatoire)
-      - maxZoom: zoom maximum pour lequel la couche est définie (obligatoire ?)
+      - format: le format d'images de la couche, pour forcer un format quand il n'est pas imposé (WMS)
+      - minZoom: zoom minimum pour lequel la couche est définie, pour forcer une valeur quand elle n'est pas définie
+        ou qu'elle est incorrecte
+      - maxZoom: zoom maximum pour lequel la couche est définie, pour forcer une valeur quand elle n'est pas définie
+        ou qu'elle est incorrecte
 
   A faire:
     - Tester l'utilisation des styles
@@ -65,7 +67,8 @@ class ViewDataset extends YamlDoc {
           $layer['server'] = new_doc($layer['server']);
         else
           $layer['server'] = $this->servers[$layer['server']];
-        $this->layers[$lyrid] = new ViewLayer($lyrid, $layer);
+        $layer['_id'] = $lyrid;
+        $this->layers[$lyrid] = new ViewLayer($layer);
       }
     }
   }
@@ -92,23 +95,18 @@ class ViewDataset extends YamlDoc {
     elseif (preg_match('!^/([^/]+)(/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
       $lyrName = $matches[1];
       $style = (isset($matches[2]) && $matches[2]) ? $matches[3] : '';
+      $zxy = isset($matches[4]) ? [$matches[5], $matches[6], $matches[7]] : [];
       echo "style='$style'<br>\n";
       $layer = $this->layers[$lyrName];
       //print_r($layer);
-      //$layer['styles'] = $this->styles($lyrid);
-      foreach ($layer->styles() as $styleName => $s) {
-        $href = "?doc=$docid&amp;ypath=/$lyrName/$styleName"
-          .(isset($matches[4]) ? "/$matches[5]/$matches[6]/$matches[7]" : '');
-        $layer['styles'][$styleName]['title'] = "<html>\n<a href='$href'>$s[title]</a>";
-      }
-      $layer->show();
-      $zoom = isset($matches[4]) ? $matches[5]: 2;
-      $col = isset($matches[4]) ? max($matches[6], 0) : 0;
-      $cmin = isset($matches[4]) ? max($matches[6]-1, 0) : 0;
-      $cmax = isset($matches[4]) ? min($matches[6]+2, 2**$zoom - 1) : 2**$zoom - 1;
-      $row = isset($matches[4]) ? $matches[7] : 0;
-      $rmin = isset($matches[4]) ? max($matches[7]-1, 0) : 0;
-      $rmax = isset($matches[4]) ? min($matches[7]+2, 2**$zoom - 1): 2**$zoom - 1;
+      $layer->show($docid, $lyrName, $zxy);
+      $zoom = $zxy ? $zxy[0] : 2;
+      $col = $zxy ? max($zxy[1], 0) : 0;
+      $cmin = $zxy ? max($zxy[1]-1, 0) : 0;
+      $cmax = $zxy ? min($zxy[1]+2, 2**$zoom - 1) : 2**$zoom - 1;
+      $row = $zxy ? $zxy[2] : 0;
+      $rmin = $zxy ? max($zxy[2]-1, 0) : 0;
+      $rmax = $zxy ? min($zxy[2]+2, 2**$zoom - 1): 2**$zoom - 1;
       if ($style)
         $lyrName = "$lyrName/$style";
       echo "<table style='border:1px solid black; border-collapse:collapse;'>\n";
@@ -168,6 +166,8 @@ class ViewDataset extends YamlDoc {
             "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style}",
         '/{layerName}/{style}/{z}/{x}/{y}.{fmt}'=>
             "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
+        '/{layerName}/{style}/{z}/{x}/{y}'=>
+            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style}",
         '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
         '/map/{param}'=> Map::api()['api'],
       ]
@@ -197,9 +197,11 @@ class ViewDataset extends YamlDoc {
       }
       return $layers;
     }
+    // /{layerName}
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       return $this->layers[$matches[1]]->asArray();
     }
+    // /{layerName}/...
     elseif (preg_match('!^/([^/]+)(/.*)$!', $ypath, $matches)) {
       return $this->layers[$matches[1]]->extractByUri($matches[2]);
     }
@@ -210,18 +212,10 @@ class ViewDataset extends YamlDoc {
 
 
 class ViewLayer {
-  private $_id;
-  private $title;
-  private $server;
-  private $name;
-  private $abstract;
-  private $doc;
-  private $format;
-  private $minZoom;
-  private $maxZoom;
+  private $_id, $title, $server, $name, $abstract, $doc, $format, $minZoom, $maxZoom;
   
-  function __construct(string $lyrid, array $layer) {
-    $this->_id = $lyrid;
+  function __construct(array $layer) {
+    $this->_id = $layer['_id'];
     $this->title = $layer['title'];
     $this->server = $layer['server'];
     $this->name = $layer['name'];
@@ -233,6 +227,9 @@ class ViewLayer {
   }
   
   function asArray(): array {
+    //echo "<pre>layer="; print_r($this); die();
+    if (!$this->format || !$this->minZoom || !$this->maxZoom)
+      $serverLayer = $this->server->layer($this->name);
     return [
       '_id'=> $this->_id,
       'title'=> $this->title,
@@ -240,15 +237,24 @@ class ViewLayer {
       'name'=> $this->name,
       'abstract'=> $this->abstract,
       'doc'=> $this->doc,
-      'format'=> $this->format,
-      'minZoom'=> $this->minZoom,
-      'maxZoom'=> $this->maxZoom,
+      'format'=> $this->format ? $this->format : (isset($serverLayer['format']) ? $serverLayer['format'] : 'image/jpeg'),
+      'minZoom'=> $this->minZoom ? $this->minZoom : (isset($serverLayer['minZoom']) ? $serverLayer['minZoom'] : 0),
+      'maxZoom'=> $this->maxZoom ? $this->maxZoom : (isset($serverLayer['maxZoom']) ? $serverLayer['maxZoom'] : 21),
     ];
   }
+    
+  function styles(): array { return $this->server->layer($this->name)['styles']; }
   
-  function styles(): array { return []; }
-  
-  function show(): void {  }
+  function show(string $vdsid, string $lyrName, array $zxy): void {
+    $layer = $this->asArray();
+    $layer['styles'] = [];
+    foreach ($this->styles() as $styleName => $s) {
+      $layer['styles'][$styleName] = $s;
+      $href = "?doc=$vdsid&amp;ypath=/$lyrName/$styleName".($zxy ? '/'.implode('/',$zxy) : '');
+      $layer['styles'][$styleName]['title'] = "<html>\n<a href='$href'>$s[title]</a>";
+    }
+    showDoc($vdsid, $layer);
+  }
   
   function extractByUri(string $ypath) {
     if (preg_match('!^(/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {

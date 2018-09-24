@@ -30,8 +30,8 @@ EOT;
 require_once __DIR__.'/inc.php';
 
 class WmtsServer extends WmsServer {
-  //static $log = __DIR__.'/wmtsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  static $log = false; // nom du fichier de log ou false pour pas de log
+  static $log = __DIR__.'/wmtsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  //static $log = false; // nom du fichier de log ou false pour pas de log
   static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
   protected $_c; // contient les champs
   
@@ -115,6 +115,30 @@ class WmtsServer extends WmsServer {
     return [];
   }
   
+  function layerCap(string $id): void {
+    $cap = $this->getCapabilities();
+    $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
+    //die($cap);
+    $cap = new SimpleXMLElement($cap);
+    //echo "<pre>"; print_r($cap); echo "</pre>\n";
+    foreach ($cap->Contents->Layer as $layer) {
+      if ((string)$layer->ows_Identifier == $id) {
+        //echo "<pre>"; print_r($layer); echo "</pre>\n";
+        header('Content-type: application/xml');
+        echo '<?xml version="1.0" encoding="UTF-8"?>',
+          '<Capabilities',
+          ' xmlns="http://www.opengis.net/wmts/1.0"',
+          ' xmlns:gml="http://www.opengis.net/gml"',
+          ' xmlns:ows="http://www.opengis.net/ows/1.1"',
+          ' xmlns:xlink="http://www.w3.org/1999/xlink">',
+          str_replace(['<ows_','</ows_'], ['<ows:','</ows:'], $layer->asXml()),
+          '</Capabilities>';
+        die();
+      }
+    }
+    die("Layer $id not found");
+  }
+  
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     $layer = $this->layer($lyrName);
     //echo "<pre>"; print_r($layer); echo "</pre>\n";
@@ -135,25 +159,7 @@ class WmtsServer extends WmsServer {
       'height'=> 256,
       'width'=> 256,
     ];
-    try {
-      $image = $this->query($query);
-      header("Content-type: $layer[format]");
-      die($image);
-    }
-    catch(Exception $e) {
-      echo $e->getMessage();
-      if (self::$log) { // log
-        file_put_contents(
-            self::$log,
-            YamlDoc::syaml([
-              'date'=> date(DateTime::ATOM),
-              'appel'=> 'WmtsServer::tile',
-              'erreur'=> $e->getMessage(),
-            ]),
-            FILE_APPEND
-        );
-      }
-    }
+    $this->sendImageOrError($query);
   }
   
   // fabrique la carte d'affichage des couches de la base
