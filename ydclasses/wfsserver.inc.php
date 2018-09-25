@@ -60,7 +60,7 @@ doc: |
   
   Des tests unitaires de la transformation GML -> JSON sont définis.
       
-journal:
+journal: |
   17-19/9/2018:
     - modification du format intermédiaire pour passage de GML en GeoJSON
     - l'utilisation d'un pseudo JSON ne fonctionnait pas dans certains cas

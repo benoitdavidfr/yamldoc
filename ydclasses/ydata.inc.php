@@ -31,7 +31,7 @@ doc: |
   
   Implémente pour URI un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
   
-journal:
+journal: |
   29/7/2018:
   - mécanismes d'accès de base
   - manque projection, sélection
@@ -73,7 +73,7 @@ class YData extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "YData::show($docid, $ypath)<br>\n";
+    //echo "YData::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else
@@ -163,7 +163,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
     }
   }
   
-  // fournit les tuples de la table sous la forme d'une liste en ajoutant un attribut KEY avec la liste des clés
+  // fournit les tuples de la table sous la forme d'une liste en ajoutant un attribut _id avec la liste des clés
   function tuples() {
     $tuples = [];
     foreach ($this->data as $_id => $tuple) {
@@ -191,7 +191,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   // est utilisé par showDoc()
   // pas implémenté avec la même signature par tous !!!
   function show(string $docid, string $prefix='') {
-    echo "YDataTable::show()";
+    //echo "YDataTable::show()";
     echo "<table border=1>\n";
     echo "<th>",implode('</td><td>', $this->attrs),"</th>";
     foreach($this as $tuple) {
