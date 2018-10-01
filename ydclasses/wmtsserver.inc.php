@@ -95,12 +95,23 @@ class WmtsServer extends WmsServer {
     foreach ($cap->Contents->Layer as $layer) {
       if ((string)$layer->ows_Identifier == $id) {
         //echo "<pre>"; print_r($layer); echo "</pre>\n";
+        $minZoom = 99;
+        $maxZoom = -1;
+        foreach ($layer->TileMatrixSetLink->TileMatrixSetLimits->TileMatrixLimits as $limit) {
+          if ($limit->TileMatrix < $minZoom)
+            $minZoom = (int)$limit->TileMatrix;
+          if ($limit->TileMatrix > $maxZoom)
+            $maxZoom = (int)$limit->TileMatrix;
+        }
         $lyr = [
           'title'=> (string)$layer->ows_Title,
           'abstract'=> (string)$layer->ows_Abstract,
           'format'=> (string)$layer->Format,
           'tileMatrixSet'=> (string)$layer->TileMatrixSetLink->TileMatrixSet,
+          'minZoom'=> $minZoom,
+          'maxZoom'=> $maxZoom,
         ];
+        
         if ($layer->Style) {
           foreach ($layer->Style as $style) {
             $lyr['styles'][(string)$style->ows_Identifier] = [
@@ -115,33 +126,58 @@ class WmtsServer extends WmsServer {
     return [];
   }
   
-  function layerCap(string $id): void {
+  // affiche le TileMatrixLimits d'une couche pour un zoom
+  function tileMatrixLimits(string $lyrName, string $zoom) {
     $cap = $this->getCapabilities();
     $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
     //die($cap);
     $cap = new SimpleXMLElement($cap);
     //echo "<pre>"; print_r($cap); echo "</pre>\n";
     foreach ($cap->Contents->Layer as $layer) {
-      if ((string)$layer->ows_Identifier == $id) {
-        //echo "<pre>"; print_r($layer); echo "</pre>\n";
-        header('Content-type: application/xml');
-        echo '<?xml version="1.0" encoding="UTF-8"?>',
-          '<Capabilities',
-          ' xmlns="http://www.opengis.net/wmts/1.0"',
-          ' xmlns:gml="http://www.opengis.net/gml"',
-          ' xmlns:ows="http://www.opengis.net/ows/1.1"',
-          ' xmlns:xlink="http://www.w3.org/1999/xlink">',
-          str_replace(['<ows_','</ows_'], ['<ows:','</ows:'], $layer->asXml()),
-          '</Capabilities>';
-        die();
+      if ((string)$layer->ows_Identifier == $lyrName) {
+        foreach ($layer->TileMatrixSetLink->TileMatrixSetLimits->TileMatrixLimits as $limit) {
+          if ($limit->TileMatrix == $zoom) {
+            echo "<pre>limit="; print_r($limit); echo "</pre>\n";
+          }
+        }
       }
     }
-    die("Layer $id not found");
+  }
+  
+  // renvoie les capacités de la couche sous la forme d'un SimpleXMLElement
+  function layerCap(string $id): ?SimpleXMLElement {
+    $cap = $this->getCapabilities();
+    $cap = str_replace(['<ows:','</ows:',' xlink:href='], ['<ows_','</ows_',' xlink_href='], $cap);
+    //die($cap);
+    $cap = new SimpleXMLElement($cap);
+    //echo "<pre>"; print_r($cap); echo "</pre>\n";
+    foreach ($cap->Contents->Layer as $layer) {
+      if ((string)$layer->ows_Identifier == $id) {
+        //echo "<pre>"; print_r($layer); echo "</pre>\n";
+        return $layer;
+      }
+    }
+    return null;
+  }
+  
+  function printLayerCap(SimpleXMLElement $layerCap) {
+    echo '<?xml version="1.0" encoding="UTF-8"?>',
+      '<Capabilities',
+      ' xmlns="http://www.opengis.net/wmts/1.0"',
+      ' xmlns:gml="http://www.opengis.net/gml"',
+      ' xmlns:ows="http://www.opengis.net/ows/1.1"',
+      ' xmlns:xlink="http://www.w3.org/1999/xlink">',
+      str_replace(['<ows_','</ows_',' xlink_href='], ['<ows:','</ows:',' xlink:href='], $layerCap->asXml()),
+      '</Capabilities>';
   }
   
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     $layer = $this->layer($lyrName);
     //echo "<pre>"; print_r($layer); echo "</pre>\n";
+    if (!$layer) {
+      header("HTTP/1.1 404 Not Found");
+      die("Erreur couche $lyrName inexistante");
+    }
     if (!$style || !in_array($style, array_keys($layer['styles']))) {
       $style = array_keys($layer['styles'])[0];
       //die();

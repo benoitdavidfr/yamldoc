@@ -27,4 +27,5 @@ require_once __DIR__.'/mddb.inc.php';
 require_once __DIR__.'/gcsubjlist.inc.php';
 require_once __DIR__.'/wmsserver.inc.php';
 require_once __DIR__.'/wmtsserver.inc.php';
+require_once __DIR__.'/tileserver.inc.php';
 require_once __DIR__.'/viewds.inc.php';

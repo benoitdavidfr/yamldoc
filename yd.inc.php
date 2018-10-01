@@ -472,7 +472,7 @@ function new_doc(string $docid): ?Doc {
       if (file_exists("$filename.$ext")) {
         $filename = "$filename.$ext";
         //echo "filename=$filename<br>\n";
-        return new $class($filename);
+        return new $class($filename, $docid);
       }
     }
     return null;

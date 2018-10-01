@@ -102,7 +102,7 @@ class Geocat extends CswServer {
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // ce décapsulage ne s'effectue qu'à un seul niveau
   // Permet de maitriser l'ordre des champs
-  function asArray() { return array_merge($this->_id, $this->_c); }
+  function asArray() { return array_merge(['_id'=> $this->_id], $this->_c); }
 
   // extrait le fragment du document défini par $ypath
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()

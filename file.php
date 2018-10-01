@@ -4,6 +4,8 @@ name: file.php
 title: file.php - Affiche un fichier (image, PDF, ...)
 doc: |
 journal:
+  26/9/2018:
+   - ajout rawurldecode() sur les path pour accéder aux fichiers dont le nom comprend notamment des blancs
   22/8/2018:
     - prise en compte de la gestion du store, gestion des erreurs
 */
@@ -54,6 +56,7 @@ $ext = $matches[1];
 //echo "ext=$ext";
 $storeid = Store::id();
 $storepath = Store::storepath();
+$path = rawurldecode($path);
 if (!is_file(__DIR__."/$storepath$path")) {
   header("HTTP/1.1 404 Not Found");
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>file.php</title></head><body>\n";

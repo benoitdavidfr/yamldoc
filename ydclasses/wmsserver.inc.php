@@ -63,36 +63,47 @@ class WmsServer extends YamlDoc {
       $layers = '';
       foreach ($this->layers() as $lyrid => $layer)
         $layers .= "- [$layer[title]](?ypath=/layers/$lyrid)\n";
-      showDoc("$docid/layers", $layers);
+      showDoc($docid, $layers);
     }
     elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
       $lyrName = $matches[1];
       $style = (isset($matches[2]) && $matches[2]) ? $matches[3] : '';
+      $zxy = isset($matches[4]) ? [$matches[5], $matches[6], $matches[7]] : [];
       echo "style='$style'<br>\n";
       $layer = $this->layer($lyrName);
       //print_r($layer);
-      foreach ($layer['styles'] as $styleName => $s) {
-        $href = "?doc=$docid&amp;ypath=/layers/$lyrName/style/$styleName"
-          .(isset($matches[4]) ? "/$matches[5]/$matches[6]/$matches[7]" : '');
-        $layer['styles'][$styleName]['title'] = "<html>\n<a href='$href'>$s[title]</a>";
+      if (isset($layer['tileMatrixSet']))
+        $layer['tileMatrixSet'] = "<html>\n<a href='?doc=$docid&amp;ypath=/tileMatrixSets/$layer[tileMatrixSet]'>"
+            ."$layer[tileMatrixSet]</a>";
+      if (isset($layer['styles'])) {
+        $styles = $layer['styles'];
+        $layer['styles'] = [];
+        foreach ($styles as $styleName => $styl) {
+          $hrefTitle = "?doc=$docid&amp;ypath=/layers/$lyrName/legend/".rawurlencode($styleName);
+          $styl['title'] = "<html>\n<a href='$hrefTitle'>$styl[title]</a>";
+          $hrefName = "?doc=$docid&amp;ypath=/layers/$lyrName/style/".rawurlencode($styleName)
+            .($zxy ? '/'.implode('/',$zxy) : '');
+          $layer['styles']["<html>\n<a href='$hrefName'>$styleName</a>"] = $styl;
+        }
       }
       showDoc($docid, $layer);
       echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>Capacités de la couche</a><br>\n";
-      $zoom = isset($matches[4]) ? $matches[5]: 2;
-      $col = isset($matches[4]) ? max($matches[6], 0) : 0;
-      $cmin = isset($matches[4]) ? max($matches[6]-1, 0) : 0;
-      $cmax = isset($matches[4]) ? min($matches[6]+2, 2**$zoom - 1) : 2**$zoom - 1;
-      $row = isset($matches[4]) ? $matches[7] : 0;
-      $rmin = isset($matches[4]) ? max($matches[7]-1, 0) : 0;
-      $rmax = isset($matches[4]) ? min($matches[7]+2, 2**$zoom - 1): 2**$zoom - 1;
+      $zoom = $zxy ? $zxy[0] : 2;
+      //$this->tileMatrixLimits($lyrName, $zoom);
+      $col = $zxy ? max($zxy[1], 0) : 0;
+      $cmin = $zxy ? max($zxy[1]-1, 0) : 0;
+      $cmax = $zxy ? min($zxy[1]+2, 2**$zoom - 1) : 2**$zoom - 1;
+      $row = $zxy ? $zxy[2] : 0;
+      $rmin = $zxy ? max($zxy[2]-1, 0) : 0;
+      $rmax = $zxy ? min($zxy[2]+2, 2**$zoom - 1): 2**$zoom - 1;
       if ($style)
         $lyrName = "$lyrName/style/$style";
       echo "<table style='border:1px solid black; border-collapse:collapse;'>\n";
-      if ($zoom) {
+      if ($zoom) { // bouton de zoom-out si zoom > 0
         $href = sprintf("?doc=$docid&amp;ypath=/layers/$lyrName/%d/%d/%d", $zoom-1, $col/2, $row/2);
         echo "<tr><td><a href='$href'>$zoom</a></td>";
       }
-      else
+      else // sinon si zoom == 0 affichage du niveau de zoom
         echo "<tr><td>$zoom</td>";
       for($col=$cmin; $col <= $cmax; $col++) {
         echo "<td align='center'>col=$col</td>";
@@ -115,6 +126,74 @@ class WmsServer extends YamlDoc {
         echo "</tr>\n";
       }
     }
+    // affiche la légende d'un style donné
+    elseif (preg_match('!^/layers/([^/]+)/legend/([^/]+)$!', $ypath, $matches)) {
+      $lyrName = $matches[1];
+      $styleName = $matches[2];
+      echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>capabilities</a><br>";
+      $cap = $this->layerCap($lyrName);
+      //echo "<pre>cap="; print_r($cap); echo "</pre>\n";
+      foreach ($cap->Style as $style) {
+        //echo "<pre>style="; print_r($style); echo "</pre>\n";
+        //echo "ows_Identifier=",$style->ows_Identifier,"<br>\n";
+        if (((string)$style->ows_Identifier == $styleName) || ((string)$style->Name == $styleName)) {
+          if (($legendUrl = (string)$style->LegendURL['xlink_href']) // WMTS
+              || ($legendUrl = (string)$style->LegendURL->OnlineResource['xlink_href'])) // WMS
+            echo "<img src='$legendUrl' alt='erreur'><br>\n";
+          else
+            echo "Pas de fichier de légende<br>\n";
+          echo "<pre>style="; print_r($style); echo "</pre>\n";
+          die();
+        }
+      }
+    }
+    elseif (preg_match('!^/tileMatrixSets$!', $ypath, $matches)) {
+      $cap = $this->getCapabilities();
+      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
+      //die($cap);
+      $cap = new SimpleXMLElement($cap);
+      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
+      echo "<ul>\n";
+      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
+        $id = (string)$tileMatrixSet->ows_Identifier;
+        echo "<li><a href='?doc=$docid&amp;ypath=/tileMatrixSets/$id'>$id (",
+          (string)$tileMatrixSet->ows_SupportedCRS,")</a>\n";
+        //echo "<pre>tileMatrixSet="; print_r($tileMatrixSet);
+      }
+      echo "</ul>\n";
+    }
+    elseif (preg_match('!^/tileMatrixSets/([^/]+)$!', $ypath, $matches)) {
+      $id = $matches[1];
+      $cap = $this->getCapabilities();
+      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
+      //die($cap);
+      $cap = new SimpleXMLElement($cap);
+      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
+      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
+        if ($id == (string)$tileMatrixSet->ows_Identifier) {
+          echo "<h2>tileMatrixSet $id</h2>\n";
+          echo "SupportedCRS: ",$tileMatrixSet->ows_SupportedCRS,"<br>\n";
+          echo "<table border=1>",
+            "<th>Identifier</th><th>ScaleDenominator</th><th>TopLeftCorner</th>",
+            "<th>TileWidth</th><th>TileHeight</th>",
+            "<th>MatrixWidth</th><th>MatrixHeight</th>\n";
+          foreach ($tileMatrixSet->TileMatrix as $tileMatrix) {
+            echo "<tr><td>",$tileMatrix->ows_Identifier,"</td>\n",
+              "<td>",$tileMatrix->ScaleDenominator,"</td>\n",
+              "<td>",$tileMatrix->TopLeftCorner,"</td>\n",
+              "<td>",$tileMatrix->TileWidth,"</td>\n",
+              "<td>",$tileMatrix->TileHeight,"</td>\n",
+              "<td>",$tileMatrix->MatrixWidth,"</td>\n",
+              "<td>",$tileMatrix->MatrixHeight,"</td>\n",
+              "</tr>\n";
+          }
+          echo "</table>\n";
+          echo "<pre>tileMatrixSet"; print_r($tileMatrixSet);
+          die();
+        }
+      }
+      echo "</ul>\n";
+    }
     else
       showDoc($docid, $this->extract($ypath));
     //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
@@ -135,7 +214,7 @@ class WmsServer extends YamlDoc {
         '/'=> "retourne le contenu du document ".get_class(),
         '/api'=> "retourne les points d'accès de ".get_class(),
         '/?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en PNG ou JPG, le paramètre SERVICE est prédéfini",
-        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, affiche le résultat en XML et raffraichit le cache",
+        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, raffraichit le cache et affiche le résultat en XML",
         '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
         '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
         '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
@@ -198,7 +277,13 @@ class WmsServer extends YamlDoc {
           isset($matches[7]) ? $matches[7] : '');
     }
     elseif (preg_match('!^/layers/([^/]+)/capabilities$!', $ypath, $matches)) {
-      $this->layerCap($matches[1]);
+      if (!($layerCap = $this->layerCap($matches[1]))) {
+        header("HTTP/1.1 404 Not Found");
+        die("Layer $matches[1] not found");
+      }
+      header('Content-type: application/xml');
+      $this->printLayerCap($layerCap);
+      die();
     }
     elseif ($ypath == '/map') {
       return $this->map()->asArray();
@@ -295,6 +380,7 @@ class WmsServer extends YamlDoc {
     }
   }
 
+  // renvoie la liste des couches sous la forme d'un array [ lyrName => ['title', 'abstract'] ]
   function layers(): array {
     $cap = new SimpleXMLElement($this->getCapabilities());
     //echo "<pre>"; print_r($cap); echo "</pre>\n";
@@ -309,6 +395,7 @@ class WmsServer extends YamlDoc {
     return $lyrs;
   }
   
+  // renvoie un array décrivant la layer ['title', 'abstract', 'styles']
   function layer(string $name): array {
     $cap = new SimpleXMLElement($this->getCapabilities());
     //echo "<pre>"; print_r($cap); echo "</pre>\n";
@@ -333,23 +420,29 @@ class WmsServer extends YamlDoc {
     return [];
   }
   
-  function layerCap(string $name): void {
-    $cap = new SimpleXMLElement($this->getCapabilities());
+  // renvoie les capacités de la couche sous la forme d'un SimpleXMLElement
+  function layerCap(string $name): ?SimpleXMLElement {
+    $cap = $this->getCapabilities();
+    $cap = str_replace([' xlink:href='], [' xlink_href='], $cap);
+    $cap = new SimpleXMLElement($cap);
     //echo "<pre>"; print_r($cap); echo "</pre>\n";
     foreach ($cap->Capability->Layer->Layer as $layer) {
       if ((string)$layer->Name == $name) {
         //echo "<pre>"; print_r($layer); echo "</pre>\n";
-        header('Content-type: application/xml');
-        echo '<?xml version="1.0" encoding="UTF-8"?>',
-          '<WMS_Capabilities',
-          ' xmlns="http://www.opengis.net/wms"',
-          ' xmlns:xlink="http://www.w3.org/1999/xlink">',
-          $layer->asXml(),
-          '</WMS_Capabilities>';
-        die();
+        return $layer;
       }
     }
-    die("Layer $name not found");
+    return null;
+  }
+  
+  // affiche les capacités de couche en XML
+  function printLayerCap(SimpleXMLElement $layerCap) {
+    echo '<?xml version="1.0" encoding="UTF-8"?>',
+      '<WMS_Capabilities',
+      ' xmlns="http://www.opengis.net/wms"',
+      ' xmlns:xlink="http://www.w3.org/1999/xlink">',
+      $layerCap->asXml(),
+      '</WMS_Capabilities>';
   }
   
   // renvoie un bbox en EPSG:3857 à partir du no de tuile
@@ -367,6 +460,7 @@ class WmsServer extends YamlDoc {
     ];
   }
     
+  // affiche une tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension y compris le . ou ''
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     //$style = (isset($layers[$layername]['style']) ? $layers[$layername]['style'] : '');
     $query = [
