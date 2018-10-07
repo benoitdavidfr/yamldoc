@@ -32,11 +32,23 @@ EOT;
 }
 
 Interface iTileServer {
+  /* renvoie la liste des couches sous la forme:
+    [name => [
+      'title'=>title, 'abstract'=>abstract, 'format'=>format?,
+      'tileMatrixSet'=>tileMatrixSet?, 'minZoom'=>minZoom?, 'maxZoom'=>maxZoom?,
+    ]]
+  */
   function layers(): array;
   
+  /* renvoie les infos sur la couche sous la forme:
+    [ 'title'=>title, 'abstract'=>abstract, 'format'=>format?,
+      'tileMatrixSet'=>tileMatrixSet?, 'minZoom'=>minZoom?, 'maxZoom'=>maxZoom?,
+      'styles'=> [ styleName => ['title'=> title, 'abstract'=> abstract]]?
+    ]
+  */
   function layer(string $name): array;
   
-  // affiche une tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension y compris le . ou ''
+  // affiche une tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension et peut valoir '.' ou ''
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void;
 };
 

@@ -30,6 +30,7 @@ EOT;
 
 class WmtsServer extends OgcServer {
   static $log = __DIR__.'/wmtsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $serviceTag = 'WMTS';
   
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {

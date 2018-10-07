@@ -117,6 +117,29 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
       showDoc($docid, $this->extract($ypath));
     //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
   }
+  
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(), 
+      'abstract'=> "document correspondant à un serveur OGC",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/api'=> "retourne les points d'accès de ".get_class(),
+        '/?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en PNG ou JPG, le paramètre SERVICE est prédéfini",
+        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, raffraichit le cache et affiche le résultat en XML",
+        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
+        '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
+        '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
+        '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
+        '/layers/{layerName}/style/{style}/{z}/{x}/{y}.{fmt}'=>
+            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
+        '/layers/{layerName}/capabilities'=> "affiche le fragment XML des capacités de la couche",
+        '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
+        '/map/{param}'=> Map::api()['api'],
+      ]
+    ];
+  }
    
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
@@ -200,7 +223,7 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
       );
     }
     $url = $this->url;
-    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WMTS';
+    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE='.get_called_class()::$serviceTag;
     foreach($params as $key => $value)
       //$url .= "&$key=$value";
       $url .= '&'.strtoupper($key).'='.rawurlencode($value);
@@ -277,12 +300,12 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
       die($image);
     }
     catch(Exception $e) {
-      if (self::$log) { // log
+      if (get_called_class()::$log) { // log
         file_put_contents(
-            self::$log,
+            get_called_class()::$log,
             YamlDoc::syaml([
               'date'=> date(DateTime::ATOM),
-              'appel'=> 'WmsServer::tile',
+              'appel'=> 'OgcServer::sendImageOrError',
               'erreur'=> $e->getMessage(),
             ]),
             FILE_APPEND
@@ -297,54 +320,8 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
 
 class WmsServer extends OgcServer {
   static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $serviceTag = 'WMS';
   
-  static function api(): array {
-    return [
-      'class'=> get_class(), 
-      'title'=> "description de l'API de la classe ".get_class(), 
-      'abstract'=> "document correspondant à un serveur WMS",
-      'api'=> [
-        '/'=> "retourne le contenu du document ".get_class(),
-        '/api'=> "retourne les points d'accès de ".get_class(),
-        '/?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en PNG ou JPG, le paramètre SERVICE est prédéfini",
-        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, raffraichit le cache et affiche le résultat en XML",
-        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
-        '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
-        '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
-        '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
-        '/layers/{layerName}/style/{style}/{z}/{x}/{y}.{fmt}'=>
-            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
-        '/layers/{layerName}/capabilities'=> "affiche le fragment XML des capacités de la couche",
-        '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
-        '/map/{param}'=> Map::api()['api'],
-      ]
-    ];
-  }
-  
-  // renvoi l'URL de la requête
-  function url(array $params): string {
-    if (self::$log) { // log
-      file_put_contents(
-          self::$log,
-          YamlDoc::syaml([
-            'date'=> date(DateTime::ATOM),
-            'appel'=> 'WmsServer::url',
-            'params'=> $params,
-          ]),
-          FILE_APPEND
-      );
-    }
-    $url = $this->url;
-    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WMS';
-    foreach($params as $key => $value)
-      //$url .= "&$key=$value";
-      $url .= '&'.strtoupper($key).'='.rawurlencode($value);
-    if (self::$log) { // log
-      file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
-    }
-    return $url;
-  }
-
   // renvoie la liste des couches sous la forme d'un array [ lyrName => ['title', 'abstract'] ]
   function layers(): array {
     $cap = new SimpleXMLElement($this->getCapabilities());
