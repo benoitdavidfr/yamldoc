@@ -43,15 +43,16 @@ doc: |
         ou qu'elle est incorrecte
 
   A faire:
-    - Génération de la carte
+    - Vérifier que les paramètres de couche définis dans le document sont bien pris en compte dans la carte
       
   Exemples:
     - view/igngp.yaml
     - view/shomgt.yaml
 
 journal:
-  24-30/9/2018:
+  24/9-1/10/2018:
     - améliorations
+    - publication
   23/9/2018:
     - création
 EOT;

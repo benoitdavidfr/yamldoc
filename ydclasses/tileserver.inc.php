@@ -10,19 +10,27 @@ $phpDocs['tileserver.inc.php']['file'] = <<<'EOT'
 name: tileserver.inc.php
 title: tileserver.inc.php - serveur de tuiles
 doc: |
-  La classe TileServer définit des serveurs de tuiles.
-
+  La classe TileServer permet d'utiliser des serveurs de tuiles.
+  
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - url : url du serveur
 
+  Le code fait l'hypothèse que l'URL du serveur renvoie un document JSON de description contenant un champ layers
+  contenant la liste des couches dans le format:
+    - 'name': identifiant de la couche
+    - 'title': titre de la couche lisible par un humain
+    - 'minZoom': niveau min de zoom
+    - 'maxZoom': niveau max de zoom
+    - 'format': format des tuiles, soit 'image/png', soit 'image/jpeg', soit 'png', 
+  
 journal:
-  30/9/2018:
+  30/9-1/10/2018:
     - création
 EOT;
 }
 require_once __DIR__.'/inc.php';
 
-class TileServer extends YamlDoc {
+class TileServer extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/tileserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   //static $log = false; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs du doc initial
@@ -136,7 +144,7 @@ class TileServer extends YamlDoc {
       return self::api();
     }
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
-      return $this->tileServer['layers'][$matches[1]];
+      return $this->layer($matches[1]);
     }
     elseif (preg_match('!^/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
       //print_r($matches);
@@ -151,6 +159,10 @@ class TileServer extends YamlDoc {
     }
     else
       return null;
+  }
+  
+  function layers(): array {
+    return $this->tileServer['layers'];
   }
   
   function layer(string $lyrName): array {

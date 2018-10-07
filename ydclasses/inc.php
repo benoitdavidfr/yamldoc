@@ -25,6 +25,7 @@ require_once __DIR__.'/cswserver.inc.php';
 require_once __DIR__.'/geocat.inc.php';
 require_once __DIR__.'/mddb.inc.php';
 require_once __DIR__.'/gcsubjlist.inc.php';
+require_once __DIR__.'/itileserver.inc.php';
 require_once __DIR__.'/wmsserver.inc.php';
 require_once __DIR__.'/wmtsserver.inc.php';
 require_once __DIR__.'/tileserver.inc.php';

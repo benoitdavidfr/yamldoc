@@ -10,7 +10,9 @@ $phpDocs['wmtsserver.inc.php']['file'] = <<<'EOT'
 name: wmtsserver.inc.php
 title: wmtsserver.inc.php - serveur WMTS
 doc: |
-  La classe WmtsServer définit des serveurs WMTS.
+  La classe WmtsServer permet d'utiliser des serveurs WMTS.
+  Seules sont utilisables les couches définies dans un TileMatrixSet compatible avec GoogleMaps
+  (urn:ogc:def:wkss:OGC:1.0:GoogleMapsCompatible)
 
   Outre les champs de métadonnées, le document doit définir les champs suivants:
 
@@ -25,48 +27,114 @@ journal:
     - création
 EOT;
 }
-//require_once __DIR__.'/yamldoc.inc.php';
-//require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/inc.php';
 
-class WmtsServer extends WmsServer {
+class WmtsServer extends OgcServer {
   static $log = __DIR__.'/wmtsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  //static $log = false; // nom du fichier de log ou false pour pas de log
-  static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
-  protected $_c; // contient les champs
   
-  // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
-  function __construct($yaml, string $docid) {
-    $this->_c = $yaml;
-    $this->_id = $docid;
-    if (!$this->url)
-      throw new Exception("Erreur dans WmtsServer::__construct(): champ url obligatoire");
+  // affiche le sous-élément de l'élément défini par $ypath
+  function show(string $ypath=''): void {
+    $docid = $this->_id;
+    echo "WmtsServer::show($docid, $ypath)<br>\n";
+    /*
+    elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?(/([0-9]+)/([0-9]+)/([0-9]+))?$!', $ypath, $matches)) {
+      $lyrName = $matches[1];
+      $style = (isset($matches[2]) && $matches[2]) ? $matches[3] : '';
+      $zxy = isset($matches[4]) ? [$matches[5], $matches[6], $matches[7]] : [];
+      echo "style='$style'<br>\n";
+      $layer = $this->layer($lyrName);
+      //print_r($layer);
+      if (isset($layer['tileMatrixSet']))
+        $layer['tileMatrixSet'] = "<html>\n<a href='?doc=$docid&amp;ypath=/tileMatrixSets/$layer[tileMatrixSet]'>"
+            ."$layer[tileMatrixSet]</a>";
+      if (isset($layer['styles'])) {
+        $styles = $layer['styles'];
+        $layer['styles'] = [];
+        foreach ($styles as $styleName => $styl) {
+          $hrefTitle = "?doc=$docid&amp;ypath=/layers/$lyrName/legend/".rawurlencode($styleName);
+          $styl['title'] = "<html>\n<a href='$hrefTitle'>$styl[title]</a>";
+          $hrefName = "?doc=$docid&amp;ypath=/layers/$lyrName/style/".rawurlencode($styleName)
+            .($zxy ? '/'.implode('/',$zxy) : '');
+          $layer['styles']["<html>\n<a href='$hrefName'>$styleName</a>"] = $styl;
+        }
+      }
+      showDoc($docid, $layer);
+      echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>Capacités de la couche</a><br>\n";
+      showTilesInHtml($docid, $lyrName, $style, $zxy);
+    }
+    // affiche la légende d'un style donné
+    elseif (preg_match('!^/layers/([^/]+)/legend/([^/]+)$!', $ypath, $matches)) {
+      $lyrName = $matches[1];
+      $styleName = $matches[2];
+      echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>capabilities</a><br>";
+      $cap = $this->layerCap($lyrName);
+      //echo "<pre>cap="; print_r($cap); echo "</pre>\n";
+      foreach ($cap->Style as $style) {
+        //echo "<pre>style="; print_r($style); echo "</pre>\n";
+        //echo "ows_Identifier=",$style->ows_Identifier,"<br>\n";
+        if (((string)$style->ows_Identifier == $styleName) || ((string)$style->Name == $styleName)) {
+          if (($legendUrl = (string)$style->LegendURL['xlink_href']) // WMTS
+              || ($legendUrl = (string)$style->LegendURL->OnlineResource['xlink_href'])) // WMS
+            echo "<img src='$legendUrl' alt='erreur'><br>\n";
+          else
+            echo "Pas de fichier de légende<br>\n";
+          echo "<pre>style="; print_r($style); echo "</pre>\n";
+          die();
+        }
+      }
+    }
+    */
+    if (preg_match('!^/tileMatrixSets$!', $ypath, $matches)) {
+      $cap = $this->getCapabilities();
+      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
+      //die($cap);
+      $cap = new SimpleXMLElement($cap);
+      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
+      echo "<ul>\n";
+      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
+        $id = (string)$tileMatrixSet->ows_Identifier;
+        echo "<li><a href='?doc=$docid&amp;ypath=/tileMatrixSets/$id'>$id (",
+          (string)$tileMatrixSet->ows_SupportedCRS,")</a>\n";
+        //echo "<pre>tileMatrixSet="; print_r($tileMatrixSet);
+      }
+      echo "</ul>\n";
+    }
+    elseif (preg_match('!^/tileMatrixSets/([^/]+)$!', $ypath, $matches)) {
+      $id = $matches[1];
+      $cap = $this->getCapabilities();
+      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
+      //die($cap);
+      $cap = new SimpleXMLElement($cap);
+      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
+      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
+        if ($id == (string)$tileMatrixSet->ows_Identifier) {
+          echo "<h2>tileMatrixSet $id</h2>\n";
+          echo "SupportedCRS: ",$tileMatrixSet->ows_SupportedCRS,"<br>\n";
+          echo "<table border=1>",
+            "<th>Identifier</th><th>ScaleDenominator</th><th>TopLeftCorner</th>",
+            "<th>TileWidth</th><th>TileHeight</th>",
+            "<th>MatrixWidth</th><th>MatrixHeight</th>\n";
+          foreach ($tileMatrixSet->TileMatrix as $tileMatrix) {
+            echo "<tr><td>",$tileMatrix->ows_Identifier,"</td>\n",
+              "<td>",$tileMatrix->ScaleDenominator,"</td>\n",
+              "<td>",$tileMatrix->TopLeftCorner,"</td>\n",
+              "<td>",$tileMatrix->TileWidth,"</td>\n",
+              "<td>",$tileMatrix->TileHeight,"</td>\n",
+              "<td>",$tileMatrix->MatrixWidth,"</td>\n",
+              "<td>",$tileMatrix->MatrixHeight,"</td>\n",
+              "</tr>\n";
+          }
+          echo "</table>\n";
+          echo "<pre>tileMatrixSet"; print_r($tileMatrixSet);
+          die();
+        }
+      }
+      echo "</ul>\n";
+    }
+    else
+      parent::show($ypath);
+    //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
   }
   
-  // renvoi l'URL de la requête
-  function url(array $params): string {
-    if (self::$log) { // log
-      file_put_contents(
-          self::$log,
-          YamlDoc::syaml([
-            'date'=> date(DateTime::ATOM),
-            'appel'=> 'WmsServer::url',
-            'params'=> $params,
-          ]),
-          FILE_APPEND
-      );
-    }
-    $url = $this->url;
-    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WMTS';
-    foreach($params as $key => $value)
-      //$url .= "&$key=$value";
-      $url .= '&'.strtoupper($key).'='.rawurlencode($value);
-    if (self::$log) { // log
-      file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
-    }
-    return $url;
-  }
-
   function layers(): array {
     $cap = $this->getCapabilities();
     $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);

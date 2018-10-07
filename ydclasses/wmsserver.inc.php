@@ -10,7 +10,8 @@ $phpDocs['wmsserver.inc.php']['file'] = <<<'EOT'
 name: wmsserver.inc.php
 title: wmsserver.inc.php - serveur WMS
 doc: |
-  La classe WmsServer définit des serveurs WMS.
+  La classe abstraite OgcServer implémente des méthodes communes aux serveurs OGC.
+  La classe WmsServer permet d'utiliser des serveurs WMS.
 
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - url : url du serveur
@@ -23,15 +24,10 @@ journal:
     - création
 EOT;
 }
-//require_once __DIR__.'/yamldoc.inc.php';
-//require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/../isometadata.inc.php';
-require_once __DIR__.'/inc.php';
 
-class WmsServer extends YamlDoc {
-  static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
-  //static $log = false; // nom du fichier de log ou false pour pas de log
-  static $capCache = __DIR__.'/tscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
+// implémente des méthodes communes à WmsServer et WmtsServer
+abstract class OgcServer extends YamlDoc implements iTileServer {
+  static $capCache = __DIR__.'/ogccapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -39,16 +35,22 @@ class WmsServer extends YamlDoc {
     $this->_c = $yaml;
     $this->_id = $docid;
     if (!$this->url)
-      throw new Exception("Erreur dans WmsServer::__construct(): champ url obligatoire");
+      throw new Exception("Erreur dans OgcServer::__construct(): champ url obligatoire");
   }
   
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
+  
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  function asArray() { return array_merge(['_id'=> $this->_id], $this->_c); }
+
+  // extrait le fragment du document défini par $ypath
+  function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "WmsServer::show($docid, $ypath)<br>\n";
+    echo "OgcServer::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/')) {
       $c = $this->_c;
       unset($c['referer']);
@@ -88,43 +90,7 @@ class WmsServer extends YamlDoc {
       }
       showDoc($docid, $layer);
       echo "<a href='id.php/$docid/layers/$lyrName/capabilities'>Capacités de la couche</a><br>\n";
-      $zoom = $zxy ? $zxy[0] : 2;
-      //$this->tileMatrixLimits($lyrName, $zoom);
-      $col = $zxy ? max($zxy[1], 0) : 0;
-      $cmin = $zxy ? max($zxy[1]-1, 0) : 0;
-      $cmax = $zxy ? min($zxy[1]+2, 2**$zoom - 1) : 2**$zoom - 1;
-      $row = $zxy ? $zxy[2] : 0;
-      $rmin = $zxy ? max($zxy[2]-1, 0) : 0;
-      $rmax = $zxy ? min($zxy[2]+2, 2**$zoom - 1): 2**$zoom - 1;
-      if ($style)
-        $lyrName = "$lyrName/style/$style";
-      echo "<table style='border:1px solid black; border-collapse:collapse;'>\n";
-      if ($zoom) { // bouton de zoom-out si zoom > 0
-        $href = sprintf("?doc=$docid&amp;ypath=/layers/$lyrName/%d/%d/%d", $zoom-1, $col/2, $row/2);
-        echo "<tr><td><a href='$href'>$zoom</a></td>";
-      }
-      else // sinon si zoom == 0 affichage du niveau de zoom
-        echo "<tr><td>$zoom</td>";
-      for($col=$cmin; $col <= $cmax; $col++) {
-        echo "<td align='center'>col=$col</td>";
-      }
-      echo "<tr>\n";
-      for($row=$rmin; $row <= $rmax; $row++) {
-        echo "<tr><td>row=<br>$row</td>";
-        for($col=$cmin; $col <= $cmax; $col++) {
-          if (($row==$rmin) || ($row==$rmax) || ($col==$cmin) || ($col==$cmax))
-            $href = sprintf("?doc=$docid&amp;ypath=/layers/$lyrName/%d/%d/%d", $zoom, $col, $row);
-          else
-            $href = sprintf("?doc=$docid&amp;ypath=/layers/$lyrName/%d/%d/%d", $zoom+1, $col*2, $row*2);
-          $style = " style='border:1px solid blue;'";
-          $style = " style='border-collapse: collapse;'";
-          $style = " style='padding: 0px; border:1px solid blue;'";
-          $src = "http://$_SERVER[SERVER_NAME]/yamldoc/id.php/$docid/layers/$lyrName/$zoom/$col/$row";
-          $img = "<img src='$src' alt='$lyrName/$zoom/$col/$row' height='256' width='256'>";
-          echo "<td$style><a href='$href'>$img</a></td>\n";
-        }
-        echo "</tr>\n";
-      }
+      showTilesInHtml($docid, $lyrName, $style, $zxy);
     }
     // affiche la légende d'un style donné
     elseif (preg_match('!^/layers/([^/]+)/legend/([^/]+)$!', $ypath, $matches)) {
@@ -147,85 +113,9 @@ class WmsServer extends YamlDoc {
         }
       }
     }
-    elseif (preg_match('!^/tileMatrixSets$!', $ypath, $matches)) {
-      $cap = $this->getCapabilities();
-      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
-      //die($cap);
-      $cap = new SimpleXMLElement($cap);
-      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
-      echo "<ul>\n";
-      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
-        $id = (string)$tileMatrixSet->ows_Identifier;
-        echo "<li><a href='?doc=$docid&amp;ypath=/tileMatrixSets/$id'>$id (",
-          (string)$tileMatrixSet->ows_SupportedCRS,")</a>\n";
-        //echo "<pre>tileMatrixSet="; print_r($tileMatrixSet);
-      }
-      echo "</ul>\n";
-    }
-    elseif (preg_match('!^/tileMatrixSets/([^/]+)$!', $ypath, $matches)) {
-      $id = $matches[1];
-      $cap = $this->getCapabilities();
-      $cap = str_replace(['<ows:','</ows:'], ['<ows_','</ows_'], $cap);
-      //die($cap);
-      $cap = new SimpleXMLElement($cap);
-      //echo "<pre>cap="; print_r($cap->Contents->TileMatrixSet);
-      foreach ($cap->Contents->TileMatrixSet as $tileMatrixSet) {
-        if ($id == (string)$tileMatrixSet->ows_Identifier) {
-          echo "<h2>tileMatrixSet $id</h2>\n";
-          echo "SupportedCRS: ",$tileMatrixSet->ows_SupportedCRS,"<br>\n";
-          echo "<table border=1>",
-            "<th>Identifier</th><th>ScaleDenominator</th><th>TopLeftCorner</th>",
-            "<th>TileWidth</th><th>TileHeight</th>",
-            "<th>MatrixWidth</th><th>MatrixHeight</th>\n";
-          foreach ($tileMatrixSet->TileMatrix as $tileMatrix) {
-            echo "<tr><td>",$tileMatrix->ows_Identifier,"</td>\n",
-              "<td>",$tileMatrix->ScaleDenominator,"</td>\n",
-              "<td>",$tileMatrix->TopLeftCorner,"</td>\n",
-              "<td>",$tileMatrix->TileWidth,"</td>\n",
-              "<td>",$tileMatrix->TileHeight,"</td>\n",
-              "<td>",$tileMatrix->MatrixWidth,"</td>\n",
-              "<td>",$tileMatrix->MatrixHeight,"</td>\n",
-              "</tr>\n";
-          }
-          echo "</table>\n";
-          echo "<pre>tileMatrixSet"; print_r($tileMatrixSet);
-          die();
-        }
-      }
-      echo "</ul>\n";
-    }
     else
       showDoc($docid, $this->extract($ypath));
     //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
-  }
-  
-  // décapsule l'objet et retourne son contenu sous la forme d'un array
-  function asArray() { return array_merge(['_id'=> $this->_id], $this->_c); }
-
-  // extrait le fragment du document défini par $ypath
-  function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
-  
-  static function api(): array {
-    return [
-      'class'=> get_class(), 
-      'title'=> "description de l'API de la classe ".get_class(), 
-      'abstract'=> "document correspondant à un serveur WMS",
-      'api'=> [
-        '/'=> "retourne le contenu du document ".get_class(),
-        '/api'=> "retourne les points d'accès de ".get_class(),
-        '/?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en PNG ou JPG, le paramètre SERVICE est prédéfini",
-        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, raffraichit le cache et affiche le résultat en XML",
-        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
-        '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
-        '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
-        '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
-        '/layers/{layerName}/style/{style}/{z}/{x}/{y}.{fmt}'=>
-            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
-        '/layers/{layerName}/capabilities'=> "affiche le fragment XML des capacités de la couche",
-        '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
-        '/map/{param}'=> Map::api()['api'],
-      ]
-    ];
   }
    
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
@@ -296,6 +186,141 @@ class WmsServer extends YamlDoc {
       return null;
   }
   
+  // fabrique l'URL de la requête en ajoutant SERVICE aux paramètres
+  function url(array $params): string {
+    if (get_called_class()::$log) { // log
+      file_put_contents(
+          get_called_class()::$log,
+          YamlDoc::syaml([
+            'date'=> date(DateTime::ATOM),
+            'appel'=> 'WmsServer::url',
+            'params'=> $params,
+          ]),
+          FILE_APPEND
+      );
+    }
+    $url = $this->url;
+    $url .= ((strpos($url, '?') === false) ? '?' : '&').'SERVICE=WMTS';
+    foreach($params as $key => $value)
+      //$url .= "&$key=$value";
+      $url .= '&'.strtoupper($key).'='.rawurlencode($value);
+    if (get_called_class()::$log) { // log
+      file_put_contents(get_called_class()::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
+    }
+    return $url;
+  }
+  
+  // envoi une requête et récupère la réponse sous la forme d'un texte
+  function query(array $params): string {
+    $url = $this->url($params);
+    $context = null;
+    if ($this->referer) {
+      $referer = $this->referer;
+      if (get_called_class()::$log) { // log
+        file_put_contents(
+            get_called_class()::$log,
+            YamlDoc::syaml([
+              'appel'=> 'OgcServer::query',
+              'referer'=> $referer,
+            ]),
+            FILE_APPEND
+        );
+      }
+      $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
+    }
+    if (($result = @file_get_contents($url, false, $context)) === false) {
+      if (isset($http_response_header)) {
+        if (get_called_class()::$log) { // log
+          file_put_contents(
+              get_called_class()::$log,
+              YamlDoc::syaml(['http_response_header'=> $http_response_header]),
+              FILE_APPEND
+          );
+        }
+        if (preg_match('!^HTTP/1.. !', $http_response_header[0]))
+          throw new Exception("Erreur http '$http_response_header[0]' dans OgcServer::query() : sur url=$url");
+        else {
+          echo "http_response_header=";
+          var_dump($http_response_header);
+        }
+      }
+      throw new Exception("Erreur dans OgcServer::query() : sur url=$url");
+    }
+    //die($result);
+    if (substr($result, 0, 17) == '<ExceptionReport>') {
+      if (!preg_match('!<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
+        throw new Exception("Erreur dans OgcServer::query() : message d'erreur non détecté");
+      throw new Exception ("Erreur dans OgcServer::query() : $matches[1]");
+    }
+    return $result;
+  }
+  
+  // effectue un GetCapabities et retourne le XML. Utilise le cache sauf si force=true
+  function getCapabilities(bool $force=false): string {
+    //print_r($this); die();
+    $filepath = self::$capCache.'/ogc'.md5($this->url).'-cap.xml';
+    if (!$force && file_exists($filepath))
+      return file_get_contents($filepath);
+    else {
+      $cap = $this->query(['request'=> 'GetCapabilities']);
+      if (!is_dir(self::$capCache))
+        mkdir(self::$capCache);
+      file_put_contents($filepath, $cap);
+      return $cap;
+    }
+  }
+  
+  function sendImageOrError(array $query): void {
+    try {
+      $image = $this->query($query);
+      header("Content-type: $query[format]");
+      die($image);
+    }
+    catch(Exception $e) {
+      if (self::$log) { // log
+        file_put_contents(
+            self::$log,
+            YamlDoc::syaml([
+              'date'=> date(DateTime::ATOM),
+              'appel'=> 'WmsServer::tile',
+              'erreur'=> $e->getMessage(),
+            ]),
+            FILE_APPEND
+        );
+      }
+      if (preg_match("!^Erreur http '([^']*)'!", $e->getMessage(), $matches))
+        header($matches[1]);
+      die($e->getMessage());
+    }
+  }
+};
+
+class WmsServer extends OgcServer {
+  static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
+  
+  static function api(): array {
+    return [
+      'class'=> get_class(), 
+      'title'=> "description de l'API de la classe ".get_class(), 
+      'abstract'=> "document correspondant à un serveur WMS",
+      'api'=> [
+        '/'=> "retourne le contenu du document ".get_class(),
+        '/api'=> "retourne les points d'accès de ".get_class(),
+        '/?{params}'=> "envoi une requête construite avec les paramètres GET et affiche le résultat en PNG ou JPG, le paramètre SERVICE est prédéfini",
+        '/getCap(abilities)?'=> "envoi une requête GetCapabilities, raffraichit le cache et affiche le résultat en XML",
+        '/cap(abilities)?'=> "affiche en XML le contenu du cache s'il existe, sinon envoi une requête GetCapabilities, affiche le résultat en XML et l'enregistre dans le cache",
+        '/layers'=> "retourne la liste des couches exposées par le serveur avec pour chacune son titre et son résumé",
+        '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
+        '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
+        '/layers/{layerName}/style/{style}/{z}/{x}/{y}.{fmt}'=>
+            "retourne la tuile {z} {x} {y} de la couche {layerName} dans le style {style} et le format {fmt}",
+        '/layers/{layerName}/capabilities'=> "affiche le fragment XML des capacités de la couche",
+        '/map'=> "retourne le contenu de la carte affichant les couches du serveur WMS",
+        '/map/{param}'=> Map::api()['api'],
+      ]
+    ];
+  }
+  
   // renvoi l'URL de la requête
   function url(array $params): string {
     if (self::$log) { // log
@@ -318,66 +343,6 @@ class WmsServer extends YamlDoc {
       file_put_contents(self::$log, YamlDoc::syaml(['url'=> $url]), FILE_APPEND);
     }
     return $url;
-  }
-  
-  // envoi une requête et récupère la réponse sous la forme d'un texte
-  function query(array $params): string {
-    $url = $this->url($params);
-    $context = null;
-    if ($this->referer) {
-      $referer = $this->referer;
-      if (self::$log) { // log
-        file_put_contents(
-            self::$log,
-            YamlDoc::syaml([
-              'appel'=> 'WmsServer::query',
-              'referer'=> $referer,
-            ]),
-            FILE_APPEND
-        );
-      }
-      $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
-    }
-    if (($result = @file_get_contents($url, false, $context)) === false) {
-      if (isset($http_response_header)) {
-        if (self::$log) { // log
-          file_put_contents(
-              self::$log,
-              YamlDoc::syaml(['http_response_header'=> $http_response_header]),
-              FILE_APPEND
-          );
-        }
-        if (preg_match('!^HTTP/1.. !', $http_response_header[0]))
-          throw new Exception("Erreur http '$http_response_header[0]' dans WmsServer::query() : sur url=$url");
-        else {
-          echo "http_response_header=";
-          var_dump($http_response_header);
-        }
-      }
-      throw new Exception("Erreur dans WmsServer::query() : sur url=$url");
-    }
-    //die($result);
-    if (substr($result, 0, 17) == '<ExceptionReport>') {
-      if (!preg_match('!<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
-        throw new Exception("Erreur dans WmsServer::query() : message d'erreur non détecté");
-      throw new Exception ("Erreur dans WmsServer::query() : $matches[1]");
-    }
-    return $result;
-  }
-  
-  // effectue un GetCapabities et retourne le XML. Utilise le cache sauf si force=true
-  function getCapabilities(bool $force=false): string {
-    //print_r($this); die();
-    $filepath = self::$capCache.'/wms'.md5($this->url).'-cap.xml';
-    if ((!$force) && file_exists($filepath))
-      return file_get_contents($filepath);
-    else {
-      $cap = $this->query(['request'=> 'GetCapabilities']);
-      if (!is_dir(self::$capCache))
-        mkdir(self::$capCache);
-      file_put_contents($filepath, $cap);
-      return $cap;
-    }
   }
 
   // renvoie la liste des couches sous la forme d'un array [ lyrName => ['title', 'abstract'] ]
@@ -477,30 +442,6 @@ class WmsServer extends YamlDoc {
     if ($fmt == '.png')
       $query['transparent'] = 'true';
     $this->sendImageOrError($query);
-  }
-  
-  function sendImageOrError(array $query): void {
-    try {
-      $image = $this->query($query);
-      header("Content-type: $query[format]");
-      die($image);
-    }
-    catch(Exception $e) {
-      if (self::$log) { // log
-        file_put_contents(
-            self::$log,
-            YamlDoc::syaml([
-              'date'=> date(DateTime::ATOM),
-              'appel'=> 'WmsServer::tile',
-              'erreur'=> $e->getMessage(),
-            ]),
-            FILE_APPEND
-        );
-      }
-      if (preg_match("!^Erreur http '([^']*)'!", $e->getMessage(), $matches))
-        header($matches[1]);
-      die($e->getMessage());
-    }
   }
   
   // fabrique la carte d'affichage des couches de la base
