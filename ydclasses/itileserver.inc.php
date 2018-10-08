@@ -10,7 +10,7 @@ $phpDocs['itileserver.inc.php']['file'] = <<<'EOT'
 name: itileserver.inc.php
 title: itileserver.inc.php - serveur abstrait de tuiles
 doc: |
-  L'interface iTileServer définit l'interface des serveurs WMS, WMTS et TileServer utilisés par ViewDataset
+  L'interface iTileServer définit l'interface des serveurs WMS, WMTS, TileServer et FeatureViewer utilisés par ViewDataset
   
   Cette interface est définie par:
   

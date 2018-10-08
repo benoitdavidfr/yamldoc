@@ -30,4 +30,5 @@ require_once __DIR__.'/wmsserver.inc.php';
 require_once __DIR__.'/wmtsserver.inc.php';
 require_once __DIR__.'/tileserver.inc.php';
 require_once __DIR__.'/featureviewer.inc.php';
+require_once __DIR__.'/tilecache.inc.php';
 require_once __DIR__.'/viewds.inc.php';

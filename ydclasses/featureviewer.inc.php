@@ -21,6 +21,8 @@ journal:
 EOT;
 }
 
+require_once __DIR__.'/../inc.php';
+
 class FeatureViewer extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/featuredrawer.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs du doc initial
@@ -112,7 +114,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
     $docid = $this->_id;
-    //echo "WmsServer::extractByUri($this->_id, $ypath)<br>\n";
+    //echo "FeatureViewer::extractByUri($this->_id, $ypath)<br>\n";
     //$params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
     if (!$ypath || ($ypath=='/')) {
       return array_merge(['_id'=> $this->_id], $this->_c, ['tileServer' => $this->tileServer]);
@@ -122,6 +124,9 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     }
     elseif ($ypath == '/map') {
       return $this->map()->asArray();
+    }
+    elseif ($ypath == '/layers') {
+      return $this->layers();
     }
     elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
@@ -154,7 +159,6 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     return [ $x0 + $size * $ix, $y0 - $size * ($iy+1), $x0 + $size * ($ix+1), $y0 - $size * $iy ];
   }
     
-  
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     //echo "FeatureDrawer::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
     if ($zoom < $this->layers[$lyrName]['minZoom']) {
@@ -275,7 +279,6 @@ class Drawing {
   ];
   protected $bbox; // bbox en WM
   protected $image; // l'image 256 X 256 contenant le dessin
-  protected $scaleden=[]; // denominateur de l'échelle en X et Y
   protected $colors=[];
   
   function __construct(array $bbox=[]) {
@@ -314,6 +317,7 @@ class Drawing {
     header('Content-type: image/png');
     if (!imagepng($this->image))
       throw new Exception("Erreur dans imagepng");
+    imagedestroy($this->image);
   }
   
   function drawLineString(array $geom, string $stroke, string $fill, int $stroke_with) {
@@ -351,20 +355,7 @@ class Drawing {
   }
 };
 
-/* Exemple de styleMap
-    styleMap:
-      nature:
-        'Limite côtière': {color: 'blue', weight: 1}
-        'Frontière internationale': {color: 'chocolate', weight: 2}
-        'Limite de région': {color: 'red', weight: 1}
-        'Limite de département': {color: 'orange', weight: 1}
-        "Limite d'arrondissement": {color: 'lightGrey', weight: 1}
-        'Limite de commune': {color: 'lightGrey', weight: 1}
-      featurecla:
-        Coastline: {color: 'blue', weight: 1}
-      default:
-        {color: 'chocolate', weight: 2}
-*/
+// Un styler est initialisé avec un styleMap et sait calculer le style d'un feature
 class Styler {
   protected $styleMap; // [ [ propName => [ value => style ] | 'default' => style ] ]
   
@@ -384,3 +375,14 @@ class Styler {
   }
 };
 
+
+if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
+
+
+// Test de la classe Drawing
+$drawing =  new Drawing([0, 0, 100, 100]);
+$polygon = new Polygon([[[10,90], [40,50], [90,90], [10,90]]]);
+$drawing->drawPolygon($polygon->linestrings(), '', 'blue', 1);
+$lineString = new LineString([[10,90], [40,20], [70,90]]);
+$drawing->drawLineString($lineString->points(), 'red', '', 1);
+$drawing->flush();
