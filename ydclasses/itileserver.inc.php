@@ -15,6 +15,7 @@ doc: |
   Cette interface est définie par:
   
     - l'appel show() avec ypath d'une des formes:
+      -  /layers/{lyrName}(/style/{style})?
       -  /layers/{lyrName}(/style/{style})?/{zoom}/{x}/{y}
       -  /layers/{lyrName}(/style/{style})?/{zone}
     - l'appel uri de la forme /layers/{lyrName}(/style/{style})?/{zoom}/{x}/{y}(.{fmt})?

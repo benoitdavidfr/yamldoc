@@ -19,7 +19,7 @@ doc: |
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
     - définir une interface OAI
     - fabriquer une couche limite administrative pour la BD Parcellaire
-    - spécifier formellement (en JSON-Schema ?) le contenu d'un VectorDS
+    - spécifier formellement (en JSON-Schema ?) le contenu d'un FeatureDataset
   
 journal:
   23/9/2018:
