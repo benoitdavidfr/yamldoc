@@ -16,10 +16,9 @@ doc: |
     - tileServer : identifiant d'un document iTileServer correspondant au serveur de tuiles à cacher
     - layers
       - lyrName : nom de la couche à cacher
-        - zoom: niveau de zoom de référence à moissonner dans le 
-        - minZoom: niveau min de zoom à déduire
-        - xmin, xmax: intervalle de no de colonnes à cacher pour le zoom zoom
-        - ymin, ymax: intervalle de no de lignes à cacher pour le zoom zoom
+        - derive: intervalle de zooms pour lesquels les tuiles du cache seront dérivées du zoom supérieur
+        - cache: intervalle de zooms pour lesquels les tuiles seront demandées au tileServer et mise en cache
+        - transfer: intervalle de zooms pour lesquels les tuiles seront demandées au tileServer et PAS mise en cache
 
 journal:
   8/10/2018:
@@ -27,7 +26,7 @@ journal:
 EOT;
 }
 
-require_once __DIR__.'/../inc.php';
+//require_once __DIR__.'/../inc.php';
 
 class TileCache extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/tilecache.log.yaml'; // nom du fichier de log ou false pour pas de log
@@ -43,6 +42,7 @@ class TileCache extends YamlDoc implements iTileServer {
     if (!$this->layers)
       throw new Exception("Erreur dans TileCache::__construct : champ layers absent");
     $this->ts = new_doc($this->tileServer);
+    // récupération des titres des tuiles dans le tileServer
     $tslayers = $this->ts->extractByUri('/layers');
     foreach ($this->layers as $lyrNname => $layer) {
       //echo "lyrName: $lyrNname<br>\n";
@@ -91,8 +91,9 @@ class TileCache extends YamlDoc implements iTileServer {
       'api'=> [
         '/'=> "retourne le contenu du document ".get_class(),
         '/api'=> "retourne les points d'accès de ".get_class(),
+        '/layers'=> "retourne la liste des couches",
         '/layers/{layerName}'=> "retourne la description de la couche {layerName}",
-        '/layers/{layerName}/{z}/{x}/{y}.{fmt}'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
+        '/layers/{layerName}/{z}/{x}/{y}(.{fmt})?'=> "retourne la tuile {z} {x} {y} de la couche {layerName} en {fmt}",
         '/map'=> "retourne le contenu de la carte affichant les couches du jeu de données",
         '/map/{param}'=> Map::api()['api'],
       ]
@@ -108,6 +109,9 @@ class TileCache extends YamlDoc implements iTileServer {
     }
     elseif ($ypath == '/api') {
       return self::api();
+    }
+    elseif ($ypath == '/layers') {
+      return $this->layers();
     }
     elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
@@ -142,43 +146,80 @@ class TileCache extends YamlDoc implements iTileServer {
   function layer(string $lyrName): array {
     return $this->layers[$lyrName];
   }
-      
+  
+  function notFound(string $message) {
+    header("HTTP/1.1 404 Not Found");
+    die($message);
+  }
+  
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
-    $image = $this->makeTile($lyrName, $style, $zoom, $x, $y);
+    # pour zoom < deriveMin renvoie erreur 404,
+    # si deriveMin <= zoom < cacheMin alors derive, les tuiles du cache seront dérivées du zoom supérieur
+    # Cette dérivation se fait en batch, si une tuile est absente alors erreur 404
+    # si cacheMin <= $zoom <= cacheMax alors cache, tuiles demandées au tileServer et mise en cache
+    # si cacheMax < $zoom <= transferMax alors transfert, tuiles demandées au tileServer et PAS mise en cache
+    # si zoom > transferMax alors renvoie erreur 404
+    echo "<pre>layer="; print_r($this->layers($lyrName)); die();
+    $layer = $this->layers($lyrName);
+    if (isset($layer['deriveMin']) && ($zoom < $layer['deriveMin']))
+      $this->notFound("zoom=$zoom < deriveMin=$layer[deriveMin]");
+    elseif ($zoom < $layer['cacheMin']) {
+      if (!($image = $this->makeTile($lyrName, $zoom, $x, $y, 'cache')))
+        $this->notFound("zoom=$zoom < cacheMin=$layer[cacheMin]");
+    }
+    elseif ($zoom <= $layer['cacheMax']) {
+      $image = $this->makeTile($lyrName, $zoom, $x, $y, '');
+    }
+    elseif ($zoom <= $layer['transferMax']) {
+      $image = $this->makeTile($lyrName, $zoom, $x, $y, 'transfer');
+    }
+    else {
+      $this->notFound("zoom=$zoom > transferMax=$layer[transferMax]");
+    } 
     header('Content-type: image/png');
     @imagepng($image);
     die();
   }
   
-  function makeTile(string $lyrName, string $style, int $zoom, int $x, int $y, bool $force=false) /* : resource */ {
+  // renvoie une resource ou null, $action peut valoir:
+  //   - '' : renvoie la tuile en cache si elle existe sinon interroge le tileServer
+  //   - 'force' : force l'interrogation du tileServer même si la tuile est en cache
+  //   - 'transfer' : interroge le tileServer sans mettre en cache
+  //   - 'cache' : renvoie la tuile en cache si elle existe sinon renvoie null
+  private function makeTile(string $lyrName, int $zoom, int $x, int $y, string $action) {
     //echo "TileCache::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
     //$this->ts->extractByUri("/layers/$lyrName/$zoom/$x/$y");
-    $tsid = $this->tileServer;
-    $path = __DIR__.'/tilecache';
-    if (!is_dir($path)) mkdir($path);
-    //echo "_id=",$this->_id,"<br>\n";
-    $path .= '/'.str_replace('/','-',$this->_id);
-    if (!is_dir($path)) mkdir($path);
-    $path .= "/$lyrName";
-    if (!is_dir($path)) mkdir($path);
-    $path .= "/$zoom";
-    if (!is_dir($path)) mkdir($path);
-    $path .= "/$x";
-    if (!is_dir($path)) mkdir($path);
-    $path .= "/$y.png";
-    //echo "path=$path<br>\n";
-    if (!$force && is_file($path)) {
+    if ($action <> 'transfer') {
+      $path = __DIR__.'/tilecache';
+      if (!is_dir($path)) mkdir($path);
+      //echo "_id=",$this->_id,"<br>\n";
+      $path .= '/'.str_replace('/','-',$this->_id);
+      if (!is_dir($path)) mkdir($path);
+      $path .= "/$lyrName";
+      if (!is_dir($path)) mkdir($path);
+      $path .= "/$zoom";
+      if (!is_dir($path)) mkdir($path);
+      $path .= "/$x";
+      if (!is_dir($path)) mkdir($path);
+      $path .= "/$y.png";
+      //echo "path=$path<br>\n";
+    }
+    if (in_array($action, ['','cache']) && is_file($path)) {
       if (!($image = @imagecreatefrompng($path)))
         throw new Exception("erreur de lecture de $path");
+      return $image;
     }
-    else {
-      if (php_sapi_name() == 'cli')
-        $url = "http://localhost/yamldoc/id.php";
-      else
-        $url = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]";
-      $url .= "/$tsid/layers/$lyrName/$zoom/$x/$y";
-      if (($image = @imagecreatefrompng($url)) === FALSE)
-        throw new Exception("erreur de lecture de $url");
+    if ($action == 'cache')
+      return null;
+    if (php_sapi_name() == 'cli')
+      $url = "http://localhost/yamldoc/id.php";
+    else
+      $url = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]";
+    $tsid = $this->tileServer;
+    $url .= "/$tsid/layers/$lyrName/$zoom/$x/$y";
+    if (($image = @imagecreatefrompng($url)) === FALSE)
+      throw new Exception("erreur de lecture de $url");
+    if ($action <> 'transfer') {
       if (!@imagepng($image, $path))
         throw new Exception("erreur imagepng sur $path");
     }
@@ -190,7 +231,7 @@ class TileCache extends YamlDoc implements iTileServer {
     for ($x=$xmin; $x <= $xmax; $x++) {
       for ($y=$ymin; $y <= $ymax; $y++) {
         echo "$lyrName, $zoom, $x / $xmax, $y / $ymax<br>\n";
-        $image = $this->makeTile($lyrName, '', $zoom, $x, $y, true);
+        $image = $this->makeTile($lyrName, $zoom, $x, $y, 'force');
         imagedestroy($image);
       }
     }
@@ -215,15 +256,15 @@ class TileCache extends YamlDoc implements iTileServer {
         if (!imagecopyresampled($image, $im, 0, 0, 0, 0, 128, 128, 255, 255))
           throw new Exception("Erreur imagecopyresampled");
         imagedestroy($im);
-        $im = $this->makeTile($lyrName, '', $zoom+1, $x*2, $y*2+1, false);
+        $im = $this->makeTile($lyrName, $zoom+1, $x*2, $y*2+1, '');
         if (!imagecopyresampled($image, $im, 0, 128, 0, 0, 128, 128, 255, 255))
           throw new Exception("Erreur imagecopyresampled");
         imagedestroy($im);
-        $im = $this->makeTile($lyrName, '', $zoom+1, $x*2+1, $y*2, false);
+        $im = $this->makeTile($lyrName, $zoom+1, $x*2+1, $y*2, '');
         if (!imagecopyresampled($image, $im, 128, 0, 0, 0, 128, 128, 255, 255))
           throw new Exception("Erreur imagecopyresampled");
         imagedestroy($im);
-        $im = $this->makeTile($lyrName, '', $zoom+1, $x*2+1, $y*2+1, false);
+        $im = $this->makeTile($lyrName, $zoom+1, $x*2+1, $y*2+1, '');
         if (!imagecopyresampled($image, $im, 128, 128, 0, 0, 128, 128, 255, 255))
           throw new Exception("Erreur imagecopyresampled");
         imagedestroy($im);
