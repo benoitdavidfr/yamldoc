@@ -200,7 +200,7 @@ class WfsServerJsonAugmented extends WfsServerJson {
     $fcoll = json_decode($result, true);
     $nfcoll = ['type'=> 'FeatureCollection', 'features'=> []];
     foreach ($fcoll['features'] as $feature) {
-      $nfcoll['features'][] = ($this->fModifier)($feature);
+      $nfcoll['features'][] = ($this->fModifier)($typename, $feature);
     }
     return $nfcoll;
   }

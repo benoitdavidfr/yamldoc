@@ -215,9 +215,12 @@ class FeatureDataset extends YamlDoc {
         [ 'yamlClass'=> 'WfsServer',
           'wfsUrl'=> $this->wfsUrl,
           'wfsOptions'=> $this->wfsOptions ? $this->wfsOptions : [],
+          'featureModifier'=> $this->featureModifier,
+          'ftModContext'=> $this->ftModContext,
         ],
         "$docid/wfs"
       );
+      //echo "<pre>wfsServer="; print_r($this->wfsServer ); echo "</pre>\n"; 
     }
     
     //unset($this->_c['layersByTheme']);

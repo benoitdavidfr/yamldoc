@@ -12,6 +12,9 @@ title: tilecache.inc.php - Cache de tuiles implémentant l'interface iTileServer
 doc: |
   La classe TileCache gère un cache de tuiles implémentant l'interface iTileServer
   
+  La stratégie de remplissage du cache est la suivante:
+  
+  
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - tileServer : identifiant d'un document iTileServer correspondant au serveur de tuiles à cacher
     - layers
@@ -21,6 +24,8 @@ doc: |
         - transfer: intervalle de zooms pour lesquels les tuiles seront demandées au tileServer et PAS mise en cache
 
 journal:
+  11/10/2018:
+    - changement de stratégie de remplissage du cache
   8/10/2018:
     - création
 EOT;

@@ -24,7 +24,7 @@ EOT;
 require_once __DIR__.'/../inc.php';
 
 class FeatureViewer extends YamlDoc implements iTileServer {
-  static $log = __DIR__.'/featuredrawer.log.yaml'; // nom du fichier de log ou false pour pas de log
+  static $log = __DIR__.'/featureviewer.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs du doc initial
   protected $fds; // le doc fds
   protected $layers;
@@ -184,7 +184,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
   
   function drawFeature(Drawing $drawing, array $feature, ?Styler $styler): void {
     //echo "FeatureDrawer::drawFeature(feature, ptmin=[$bboxwm[0], $bboxwm[1]])<br>\n";
-    //echo "<pre>feature="; print_r($feature); echo "</pre>\n";
+    //echo "<pre>FeatureViewer::drawFeature() feature[properties]="; print_r($feature['properties']); echo "</pre>\n";
     $style = $styler ? $styler->style($feature) : null;
     //print_r($style); die();
     if ($feature['geometry']['type'] == 'LineString') {
@@ -213,6 +213,16 @@ class FeatureViewer extends YamlDoc implements iTileServer {
         '',
         isset($style['color']) ? $style['color'] : '',
         isset($style['weight']) ? $style['weight'] : -1);
+    }
+    elseif ($feature['geometry']['type'] == 'MultiPolygon') {
+      foreach ($feature['geometry']['coordinates'] as $polcoord) {
+        $pol = new Polygon($polcoord);
+        $pol = $pol->chgCoordSys('geo', 'WM');
+        $pol->draw($drawing,
+          '',
+          isset($style['color']) ? $style['color'] : '',
+          isset($style['weight']) ? $style['weight'] : -1);
+      }
     }
     else
       throw new Exception("Erreur geometrie ".$feature['geometry']['type']." non prévue");
@@ -275,6 +285,7 @@ class Drawing {
     'orange' => 'FFA500',
     'darkOrange'=> 'FF8C00',
     'lightGrey' => 'D3D3D3',
+    'yellow' => 'FFFF00',
     
   ];
   protected $bbox; // bbox en WM
@@ -348,7 +359,10 @@ class Drawing {
       $coord[] = round(256 - ($pt->y()-$this->bbox[1])/($this->bbox[3]-$this->bbox[1])*256);
       $numpoints++;
     }
-    $color = $this->color($fill) ? $this->color($fill) : $this->color('lightGrey');
+    //$color = $this->color($fill) ? $this->color($fill) : $this->color('lightGrey');
+    if (!$this->color($fill))
+      throw new Exception("Erreur dans Drawing::drawPolygon: couleur '$fill' non définie");
+    $color = $this->color($fill);
     if (!imagefilledpolygon($this->image, $coord, $numpoints, $color)) {
       throw new Exception("Erreur dans imagepolygon [".implode(',',$coord)."] $fill");
     }
@@ -362,6 +376,7 @@ class Styler {
   function __construct(array $styleMap) { $this->styleMap = $styleMap; }
     
   function style(array $feature): array {
+    //echo "<pre>Styler::style() sur:"; print_r($feature); echo "</pre>\n";
     foreach ($this->styleMap as $propName => $propStyleMap) {
       if ($propName == 'default')
         return $propStyleMap;

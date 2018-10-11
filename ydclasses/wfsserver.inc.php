@@ -91,9 +91,12 @@ abstract class WfsServer extends YamlDoc {
   
   // effectue soit un new WfsServerJson soit un new WfsServerGml
   static function new_WfsServer(array $wfsParams, string $docid) {
-    return isset($wfsParams['wfsOptions']['gml']) ?
-          new WfsServerGml($wfsParams, $docid)
-        : new WfsServerJSON($wfsParams, $docid);
+    if ($wfsParams['featureModifier'])
+      return new WfsServerJsonAugmented($wfsParams, $docid);
+    elseif (isset($wfsParams['wfsOptions']['gml']))
+      return new WfsServerGml($wfsParams, $docid);
+    else
+      return new WfsServerJSON($wfsParams, $docid);
   }
     
   // lit les champs
