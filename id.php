@@ -15,6 +15,8 @@ doc: |
     -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
   Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
 journal: |
+  15/10/2018:
+    - ajout paramètres CLI
   25/8/2018:
     - ajout possibilité d'appel CLI
     - correction bug sur la gestion du store
@@ -135,9 +137,19 @@ if (php_sapi_name()=='cli') {
   }
   Store::setStoreid($argv[1]);
   $uri = $argv[2];
-  if (($argc >= 4) && ($argv[3]=='format=yaml'))
-    $_GET['format'] = 'yaml';
-    
+  if ($argc > 3) {
+    for($a=3; $a<$argc; $a++) {
+      //echo "$a> ",$argv[$a],"\n";
+      $pos = strpos($argv[$a], '=');
+      if ($pos === false)
+        die("Erreur: Argument $argv[$a] non compris\n");
+      //echo "pos=$pos\n";
+      $key = substr($argv[$a], 0, $pos);
+      $value = substr($argv[$a], $pos+1);
+      //echo "key='$key', value='$value'\n";
+      $_GET[$key] = $value;
+    }
+  }
   //die("Fin ligne ".__LINE__."\n");
 }
 else {

@@ -239,13 +239,15 @@ class WmtsServer extends OgcServer {
       str_replace(['<ows_','</ows_',' xlink_href='], ['<ows:','</ows:',' xlink:href='], $layerCap->asXml()),
       '</Capabilities>';
   }
-  
-  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+    
+  // retourne un array ['format'=>format, 'image'=> image]
+  // où image est la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou transmet l'exception générée par query()
+  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): array {
     $layer = $this->layer($lyrName);
     //echo "<pre>"; print_r($layer); echo "</pre>\n";
     if (!$layer) {
-      header("HTTP/1.1 404 Not Found");
-      die("Erreur couche $lyrName inexistante");
+      throw new Exception("Erreur couche $lyrName inexistante dans WmtsServer::tile()");
     }
     if (!$style || !in_array($style, array_keys($layer['styles']))) {
       $style = array_keys($layer['styles'])[0];
@@ -264,7 +266,7 @@ class WmtsServer extends OgcServer {
       'height'=> 256,
       'width'=> 256,
     ];
-    $this->sendImageOrError($query);
+    return ['format'=> $layer['format'], 'image'=> $this->query($query)];
   }
   
   // fabrique la carte d'affichage des couches de la base

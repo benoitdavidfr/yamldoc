@@ -22,6 +22,8 @@ doc: |
     - spécifier formellement (en JSON-Schema ?) le contenu d'un FeatureDataset
   
 journal:
+  11/10/2018:
+    - ajout méthode FeatureDataset::numberOfFeatures() et api '/{lyrname}/nof?bbox={bbox}'
   23/9/2018:
     - chgt de nom de classe de VectoDataset en FeatureDataset, évite la confusion avec ViewDataset (vds)
   4/9/2018:
@@ -414,6 +416,7 @@ class FeatureDataset extends YamlDoc {
         '/wfs/{param}'=> WfsServer::api()['api'],
         '/{lyrname}'=> "Affiche les caractéritiques de la couche {lyrname} de la SD",
         '/{lyrname}?bbox={bbox}&zoom={zoom}'=> "Si les paramètres contiennent les chaines alors retourne les caractéritiques de la couche, sinon retourne les objets sélectionnés",
+        '/{lyrname}/nof?bbox={bbox}'=> "retourne le nombre d'objets sélectionnés",
         '/{lyrname}/properties'=> "Retourne la liste des propriétés de la couche",
         '/{lyrname}/id/{id}'=> "Retourne l'objet {id} de la couche {lyrname} (non implémenté)",
       ]
@@ -447,7 +450,7 @@ class FeatureDataset extends YamlDoc {
       $lyrname = $matches[1];
       $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
       $where = isset($params['where']) ? $params['where'] : '';
-      $selfUri = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$_SERVER[PATH_INFO]";
+      $selfUri = (php_sapi_name()=='cli') ? '' : "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]$_SERVER[PATH_INFO]";
       try {
         if (!isset($this->layers[$lyrname]))
           return null;
@@ -477,6 +480,43 @@ class FeatureDataset extends YamlDoc {
       } catch (Exception $e) {
         header('Access-Control-Allow-Origin: *');
         if (!isset($params['bbox']) || ($params['bbox']=='{bbox}')) {
+          header('HTTP/1.1 500 Internal Server Error');
+          header('Content-type: text/plain');
+          die("Exception ".$e->getMessage());
+        }
+        header('Content-type: application/json');
+        $bbox = WfsServer::decodeBbox($params['bbox']);
+        $errorFeatureColl = [
+          'type'=> 'FeatureCollection',
+          'features'=> [
+            [ 'type'=> 'Feature',
+              'properties'=> [ 'errorMessage'=> $e->getMessage() ],
+              'geometry'=> [
+                'type'=> 'Point',
+                'coordinates'=> [ ($bbox[0]+$bbox[2])/2, ($bbox[1]+$bbox[3])/2 ]
+              ]
+            ]
+          ],
+        ];
+        echo json_encode($errorFeatureColl, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        file_put_contents(self::$log, YamlDoc::syaml(['erreur'=> $e->getMessage()]), FILE_APPEND);
+        die();
+      }
+    }
+    // fragment /{lyrname}/nof?bbox={bbox}&where={where}
+    elseif (preg_match('!^/([^/]+)/nof$!', $ypath, $matches)) {
+      $lyrname = $matches[1];
+      $params = !isset($_GET) ? $_POST : (!isset($_POST) ? $_GET : array_merge($_GET, $_POST));
+      try {
+        if (!isset($this->layers[$lyrname]))
+          return null;        
+        return $this->numberOfFeatures(
+          $lyrname,
+          isset($params['bbox']) ? WfsServer::decodeBbox($params['bbox']) : [],
+          isset($params['where']) ? $params['where'] : '');
+      } catch (Exception $e) {
+        header('Access-Control-Allow-Origin: *');
+        if (!isset($params['bbox'])) {
           header('HTTP/1.1 500 Internal Server Error');
           header('Content-type: text/plain');
           die("Exception ".$e->getMessage());
@@ -577,6 +617,29 @@ class FeatureDataset extends YamlDoc {
     return $fields;
   }
     
+  //
+  function numberOfFeatures(string $lyrname, array $bbox=[], string $where=''): int {
+    if (isset($this->layers[$lyrname]['typename'])) {
+      $typename = $this->layers[$lyrname]['typename'];
+      return $this->wfsServer->getNumberMatched($typename, $bbox, $where);
+    }
+    elseif (isset($this->layers[$lyrname]['ogrPath'])) {
+      MySql::open(require(__DIR__.'/../mysqlparams.inc.php'));
+      $dbname = $this->dbname();
+      $bboxwkt = WfsServer::bboxWktLngLat($bbox);
+      $sql = "select count(*) nbre from $dbname.$lyrname\n";
+      if ($where)
+        $sql .= " where $where";
+      if ($bboxwkt)
+        $sql .= ($where ? ' and ':' where ')."MBRIntersects(geom, ST_GeomFromText('$bboxwkt'))";
+      foreach(MySql::query($sql) as $tuple) {
+        return $tuple['nbre'];
+      }
+    }
+    else
+      throw new Exception("Dans FeatureDataset::numberOfFeatures: cas non prévu");
+  }
+  
   // affiche une couche vide et enregistre le message dans le log
   static function emptyFeatureCollection(string $message) {
     header('Access-Control-Allow-Origin: *');

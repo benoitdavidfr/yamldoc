@@ -11,7 +11,7 @@ name: viewds.inc.php
 title: viewds.inc.php - serveur de tuiles
 doc: |
   La classe ViewDataset définit une série de données (SD) de consultation constituée de couches de consultation
-  provenant de serveurs WMS/WMTS.  
+  provenant de serveurs WMS/WMTS/... conformes à l'interface iTileServer.  
   Les objectifs sont:
     1) exposer les couches indépendamment des types de serveur sous-jacents (WMS, WMTS)
     2) définir une liste de couches en:
@@ -377,11 +377,11 @@ class ViewLayer {
     showDoc($vdsid, $layer);
   }
   
-  function extractByUri(string $ypath) {
-    if (preg_match('!^(/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
-      $this->server->tile($this->name, $matches[1] ? $matches[2] : '',
+  function extractByUri(string $ypath): void {
+    if (preg_match('!^(/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\.(.+))?$!', $ypath, $matches)) {
+      $this->server->displayTile($this->name, $matches[1] ? $matches[2] : '',
           $matches[3], $matches[4], $matches[5],
-          isset($matches[6]) ? $matches[6] : '');
+          isset($matches[6]) ? $matches[7] : '');
     }
   }
 };

@@ -34,7 +34,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     $this->_c = $yaml;
     $this->_id = $docid;
     if (!$this->featureDataset)
-      throw new Exception("Erreur dans FeatureDrawer::__construct : champ featureDataset absent");
+      throw new Exception("Erreur dans FeatureViewer::__construct : champ featureDataset absent");
     $this->fds = new_doc($this->featureDataset);
     $fds = $this->fds->extractByUri('');
     foreach ($fds['layers'] as $lyrName => $layer) {
@@ -131,9 +131,10 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
     }
-    elseif (preg_match('!^/layers/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/layers/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)(\.(.+))?$!', $ypath, $matches)) {
       //print_r($matches);
-      $this->tile($matches[1], '', $matches[2], $matches[3], $matches[4], isset($matches[5]) ? $matches[5] : '');
+      $this->displayTile($matches[1], '', $matches[2], $matches[3], $matches[4], isset($matches[5]) ? $matches[6] : '');
+      die();
     }
     elseif (preg_match('!^/map(/.*)$!', $ypath, $matches)) {
       $this->map()->extractByUri($matches[1]);
@@ -158,20 +159,51 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     $size = $size0 / pow(2, $zoom);
     return [ $x0 + $size * $ix, $y0 - $size * ($iy+1), $x0 + $size * ($ix+1), $y0 - $size * $iy ];
   }
-    
-  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
-    //echo "FeatureDrawer::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
+  
+  // retourne un booléen indiquant si la tuile est simple ou non
+  function simpleTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): bool {
+    $bboxwm = self::bbox($zoom, $x, $y);
+    $ptmin = WebMercator::geo($bboxwm[0], $bboxwm[1]);
+    $ptmax = WebMercator::geo($bboxwm[2], $bboxwm[3]);
+    $bbox = [$ptmin[0], $ptmin[1], $ptmax[0], $ptmax[1]];
+    $numberOfFeatures = $this->fds->numberOfFeatures($lyrName, $bbox);
+    //echo "numberOfFeatures=$numberOfFeatures<br>\n";
+    if ($numberOfFeatures > 200)
+      return false;
+    else
+      return true;
+  }
+  
+  // retourne la ressource GD correspondant à l'image de la tuile
+  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt) {
+    //echo "FeatureViewer::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
     if ($zoom < $this->layers[$lyrName]['minZoom']) {
       $drawing = new Drawing();
-      die($drawing->flush());
+      return $drawing->image();
     }
     $fdsid = $this->featureDataset;
     $bboxwm = self::bbox($zoom, $x, $y);
     $ptmin = WebMercator::geo($bboxwm[0], $bboxwm[1]);
     $ptmax = WebMercator::geo($bboxwm[2], $bboxwm[3]);
-    $url = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$fdsid/$lyrName"
-        ."?bbox=$ptmin[0],$ptmin[1],$ptmax[0],$ptmax[1]&zoom=$zoom";
-    $featColl = file_get_contents($url);
+    if (php_sapi_name()=='cli') {
+      //throw new Exception("opération FeatureViewer::tile impossible en CLI");
+      //  string exec ( string $command [, array &$output [, int &$return_var ]] )
+      $command = "php id.php pub /$fdsid/$lyrName bbox=$ptmin[0],$ptmin[1],$ptmax[0],$ptmax[1] zoom=$zoom";
+      //echo "command=$command\n";
+      $output = '';
+      $return_var = '';
+      exec($command, $output, $return_var);
+      if ($return_var <> 0)
+        echo "return_var=$return_var\n";
+      $featColl = '';
+      foreach ($output as $line)
+        $featColl .= "$line\n";
+    }
+    else {
+      $url = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$fdsid/$lyrName"
+          ."?bbox=$ptmin[0],$ptmin[1],$ptmax[0],$ptmax[1]&zoom=$zoom";
+      $featColl = file_get_contents($url);
+    }
     $featColl = json_decode($featColl, true);
     //echo "<pre>featColl="; print_r($featColl); echo "</pre>\n";
     $styler = isset($this->layers[$lyrName]['styleMap']) ? new Styler($this->layers[$lyrName]['styleMap']) : null;
@@ -179,7 +211,14 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     foreach ($featColl['features'] as $feature) {
       $this->drawFeature($drawing, $feature, $styler);
     }
-    die($drawing->flush());
+    return $drawing->image();
+  }
+  
+  // affiche la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou transmet une exception
+  function displayTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+    $drawing = $this->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    $drawing->display();
   }
   
   function drawFeature(Drawing $drawing, array $feature, ?Styler $styler): void {
@@ -320,7 +359,17 @@ class Drawing {
     return null;
   }
   
-  function flush() {
+  // renvoie l'image GD
+  function image() {
+    if (!imagealphablending($this->image, FALSE))
+      throw new Exception("erreur sur imagealphablending(FALSE)");
+    if (!imagesavealpha($this->image, TRUE))
+      throw new Exception("erreur sur imagesavealpha(TRUE)");
+    return $this->image;
+  }
+  
+  // affiche l'image et la détruit
+  function display() {
     if (!imagealphablending($this->image, FALSE))
       throw new Exception("erreur sur imagealphablending(FALSE)");
     if (!imagesavealpha($this->image, TRUE))

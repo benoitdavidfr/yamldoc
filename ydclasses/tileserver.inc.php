@@ -146,9 +146,9 @@ class TileServer extends YamlDoc implements iTileServer {
     elseif (preg_match('!^/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
     }
-    elseif (preg_match('!^/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)(\.(.+))?$!', $ypath, $matches)) {
       //print_r($matches);
-      $this->tile($matches[1], '', $matches[2], $matches[3], $matches[4], isset($matches[5]) ? $matches[5] : '');
+      $this->displayTile($matches[1], '', $matches[2], $matches[3], $matches[4], isset($matches[5]) ? $matches[6] : '');
     }
     elseif ($ypath == '/map') {
       return $this->map()->asArray();
@@ -169,24 +169,25 @@ class TileServer extends YamlDoc implements iTileServer {
     return $this->tileServer['layers'][$lyrName];
   }
   
-  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): array {
     if (!$fmt) {
       $layer = $this->tileServer['layers'][$lyrName];
-      $fmt = ".$layer[format]";
+      $fmt = $layer['format'];
     }
-    $url = $this->url."/$lyrName/$zoom/$x/$y$fmt";
+    $url = $this->url."/$lyrName/$zoom/$x/$y.$fmt";
     //echo "url=$url\n";
     if (($image = @file_get_contents($url))===false) {
-      header("HTTP/1.1 404 Not Found");
-      die("$url Not Found");
+      throw new Exception("Erreur dans la lecture de $url");
     }
-    if (0)
-      echo '';
-    elseif ($fmt=='.png')
-      header('Content-type: image/png');
-    else
-      header('Content-type: image/jpeg');
-    die($image);
+    return ['format'=> ($fmt=='png') ? 'image/png' : 'image/jpeg', 'image'=> $image];
+  }
+  
+  // affiche la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou transmet une exception
+  function displayTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+    $tile = $this->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    header('Content-type: '.$tile['format']);
+    die($tile['image']);
   }
   
   // fabrique la carte d'affichage des couches de la base

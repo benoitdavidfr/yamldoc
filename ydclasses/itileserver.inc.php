@@ -22,9 +22,13 @@ doc: |
     - les méthodes Php:
       - layers(): array 
       - layer($lyrName): array
-      - tile($lyrName, $style, $zoom, $x, $y, $fmt): void qui affiche une tuile
+      - tile($lyrName, $style, $zoom, $x, $y, $fmt): renvoie une tuile
+      - displayTile($lyrName, $style, $zoom, $x, $y, $fmt): void qui affiche une tuile
 
 journal:
+  11-15/10/2018:
+    - modification de l'interface pour que le résultat de tile() soit réutilisable
+    - ajout de displayTile() qui affiche la tuile
   7/10/2018:
     - restructuration comme interface et non comme classe abstraite
   2/10/2018:
@@ -49,8 +53,18 @@ Interface iTileServer {
   */
   function layer(string $name): array;
   
-  // affiche une tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension et peut valoir '.' ou ''
-  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void;
+  // retourne la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // retourne soit:
+  //   - un array ['format'=>format, 'image'=> image] où
+  //     - image est la tuile transmise comme string
+  //     - format est son format MIME (image/png ou image/jpeg)
+  //   - une ressource GD
+  // ou génère une exception
+  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt);
+  
+  // affiche la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou lève une exception
+  function displayTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void;
 };
 
 // affiche en HTML les tuiles d'une couche d'un iTileServer et gère l'IHM

@@ -184,10 +184,31 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
     elseif (preg_match('!^/layers/([^/]+)$!', $ypath, $matches)) {
       return $this->layer($matches[1]);
     }
-    elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\..+)?$!', $ypath, $matches)) {
-      $this->tile($matches[1], $matches[2] ? $matches[3] : '',
-          $matches[4], $matches[5], $matches[6],
-          isset($matches[7]) ? $matches[7] : '');
+    // /layers/{lyrName}(/style/{styleName})?/{zoom}/{x}/{y}(.(png|jpg))?
+    elseif (preg_match('!^/layers/([^/]+)(/style/([^/]+))?/([0-9]+)/([0-9]+)/([0-9]+)(\.(png|jpg))?$!', $ypath, $matches)) {
+      try {
+        $tile = $this->tile($matches[1], $matches[2] ? $matches[3] : '',
+            $matches[4], $matches[5], $matches[6],
+            isset($matches[7]) ? $matches[8] : '');
+        header('Content-type: '.$tile['format']);
+        die($tile['image']);
+      }
+      catch(Exception $e) {
+        if (get_called_class()::$log) { // log
+          file_put_contents(
+              get_called_class()::$log,
+              YamlDoc::syaml([
+                'date'=> date(DateTime::ATOM),
+                'appel'=> 'OgcServer::extractByUri',
+                'erreur'=> $e->getMessage(),
+              ]),
+              FILE_APPEND
+          );
+        }
+        if (preg_match("!^Erreur http '([^']*)'!", $e->getMessage(), $matches))
+          header($matches[1]);
+        die($e->getMessage());
+      }
     }
     elseif (preg_match('!^/layers/([^/]+)/capabilities$!', $ypath, $matches)) {
       if (!($layerCap = $this->layerCap($matches[1]))) {
@@ -234,6 +255,7 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
   }
   
   // envoi une requête et récupère la réponse sous la forme d'un texte
+  // En cas d'erreur génère une exception HHTP ou OGC
   function query(array $params): string {
     $url = $this->url($params);
     $context = null;
@@ -272,8 +294,8 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
     //die($result);
     if (substr($result, 0, 17) == '<ExceptionReport>') {
       if (!preg_match('!<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
-        throw new Exception("Erreur dans OgcServer::query() : message d'erreur non détecté");
-      throw new Exception ("Erreur dans OgcServer::query() : $matches[1]");
+        throw new Exception("Erreur OGC dans OgcServer::query() : message d'erreur non détecté");
+      throw new Exception ("Erreur OGC dans OgcServer::query() : $matches[1]");
     }
     return $result;
   }
@@ -293,7 +315,30 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
     }
   }
   
-  function sendImageOrError(array $query): void {
+  // renvoie un bbox en EPSG:3857 à partir du no de tuile
+  static function bbox(int $zoom, int $ix, int $iy): array {
+    $base = 20037508.3427892476320267;
+    $size0 = $base * 2;
+    $x0 = - $base;
+    $y0 =   $base;
+    $size = $size0 / pow(2, $zoom);
+    return [
+      $x0 + $size * $ix,
+      $y0 - $size * ($iy+1),
+      $x0 + $size * ($ix+1),
+      $y0 - $size * $iy,
+    ];
+  }
+  
+  // affiche la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou transmet une exception
+  function displayTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+    $tile = $this->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    header('Content-type: '.$tile['format']);
+    die($tile['image']);
+  }
+  
+  function xxsendImageOrError(array $query): void {
     try {
       $image = $this->query($query);
       header("Content-type: $query[format]");
@@ -386,39 +431,28 @@ class WmsServer extends OgcServer {
       $layerCap->asXml(),
       '</WMS_Capabilities>';
   }
-  
-  // renvoie un bbox en EPSG:3857 à partir du no de tuile
-  static function bbox(int $zoom, int $ix, int $iy): array {
-    $base = 20037508.3427892476320267;
-    $size0 = $base * 2;
-    $x0 = - $base;
-    $y0 =   $base;
-    $size = $size0 / pow(2, $zoom);
-    return [
-      $x0 + $size * $ix,
-      $y0 - $size * ($iy+1),
-      $x0 + $size * ($ix+1),
-      $y0 - $size * $iy,
-    ];
-  }
     
-  // affiche une tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension y compris le . ou ''
-  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
+  // retourne un array ['format'=>format, 'image'=> image]
+  // où image est la tuile de la couche $lyrName pour $zoom/$x/$y, $fmt est l'extension: 'png', 'jpg' ou ''
+  // ou transmet l'exception générée par query()
+  function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): array {
     //$style = (isset($layers[$layername]['style']) ? $layers[$layername]['style'] : '');
+    $format = $fmt=='png' ? 'image/png' : 'image/jpeg';
     $query = [
       'version'=> '1.3.0',
       'request'=> 'GetMap',
       'layers'=> $lyrName,
-      'format'=> $fmt=='.png' ? 'image/png' : 'image/jpeg',
+      'format'=> $format,
+      'transparent'=> $fmt=='png' ? 'true' : 'false',
       'styles'=> $style,
       'crs'=> 'EPSG:3857',
       'bbox'=> implode(',',self::bbox($zoom, $x, $y)),
       'height'=> 256,
       'width'=> 256,
     ];
-    if ($fmt == '.png')
-      $query['transparent'] = 'true';
-    $this->sendImageOrError($query);
+    return ['format'=> $format, 'image'=> $this->query($query)];
+    
+//    $this->sendImageOrError($query);
   }
   
   // fabrique la carte d'affichage des couches de la base
