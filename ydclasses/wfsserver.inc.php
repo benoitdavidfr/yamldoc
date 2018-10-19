@@ -289,7 +289,9 @@ abstract class WfsServer extends YamlDoc {
       $context = stream_context_create(['http'=> ['header'=> "referer: $referer\r\n"]]);
     }
     if (($result = @file_get_contents($url, false, $context)) === false) {
-      var_dump($http_response_header);
+      if (isset($http_response_header)) {
+        echo "http_response_header="; var_dump($http_response_header);
+      }
       throw new Exception("Erreur dans WfsServer::query() : sur url=$url");
     }
     //die($result);

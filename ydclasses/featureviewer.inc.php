@@ -208,8 +208,10 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     //echo "<pre>featColl="; print_r($featColl); echo "</pre>\n";
     $styler = isset($this->layers[$lyrName]['styleMap']) ? new Styler($this->layers[$lyrName]['styleMap']) : null;
     $drawing = new Drawing($bboxwm);
-    foreach ($featColl['features'] as $feature) {
-      $this->drawFeature($drawing, $feature, $styler);
+    if (isset($featColl['features']) && $featColl['features']) {
+      foreach ($featColl['features'] as $feature) {
+        $this->drawFeature($drawing, $feature, $styler);
+      }
     }
     return $drawing->image();
   }

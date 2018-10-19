@@ -17,7 +17,7 @@ doc: |
     - le remplissage s'effectue selon un algo récursif
     - je pars par exemple du niveau 6 pour lequel la métropole correspond à 31-33/21-23 soit 9 tuiles
     - Pour une tuile donnée:
-      - si elle correspond à moins de 200 objets
+      - si elle correspond à une tuile simple (par exemple moins de 200 objets, défini dans FeatureViewer::simpleTile())
       - alors je fabrique l'image sans conserver le résultat en cache
       - sinon:
         - j'effectue un appel récursif aux 4 sous-tuiles,
@@ -28,37 +28,28 @@ doc: |
     - si la tuile est en cache
     - alors je l'utilise
     - sinon:
-      - si elle fait moins de 200 objets
+      - si elle est simple
       - alors je la reconstruis interactivement
       - sinon j'abandonne avec une erreur 404
   L'affichage ne remplit pas le cache.
   
-  Cet algo doit être réparti entre les 3 couches logicielles:
+  Cet algo est réparti entre les 3 couches logicielles:
     - le cache qui enregistre les images en cache
-    - le viewer qui fabrique l'image à partir du vecteur
-    - le featureDs qui expose les objets vecteurs
+    - le featureViewer qui fabrique l'image à partir du vecteur et qui décrète si une tuile est simple ou complexe
+    - le featureDataset qui expose les objets vecteurs
     
-  J'introduis pour cela dans le viewer la notion de dessin simple ou complexe.
-  Un dessin simple peut être effectué en interactif à la volée.
-  Un dessin complexe est uniquement effectué en traitement de type batch.
-  xx
-  
-  Je peux construire les différents espaces concernés en donnant à chaque fois les qqs tuiles de départ.
-  Je pourrais aussi partir initialement du Monde entier et le décomposer.
-  La première approche est plus complexe mais plus efficace.
-  
   Cet algo doit fonctionner pour les objets pas trop complexes comme les parcelles.
   Cela ne fonctionnerait probablement pas bien pour l'occupation du sol à cause de la complexité des zones.
   Dans le cas d'objets complexes, il faut probablemnt une première phase de simplification des objets.
-  Il faut estimer le seuil des 10 objets en évaluant le temps nécessaire à la fabrication de l'image en fonction du nombre d'objets.
-  
-  
+    
   Outre les champs de métadonnées, le document doit définir les champs suivants:
     - tileServer : identifiant d'un document iTileServer correspondant au serveur de tuiles à mettre en cache
     - layers
       - lyrName : nom de la couche du tileServer à mettre en cache
 
 journal:
+  17/10/2018:
+    - présentation de la carte d'arrêt du glyphosate à l'Elysée
   15/10/2018:
     - première version un peu opérationnelle
   11/10/2018:
@@ -142,6 +133,11 @@ class TileCache extends YamlDoc implements iTileServer {
     ];
   }
    
+  static function internalServerError(string $message): void {
+    header("HTTP/1.1 500 Internal Server Error");
+    die($message);
+  }
+  
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
     $docid = $this->_id;
@@ -170,19 +166,28 @@ class TileCache extends YamlDoc implements iTileServer {
       $x = $matches[3];
       $y = $matches[4];
       $fmt = isset($matches[5]) ? $matches[6] : '';
-      $image = $this->tile($lyrName, '', $zoom, $x, $y, $fmt);
-      if (!$image) {
-        $image = $this->makeTile($lyrName, $zoom, $x, $y);
+      try {
+        $image = $this->tile($lyrName, '', $zoom, $x, $y, $fmt);
+        if (!$image) {
+          $image = $this->makeTile($lyrName, $zoom, $x, $y);
+        }
+      } catch (Exception $e) {
+        self::internalServerError($e->getMessage());
       }
-      header('Content-type: image/png');
       if (!imagesavealpha($image, TRUE))
-        throw new Exception("erreur sur imagesavealpha(TRUE)");
+        self::internalServerError("erreur sur imagesavealpha(TRUE) dans TileCache::extractByUri()");
+      header('Content-type: image/png');
       @imagepng($image);
       die();
     }
     // /fill/{lyrName}/{zoom}/{xmin}-{xmax}/{ymin}-{ymax}
-    elseif (preg_match('!^/fill/([^/]+)/([0-9]+)/([0-9]+)-([0-9]+)/([0-9]+)-([0-9]+)?$!', $ypath, $matches)) {
+    elseif (preg_match('!^/fill/([^/]+)/([0-9]+)/([0-9]+)-([0-9]+)/([0-9]+)-([0-9]+)$!', $ypath, $matches)) {
       $this->fill($matches[1], $matches[2], $matches[3], $matches[4], $matches[5], $matches[6]);
+      return "ok";
+    }
+    // /delete/{lyrName}/{zoom}/{x}/{y}
+    elseif (preg_match('!^/delete/([^/]+)/([0-9]+)/([0-9]+)/([0-9]+)$!', $ypath, $matches)) {
+      $this->delete($matches[1], $matches[2], $matches[3], $matches[4]);
       return "ok";
     }
     elseif ($ypath == '/map') {
@@ -202,23 +207,31 @@ class TileCache extends YamlDoc implements iTileServer {
     return $this->layers[$lyrName];
   }
     
+  // Affiche une tuile
+  // ou génère une erreur http 404 si la tuile n'est pas disponible
+  // ou génère une erreur http 500 en cas d'erreur interne
   function displayTile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt): void {
     //echo "<pre>layer="; print_r($this->layers($lyrName)); die();
     //$layer = $this->layers($lyrName);
-    $image = $this->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    try {
+      $image = $this->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    } catch (Exception $e) {
+      self::internalServerError($e->getMessage());
+    }
     if (!$image) {
       header("HTTP/1.1 404 Not Found");
       die("Tuile absente du cache et complexe");
     }
     if (is_resource($image)) {
       if (!imagesavealpha($image, TRUE))
-        throw new Exception("erreur sur imagesavealpha(TRUE)");
-      header('Content-type: image/png');
+        self::internalServerError("erreur sur imagesavealpha(TRUE) dans TileCache::displayTile()");
+      if (!isset($_GET['verbose']) || ($_GET['verbose']<>'true'))
+        header('Content-type: image/png');
       @imagepng($image);
       die();
     }
     else
-      throw new Exception("image non reconnue");
+      self::internalServerError("erreur image non reconnue dans TileCache::displayTile()");
   }
   
   // retourne le path de la tuile dans le cache
@@ -241,18 +254,27 @@ class TileCache extends YamlDoc implements iTileServer {
   // scenario d'affichage des tuiles à la volée
   // renvoie la tuile en cache si elle existe sinon interroge le tileServer pour lui demander une tuile simple
   // renvoie une ressource GD ou null si la tuile n'est pas dans le cache et est complexe
+  // peut aussi générer une exceptioon
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt) {
-    //echo "TileCache::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
+    if (isset($_GET['verbose']) && ($_GET['verbose']=='true'))
+      echo "TileCache::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
     //$this->ts->extractByUri("/layers/$lyrName/$zoom/$x/$y");
     $path = $this->tilePath($lyrName, $zoom, $x, $y);
     //echo "path=$path<br>\n";
     if (is_file($path)) {
+      if (isset($_GET['verbose']) && ($_GET['verbose']=='true'))
+        echo "image en cache<br>\n";
       if (!($image = @imagecreatefrompng($path)))
         throw new Exception("erreur de lecture de $path");
       return $image;
     }
-    if ($this->ts->simpleTile($lyrName, $style, $zoom, $x, $y, $fmt))
+    if (isset($_GET['verbose']) && ($_GET['verbose']=='true'))
+      echo "image PAS en cache<br>\n";
+    if ($this->ts->simpleTile($lyrName, $style, $zoom, $x, $y, $fmt)) {
+      if (isset($_GET['verbose']) && ($_GET['verbose']=='true'))
+        echo "image simple<br>\n";
       return $this->ts->tile($lyrName, $style, $zoom, $x, $y, $fmt);
+    }
     else
       return null;
   }
@@ -265,8 +287,8 @@ class TileCache extends YamlDoc implements iTileServer {
   //   alors la fabrique à partir du tileServer et la renvoie
   //   sinon
   //     appel récursif sur les 4 sous-tuiles et les agrège
-  //     enregistre la nouvelle tuile en cache
-  //     la renvoie
+  //     puis enregistre la nouvelle tuile en cache
+  //     puis la renvoie
   // est utilisé en remplissage par fill() et en test par force
   function makeTile(string $lyrName, int $zoom, int $x, int $y) {
     if (php_sapi_name()=='cli')
@@ -278,10 +300,24 @@ class TileCache extends YamlDoc implements iTileServer {
         throw new Exception("erreur de lecture de $path");
       return $image;
     }
-
-    if ($this->ts->simpleTile($lyrName, '', $zoom, $x, $y, ''))
-      return $this->ts->tile($lyrName, '', $zoom, $x, $y, '');
-    
+    $nbTryMax = 5;
+    $nbTry = 0;
+    while (1) {
+      try {
+        if ($this->ts->simpleTile($lyrName, '', $zoom, $x, $y, ''))
+          return $this->ts->tile($lyrName, '', $zoom, $x, $y, '');
+        else
+          break;
+      }
+      catch(Exception $e) {
+        echo $e->getMessage(),"\n";
+        if ($nbTry >= $nbTryMax)
+          die("Arrêt après $nbTryMax essais\n");
+        $nbTry++;
+        echo "Attente ",2**$nbTry," secondes<br>\n";
+        sleep(2**$nbTry);
+      }
+    }
     if (($image = @imagecreatetruecolor(256, 256))===FALSE)
       throw new Exception("Erreur imagecreatetruecolor");
     if (!imagealphablending($image, FALSE))
@@ -328,69 +364,14 @@ class TileCache extends YamlDoc implements iTileServer {
     }
   }
   
-  // remplit le cache à partir du serveur source
-  function Oldfill(string $lyrName, int $zoom, int $xmin, int $xmax, int $ymin, int $ymax): void {
-    for ($x=$xmin; $x <= $xmax; $x++) {
-      for ($y=$ymin; $y <= $ymax; $y++) {
-        echo "$lyrName, $zoom, $x / $xmax, $y / $ymax<br>\n";
-        $image = $this->makeTile($lyrName, $zoom, $x, $y, 'force');
-        imagedestroy($image);
-      }
-    }
-  }
-  
-  // derive les images à partir du zoom supérieur
-  function Oldderive(string $lyrName, int $zoom, int $xmin, int $xmax, int $ymin, int $ymax): void {
-    for ($x=$xmin; $x <= $xmax; $x++) {
-      for ($y=$ymin; $y <= $ymax; $y++) {
-        echo "$lyrName, $zoom, $x / $xmax, $y / $ymax<br>\n";
-        if (($image = @imagecreatetruecolor(256, 256))===FALSE)
-          throw new Exception("Erreur imagecreatetruecolor");
-        if (!imagealphablending($image, FALSE))
-          throw new Exception("erreur sur imagealphablending(FALSE)");
-        if (!($transparent = @imagecolorallocatealpha($image, 0xFF, 0xFF, 0xFF, 0x7F)))
-          throw new Exception("erreur sur imagecolorallocatealpha");
-        if (!imagefilledrectangle($image, 0, 0, 255, 255, $transparent))
-          throw new Exception("Erreur dans imagerectangle");
-        $im = $this->makeTile($lyrName, '', $zoom+1, $x*2, $y*2, false);
-        // bool imagecopyresampled(resource $dst_image, resource $src_image,
-        // int $dst_x , int $dst_y , int $src_x , int $src_y , int $dst_w , int $dst_h , int $src_w , int $src_h )
-        if (!imagecopyresampled($image, $im, 0, 0, 0, 0, 128, 128, 255, 255))
-          throw new Exception("Erreur imagecopyresampled");
-        imagedestroy($im);
-        $im = $this->makeTile($lyrName, $zoom+1, $x*2, $y*2+1, '');
-        if (!imagecopyresampled($image, $im, 0, 128, 0, 0, 128, 128, 255, 255))
-          throw new Exception("Erreur imagecopyresampled");
-        imagedestroy($im);
-        $im = $this->makeTile($lyrName, $zoom+1, $x*2+1, $y*2, '');
-        if (!imagecopyresampled($image, $im, 128, 0, 0, 0, 128, 128, 255, 255))
-          throw new Exception("Erreur imagecopyresampled");
-        imagedestroy($im);
-        $im = $this->makeTile($lyrName, $zoom+1, $x*2+1, $y*2+1, '');
-        if (!imagecopyresampled($image, $im, 128, 128, 0, 0, 128, 128, 255, 255))
-          throw new Exception("Erreur imagecopyresampled");
-        imagedestroy($im);
-        if (!imagesavealpha($image, TRUE))
-          throw new Exception("erreur sur imagesavealpha(TRUE)");
-        
-        $path = __DIR__.'/tilecache';
-        if (!is_dir($path)) mkdir($path);
-        $path .= '/'.str_replace('/','-',$this->_id);
-        if (!is_dir($path)) mkdir($path);
-        $path .= "/$lyrName";
-        if (!is_dir($path)) mkdir($path);
-        $path .= "/$zoom";
-        if (!is_dir($path)) mkdir($path);
-        $path .= "/$x";
-        if (!is_dir($path)) mkdir($path);
-        $path .= "/$y.png";
-        if (!@imagepng($image, $path))
-          throw new Exception("erreur imagepng sur $path");
-        imagedestroy($image);
-      }
-    }
-    if ($zoom <= 0) return;
-    $this->derive($lyrName, $zoom-1, floor($xmin/2), floor($xmax/2), floor($ymin/2), floor($ymax/2));
+  // supprime une image particulière du cache ainsi que toutes les images l'agrégeant
+  function delete(string $lyrName, int $zoom, int $x, int $y): void {
+    if ($zoom < 0)
+      return;
+    $path = $this->tilePath($lyrName, $zoom, $x, $y);
+    echo "delete $path<br>\n";
+    @unlink($path);
+    $this->delete($lyrName, $zoom-1, floor($x/2), floor($y/2));
   }
   
   // fabrique la carte d'affichage des couches de la base
