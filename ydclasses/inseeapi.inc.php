@@ -42,7 +42,7 @@ EOT;
     $mtime = filemtime(__DIR__.'/inseetoken.json');
     //echo "fichier modifié le ",date(DATE_ATOM, $mtime),"<br>\n";
     //echo "fichier modififié il y a ",time()-$mtime," secondes<br>\n";
-    if (time() - $mtime < $contents['expires_in'] - 3600) { // vérification que le token est encore valable
+    if (time() - $mtime < $contents['expires_in'] - 3600) { // vérification que le token est encore valide
       if (!isset($contents['access_token']))
         throw new Exception("Erreur access_token absent du fichier inseetoken.json");
       $this->inseeToken = $contents['access_token'];
@@ -53,9 +53,9 @@ EOT;
     return $this->inseeToken;
   }
   
-  // génère un nouveau token et l'enregistre dans inseetoken.json
+  // génère un nouveau token, l'enregistre dans inseetoken.json et le retourne
   // Pour cela envoie une requête à self::$tokenUrl
-  function generateToken(): array {
+  function generateToken(): string {
     if (($contents = @file_get_contents(__DIR__.'/inseecredentials.json')) === false) {
       echo self::$inseecredentialsHelp;
       throw new Exception("Erreur de lecture du fichier inseecredentials.json");
@@ -86,7 +86,8 @@ EOT;
     }
     if (@file_put_contents(__DIR__.'/inseetoken.json', $result) === false)
       throw new Exception("Erreur dans InseeApi::generateToken() écriture de inseetoken.json");
-    return json_decode($result, true);
+    $result = json_decode($result, true);
+    return $result['access_token'];
   }
   
   function query(string $baseUrl, string $path, array $args): array {
