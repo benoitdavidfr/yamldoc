@@ -36,6 +36,10 @@ doc: |
     => resolution = 360 / 2**(zoom+8) degrés
         
 journal: |
+  3-4/11/2018:
+    - ajout de WfsServer::defaultCrs()
+    - remplacement de WfsServer::bboxWktLatLng() par WfsServer::bboxWktCrs()
+    - WfsServer::bboxWktCrs() fonctionne avec EPSG:2154, EPSG:3857 & EPSG:3395
   9/10/2018:
     - éclatement du fichier en 3
   17-19/9/2018:
@@ -129,11 +133,22 @@ abstract class WfsServer extends YamlDoc {
     return [(float)$bbox[0], (float)$bbox[1], (float)$bbox[2], (float)$bbox[3]];
   }
   
-  // retourne un polygon WKT LatLng à partir d'un bbox [lngMin, latMin, lngMax, latMax]
-  static function bboxWktLatLng(array $bbox) {
+  // retourne un polygon WKT dans le CRS crs à partir d'un bbox [lngMin, latMin, lngMax, latMax]
+  static function bboxWktCrs(array $bbox, string $crs) {
+    $epsg = [
+      'EPSG:2154' => 'L93',
+      'EPSG:3857' => 'WebMercator',
+      'EPSG:3395' => 'WorldMercator',
+    ];
     if (!$bbox)
       return '';
-    return "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
+    if ($crs == 'EPSG:4326')
+      return "POLYGON(($bbox[1] $bbox[0],$bbox[1] $bbox[2],$bbox[3] $bbox[2],$bbox[3] $bbox[0],$bbox[1] $bbox[0]))";
+    if (!isset($epsg[$crs]))
+      throw new Exception("Erreur dans WfsServer::bboxWktCrs(), CRS $crs inconnu");
+    $bbox = new Bbox(implode(',',$bbox));
+    $bbox = $bbox->chgCoordSys('geo', $epsg[$crs]);
+    return $bbox->asPolygon()->wkt();
   }
   
   // retourne un polygon WKT LngLat à partir d'un bbox [lngMin, latMin, lngMax, latMax]
@@ -157,6 +172,7 @@ abstract class WfsServer extends YamlDoc {
         '/ft'=> "retourne la liste des couches (FeatureType) exposées par le serveur avec pour chacune son titre et son résumé",
         '/ft/{typeName}'=> "retourne la description de la couche {typeName}",
         '/ft/{typeName}/geom(PropertyName)?'=> "retourne le nom de la propriété géométrique pour la couche {typeName}",
+        '/ft/{typeName}/defaultCrs'=> "retourne le nom du CRS par défaut pour la couche {typeName}",
         '/ft/{typeName}/num(berMatched)?bbox={bbox}&where={where}'=> "retourne le nombre d'objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, where est encodé en UTF-8",
         '/ft/{typeName}/getFeature?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, limité à 1000 objets",
         '/ft/{typeName}/getAllFeatures?bbox={bbox}&zoom={zoom}&where={where}'=> "affiche en GeoJSON les objets de la couche {typeName} correspondant à la requête définie par les paramètres en GET ou POST, utilise la pagination si plus de 100 objets",
@@ -213,6 +229,9 @@ abstract class WfsServer extends YamlDoc {
     }
     elseif (preg_match('!^/ft/([^/]+)/geom(PropertyName)?$!', $ypath, $matches)) {
       return $this->geomPropertyName($matches[1]);
+    }
+    elseif (preg_match('!^/ft/([^/]+)/defaultCrs$!', $ypath, $matches)) {
+      return $this->defaultCrs($matches[1]);
     }
     // accès à /t/{typeName}/numberMatched
     elseif (preg_match('!^/ft/([^/]+)/num(berMatched)?$!', $ypath, $matches)) {
@@ -295,10 +314,16 @@ abstract class WfsServer extends YamlDoc {
       throw new Exception("Erreur dans WfsServer::query() : sur url=$url");
     }
     //die($result);
-    if (substr($result, 0, 17) == '<ExceptionReport>') {
-      if (!preg_match('!<ExceptionReport><[^>]*>([^<]*)!', $result, $matches))
-        throw new Exception("Erreur dans WfsServer::query() : message d'erreur non détecté");
-      throw new Exception ("Erreur dans WfsServer::query() : $matches[1]");
+    //if (substr($result, 0, 17) == '<ExceptionReport>') {
+    if (preg_match('!ExceptionReport!', $result)) {
+      if (preg_match('!<ExceptionReport><[^>]*>([^<]*)!', $result, $matches)) {
+        throw new Exception ("Erreur dans WfsServer::query() : $matches[1]");
+      }
+      if (preg_match('!<ows:ExceptionText>([^<]*)!', $result, $matches)) {
+        throw new Exception ("Erreur dans WfsServer::query() : $matches[1]");
+      }
+      echo $result;
+      throw new Exception("Erreur dans WfsServer::query() : message d'erreur non détecté");
     }
     return $result;
   }
@@ -342,6 +367,24 @@ abstract class WfsServer extends YamlDoc {
     }
     //echo '<pre>$featureTypeList = '; print_r($featureTypeList);
     return $featureTypeList;
+  }
+  
+  // retourne le defaultCrs du typeName sous la forme EPSG:xxxx
+  function defaultCrs(string $typeName): string {
+    $cap = $this->getCapabilities();
+    $cap = new SimpleXMLElement($cap);
+    foreach ($cap->FeatureTypeList->FeatureType as $featureType) {
+      $name = (string)$featureType->Name;
+      if ($name == $typeName) {
+        //echo "<pre>"; print_r($featureType);
+        $crs = (string)$featureType->DefaultCRS;
+        if (preg_match('!^urn:ogc:def:crs:EPSG::(\d+)$!', $crs, $matches))
+          return 'EPSG:'.$matches[1];
+        else
+          return $crs;
+      }
+    }
+    throw new Exception("Erreur dans WfsServer::defaultCrs, typeName $typeName non trouvé");
   }
   
   abstract function describeFeatureType(string $typeName): array;

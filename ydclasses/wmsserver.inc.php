@@ -20,6 +20,8 @@ doc: |
     - referer: referer à transmettre à chaque appel du serveur.
 
 journal:
+  3/11/2018:
+    - prise en compte de la possibilité d'avoir un " dans le titre d'une couche
   22/9/2018:
     - création
 EOT;
@@ -486,7 +488,7 @@ class WmsServer extends OgcServer {
     $docid = $this->_id;
     foreach ($this->layers() as $lyrid => $layer) {
       $overlay = [
-        'title'=> $layer['title'],
+        'title'=> str_replace('"','\"', $layer['title']),
         'type'=> 'TileLayer',
         'url'=> "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docid/layers/$lyrid/{z}/{x}/{y}.jpg",
         'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 21 ],

@@ -1,4 +1,5 @@
 <?php
+//die("MODIF en cours");
 /*PhpDoc:
 name: wfsjson.inc.php
 title: wfsjson.inc.php - document correspondant à un serveur WFS capable de générer du GeoJSON
@@ -12,6 +13,8 @@ title: wfsjson.inc.php - document correspondant à un serveur WFS capable de gé
 doc: |
   La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de générer du GeoJSON.
 journal: |
+  3/11/2018:
+    - prise en compte du defaultCrs du typename dans getFeature()
   9/10/2018:
     - création à partir de wfsserver.inc.php
     - ajout de la classe WfsServerJsonAugmented permettant de modifier les feature à la volée
@@ -78,7 +81,7 @@ class WfsServerJson extends WfsServer {
     }
     return null;
   }
-  
+    
   // retourne le nbre d'objets correspondant au résultat de la requête
   function getNumberMatched(string $typename, array $bbox=[], string $where=''): int {
     $geomPropertyName = $this->geomPropertyName($typename);
@@ -91,7 +94,7 @@ class WfsServerJson extends WfsServer {
     ];
     $cql_filter = '';
     if ($bbox) {
-      $bboxwkt = self::bboxWktLatLng($bbox);
+      $bboxwkt = self::bboxWktCrs($bbox, $this->defaultCrs($typename));
       $cql_filter = "Intersects($geomPropertyName,$bboxwkt)";
     }
     if ($where) {
@@ -122,7 +125,7 @@ class WfsServerJson extends WfsServer {
     ];
     $cql_filter = '';
     if ($bbox) {
-      $bboxwkt = self::bboxWktLatLng($bbox);
+      $bboxwkt = self::bboxWktCrs($bbox, $this->defaultCrs($typename));
       $cql_filter = "Intersects($geomPropertyName,$bboxwkt)";
     }
     if ($where) {
@@ -150,10 +153,16 @@ class WfsServerJson extends WfsServer {
       $fc = $this->getFeature($typename, $bbox, $zoom, $where, $count, $startindex);
       // recherche de la position de la fin du dernier Feature dans la FeatureCollection
       $pos = strpos($fc, '],"crs":{"type":"EPSG","properties":{"code":');
+      //echo "pos=$pos\n";
       // affichage de la liste des features sans les []
       if ($startindex<>0)
         echo ",\n";
-      echo substr($fc, 40, $pos-40);
+      if ($pos === false) {
+        $len = strlen('{"type":"FeatureCollection","features":[');
+        echo substr($fc, $len, strlen($fc)-$len-2);
+      }
+      else
+        echo substr($fc, 40, $pos-40);
       $startindex += $count;
       //die(']}');
     }
