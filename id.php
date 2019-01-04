@@ -164,7 +164,7 @@ else {
   }
   //echo "<pre>_SERVER = "; print_r($_SERVER);
 }
-//echo "uri=$uri<br>\n";
+echo "uri=$uri<br>\n";
 if ($verbose) {
   file_put_contents('id.log.yaml', YamlDoc::syaml([
     'date'=> date(DateTime::ATOM),
