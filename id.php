@@ -12,9 +12,13 @@ doc: |
     - document Yaml incorrect
   Exemples:
     http://id.georef.eu/iso639/concepts/fre
-    -> http://georef.eu/yamldoc/id.php/iso639/concepts/fre
-  Un site id.georef.eu doit être défini avec redirection vers http://georef.eu/yamldoc/id.php/
+    http://localhost/yamldoc/id.php/iso639/concepts/fre
+    http://localhost/yamldoc/id.php?uri=http://id.georef.eu/iso639/concepts/fre
+    http://localhost/yamldoc/id.php/view/igngp
+  Un site id.georef.eu doit être défini comme site Php ~/prod/georef/yamldoc/id.php/
 journal: |
+  4/1/2019:
+    - chgt du site Alwaysdata eu.georef.id en Php sur yamldoc/id.php qui permet que les URI ne soient pas réécrites
   15/10/2018:
     - ajout paramètres CLI
   25/8/2018:
