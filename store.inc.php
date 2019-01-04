@@ -29,6 +29,9 @@ doc: |
   qui définit le lieu d'éxécution.
   
 journal:
+  4/1/2019:
+    modification de Store:$definition et Store::ids() pour tenir compte de la possibilité d'avoir différents serveurs
+    pour une instance et une place (georef.eu + id.georef.eu)
   29/7/2018:
     création
     
@@ -38,7 +41,7 @@ class Store {
   /* [ id => [
          'title'=> title
          local/web => [
-           'server'=> server,
+           'servers'=> [server],
            'ydpath'=> ydpath,
            'storepath'=> storepath
         ]
@@ -50,12 +53,12 @@ class Store {
       'title'=> "Espace de Benoit",
       'instances'=> [
         'local'=>[
-          'server'=> '127.0.0.1',
+          'servers'=> ['127.0.0.1'],
           'ydpath'=> 'yamldoc',
           'storepath'=> 'docs',
         ],
         'web'=> [
-          'server'=> 'bdavid.alwaysdata.net',
+          'servers'=> ['bdavid.alwaysdata.net'],
           'ydpath'=> 'yamldoc',
           'storepath'=> 'docs',
         ],
@@ -65,13 +68,13 @@ class Store {
       'title'=> "Espace public",
       'instances'=> [
         'local'=> [
-          'server'=> 'localhost',
+          'servers'=> ['localhost'],
           'ydpath'=> 'yamldoc',
           'storepath'=> 'pub',
         ],
         'web'=> [
           'scheme'=> 'https',
-          'server'=> 'georef.eu',
+          'servers'=> ['georef.eu', 'id.georef.eu'],
           'ydpath'=> 'yamldoc',
           'storepath'=> 'pub',
         ],
@@ -112,7 +115,7 @@ class Store {
     $server_name = $_SERVER['SERVER_NAME'];
     foreach (self::$definition as $id => $store) {
       foreach ($store['instances'] as $place => $instance) {
-        if ($instance['server']==$server_name) {
+        if (in_array($server_name, $instance['servers'])) {
           //echo "id=",$id,", place=",$place,"<br>\n";
           return ['id'=> $id, 'place'=> $place];
         }

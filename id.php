@@ -153,7 +153,7 @@ if (php_sapi_name()=='cli') {
   //die("Fin ligne ".__LINE__."\n");
 }
 else {
-  echo "<pre>_SERVER = "; print_r($_SERVER);
+  //echo "<pre>_SERVER = "; print_r($_SERVER);
   //$store = in_array($_SERVER['HTTP_HOST'], ['127.0.0.1','bdavid.alwaysdata.net']) ? 'docs' : 'pub';
   if (isset($_GET['uri']))
     $uri = substr($_GET['uri'], strlen('http://id.georef.eu'));
@@ -164,7 +164,7 @@ else {
   }
   //echo "<pre>_SERVER = "; print_r($_SERVER);
 }
-echo "uri=$uri<br>\n";
+//echo "uri=$uri<br>\n";
 if ($verbose) {
   file_put_contents('id.log.yaml', YamlDoc::syaml([
     'date'=> date(DateTime::ATOM),
