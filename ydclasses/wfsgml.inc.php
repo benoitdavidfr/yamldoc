@@ -8,7 +8,7 @@ doc: <a href='/yamldoc/?action=version&name=wfsgml.inc.php'>doc intégrée en Ph
 {
 $phpDocs['wfsgml.inc.php'] = <<<'EOT'
 name: wfsgml.inc.php
-title: wfsgml.inc.php - document correspondant à un serveur WFS capable de générer du GML EPSG:4306
+title: wfsgml.inc.php - serveur WFS capable de générer du GML EPSG:4306
 doc: |
   La classe WfsServerGml expose différentes méthodes utilisant un serveur WFS capable de générer du GML EPSG:4306.
   Un GetFeature avec un WfsServerGml réalise un filtrage en fonction du bbox et du zoom:
@@ -21,9 +21,7 @@ doc: |
   évolutions à réaliser:
   
     - adapter au zoom le nbre de chiffres transmis dans les coordonnées
-      
-  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
-      
+            
   Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml
   avec un serveur WFS 2.0.0 et GML 3.2.1.
   
@@ -31,8 +29,12 @@ doc: |
   avec un serveur WFS 1.0.0 et GML 2.
     
   Des tests unitaires de la transformation GML -> JSON sont définis.
-      
+  
+  Les requêtes ne fonctionnenet que si le defaultCrs de la couche est 'EPSG:4326'
+  
 journal: |
+  4/11/2018:
+  - vérification que le defaultCrs de la couche est bien 'EPSG:4326'
   9/10/2018:
     - création à partir de wfsserver.inc.php
 EOT;
@@ -131,6 +133,9 @@ class WfsServerGml extends WfsServer {
       'SRSNAME'=> 'EPSG:4326',
       'RESULTTYPE'=> 'hits',
     ];
+    if ($this->defaultCrs($typename) <> 'EPSG:4326') {
+      throw new Exception("Erreur dans WfsServerGml::getNumberMatched() : defaultCrs($typename) <> 'EPSG:4326'");
+    }
     if ($version <> '1.0.0') {
       $bbox = [$bbox[1], $bbox[0], $bbox[3], $bbox[2]]; // passage en LatLng
     }
@@ -748,6 +753,9 @@ class WfsServerGml extends WfsServer {
   
   // n'affiche pas le header/tailer GeoJSON
   function getFeatureWoHd(string $typename, array $bbox, int $zoom, string $where, int $count, int $startindex): void {
+    if ($this->defaultCrs($typename) <> 'EPSG:4326') {
+      throw new Exception("Erreur dans WfsServerGml::getFeatureWoHd() : defaultCrs($typename) <> 'EPSG:4326'");
+    }
     if ($this->wfsOptions && isset($this->wfsOptions['version']) && ($this->wfsOptions['version']=='1.0.0')) {
       $request = [
         'VERSION'=> '1.0.0',

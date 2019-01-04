@@ -17,6 +17,9 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
     
 journal:
+  3/1/2019:
+  - améliorations
+  - ajout de tests unitaires
   22/8/2018:
   - réécriture de ydext()
   28/7/2018:
@@ -262,47 +265,65 @@ function cmp(array $a, array $b) {
 function is_text($data) {
   return is_string($data) && (strpos($data, "\n")!==FALSE) && (strpos($data, "\n") < strlen($data)-1);
 }
-  
+
+// test si un array est un tableau associatif ou une liste
+// [] n'est pas un assoc_array
+if (!function_exists('is_assoc_array')) {
+  function is_assoc_array(array $array): bool { return count(array_diff_key($array, array_keys(array_keys($array)))); }
+
+  if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_assoc_array 
+  if (isset($_GET['test']) && ($_GET['test']=='is_assoc_array')) {
+    echo "Test is_assoc_array<br>\n";
+    foreach ([[], [1, 2, 3], ['a'=>'a','b'=>'b']] as $array) {
+      echo json_encode($array), (is_assoc_array($array) ? ' is_assoc_array' : ' is NOT assoc_array') , "<br>\n";
+    }
+    echo "FIN test is_assoc_array<br><br>\n";
+  }
+  $unitaryTests[] = 'is_assoc_array';
+}
+}
+
 // le paramètre est-il une liste ?
 // une liste est un array pour lequel les clés sont une liste des entiers s'incrémentant de 1 à partir de 0
-function is_list($list) {
-  if (!is_array($list))
-    return false;
-  foreach (array_keys($list) as $k => $v)
-    if ($k !== $v)
+// [] est une liste
+function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
+
+// le paramètre est-il une liste d'atomes, y.c. list(list), ... ?
+function is_listOfAtoms($list): bool {
+  if (!is_list($list)) return false; // ce doit être une liste
+  // chaque elt doit être soit un atome soit une liste d'atomes
+  foreach ($list as $elt)
+    if (is_array($elt) && !is_listOfAtoms($elt))
       return false;
   return true;
 }
 
-// le paramètre est-il une liste d'atomes, y.c. list(list), ... ?
-function is_listOfAtoms($list) {
-  // ce doit être un array et une liste
-  if (!is_array($list) or !is_list($list))
-    return false;
-  // aucun des atom ne doit être un array
-  foreach ($list as $elt)
-    if (is_array($elt) and !is_list($elt))
-      return false;
-  return true;
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_listOfAtoms 
+  if (isset($_GET['test']) && ($_GET['test']=='is_listOfAtoms')) {
+    foreach ([[], [1, 2, 3], ['a'=>'a','b'=>'b'], [1, [2, 3, [4, 5, 6]]], [1, [2, 3, [4, 5, 'a'=>'b']]]] as $array) {
+      echo json_encode($array), (is_listOfAtoms($array) ? ' is_listOfAtoms' : ' is NOT listOfAtoms') , "<br>\n";
+    }
+  }
+  $unitaryTests[] = 'is_listOfAtoms';
 }
 
 // le paramètre est-il une liste de tuples ?
 function is_listOfTuples($list) {
-  //echo "<pre>is_list "; print_r($list); echo "</pre>\n";
-  //echo "<pre>array_keys = "; print_r(array_keys($list)); echo "</pre>\n";
-  $ret = is_listOfTuples_i($list);
-  //echo "is_list => $ret<br>\n";
-  return $ret;
-}
-function is_listOfTuples_i($list) {
-  // ce doit être un array et une liste
-  if (!is_array($list) or !is_list($list))
-    return false;
-  // chaque tuple doit être un array et pas une liste
+  if (!is_list($list)) return false; // ce doit être une liste
+  // chaque tuple doit être un array et soit [] soit un assoc_array
   foreach ($list as $tuple)
     if (!is_array($tuple) or is_list($tuple))
       return false;
   return true;
+}
+
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_listOfTuples 
+  if (isset($_GET['test']) && ($_GET['test']=='is_listOfTuples')) {
+    foreach ([[], [['a'=>'a','b'=>'b','c'=>'c']], [[1, 2, 3]], [['a'=>'a', 3]]] as $array) {
+      echo json_encode($array), (is_listOfTuples($array) ? ' is_listOfTuples' : ' is NOT listOfTuples') , "<br>\n";
+    }
+  }
+  $unitaryTests[] = 'is_listOfTuples';
 }
 
 function str2html(string $str): string { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
@@ -451,9 +472,8 @@ function showDoc(string $docid, $data, string $prefix=''): void {
     showString($docid, $data);
 }
 
-// crée un Doc à partir du store et du docuid du document
-// retourne null si le document n'existe pas
-// génère une exception si le doc n'est pas du Yaml
+// crée un Doc à partir du docid du document
+// retourne null si le document n'existe pas, génère une exception si le doc n'est pas du Yaml
 function new_doc(string $docid): ?Doc {
   // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
   $storepath = Store::storepath();
@@ -520,4 +540,12 @@ function new_doc(string $docid): ?Doc {
   // si prévu j'écris le .pser
   $doc->writePser();
   return $doc;
+}
+
+
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Menu des tests unitaires 
+  echo "<br>---<br>\nTests unitaires:<ul>\n";
+  foreach ($unitaryTests as $unitaryTest)
+    echo "<li><a href='?test=$unitaryTest'>$unitaryTest</a>\n";
+  die("</ul>\nFIN tests unitaires");
 }

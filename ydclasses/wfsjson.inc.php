@@ -12,7 +12,12 @@ name: wfsjson.inc.php
 title: wfsjson.inc.php - document correspondant à un serveur WFS capable de générer du GeoJSON
 doc: |
   La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de générer du GeoJSON.
+  
+  Le document http://localhost/yamldoc/?doc=geodata/igngpwfs permet de tester la classe WfsServerJson.
+  
 journal: |
+  4/11/2018:
+    - réécriture de WfsServerJson::printAllFeatures() pour être plus stable
   3/11/2018:
     - prise en compte du defaultCrs du typename dans getFeature()
   9/10/2018:
@@ -137,6 +142,12 @@ class WfsServerJson extends WfsServer {
     return $this->query($request);
   }
   
+  // retourne le résultat de la requête en GeoJSON encodé en array Php
+  function getFeatureAsArray(string $typename, array $bbox=[], int $zoom=-1, string $where='', int $count=100, int $startindex=0): array {
+    $result = $this->getFeature($typename, $bbox, $zoom, $where, $count, $startindex);
+    return json_decode($result, true);
+  }
+  
   // affiche le résultat de la requête en GeoJSON
   function printAllFeatures(string $typename, array $bbox=[], int $zoom=-1, string $where=''): void {
     //echo "WfsServerJson::printAllFeatures()<br>\n";
@@ -151,20 +162,13 @@ class WfsServerJson extends WfsServer {
     $count = 100;
     while ($startindex < $numberMatched) {
       $fc = $this->getFeature($typename, $bbox, $zoom, $where, $count, $startindex);
-      // recherche de la position de la fin du dernier Feature dans la FeatureCollection
-      $pos = strpos($fc, '],"crs":{"type":"EPSG","properties":{"code":');
-      //echo "pos=$pos\n";
-      // affichage de la liste des features sans les []
-      if ($startindex<>0)
-        echo ",\n";
-      if ($pos === false) {
-        $len = strlen('{"type":"FeatureCollection","features":[');
-        echo substr($fc, $len, strlen($fc)-$len-2);
+      $fc = json_decode($fc, true);
+      foreach ($fc['features'] as $nof => $feature) {
+        if (($startindex <> 0) || ($nof <> 0))
+          echo ",\n";
+        echo json_encode($feature, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
       }
-      else
-        echo substr($fc, 40, $pos-40);
       $startindex += $count;
-      //die(']}');
     }
     echo "\n]}\n";
   }

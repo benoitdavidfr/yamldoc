@@ -8,7 +8,7 @@ doc: <a href='/yamldoc/?action=version&name=ydata.inc.php'>doc intégrée en Php
 {
 $phpDocs['ydata.inc.php'] = <<<'EOT'
 name: ydata.inc.php
-title: ydata.inc.php - sous-classes YamlData et YamlDataTable pour la gestion des données
+title: ydata.inc.php - sous-classes YData et YDataTable pour la gestion des données
 doc: |
   objectifs:
   
@@ -32,12 +32,19 @@ doc: |
   Implémente pour URI un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
   
 journal: |
+  3/1/2019:
+  - correction affichage
+  - ajout test de conformité d'une table à son schéma
   29/7/2018:
   - mécanismes d'accès de base
   - manque projection, sélection
   - manque json-schema
 EOT;
 }
+require_once __DIR__.'/../../schema/jsonschema.inc.php';
+
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
 class YData extends YamlDoc {
   protected $_c; // contient les champs
@@ -67,7 +74,7 @@ class YData extends YamlDoc {
     }
   }
   
-  // lit les champs
+  // lit un champ
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
 
   // affiche le sous-élément de l'élément défini par $ypath
@@ -142,6 +149,28 @@ class YData extends YamlDoc {
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
   function writePser(): void { YamlDoc::writePserReally(); }
+  
+  function checkSchemaConformity(string $ypath): void {
+    //echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
+    // si le path pointe directement dans les données, je remonte dans le document de la table
+    if (substr($ypath, -5)=='/data')
+      $ypath = substr($ypath, 0, strlen($ypath)-5);
+    $subdoc = $this->extractByUri($ypath);
+    //echo '<pre>',Yaml::dump($subdoc, 999),"</pre>\n";
+    if (!isset($subdoc['jSchema']) || !isset($subdoc['data'])) {
+      echo "Erreur: jSchema ou data absent du sous-document<br>\n";
+      return;
+    }
+    $schema = new JsonSchema($subdoc['jSchema']);
+    if (isset($subdoc['data'])) {
+      if ($schema->check($subdoc['data'])) {
+        $schema->showWarnings();
+        echo "ok data conforme au schéma<br>\n";
+      }
+      else
+        $schema->showErrors();
+    }
+  }
 };
 
 // contenu d'une table
@@ -167,8 +196,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   function tuples() {
     $tuples = [];
     foreach ($this->data as $_id => $tuple) {
-      $tuple['_id'] = $_id;
-      $tuples[] = $tuple;
+      $tuples[] = array_merge(['_id'=> $_id], $tuple);
     }
     return $tuples;
   }
@@ -198,7 +226,8 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
       echo "<tr>";
       foreach ($this->attrs as $attr) {
         echo "<td>";
-        showDoc($docid, $tuple[$attr]);
+        if (isset($tuple[$attr]))
+          showDoc($docid, $tuple[$attr]);
         echo "</td>";
       }
       echo "</tr>\n";

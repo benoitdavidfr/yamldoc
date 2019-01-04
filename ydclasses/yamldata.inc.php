@@ -14,7 +14,7 @@ doc: |
   enregistrements plutôt qu'un numéro d'ordre comme prévu dans le YamlDoc de base.  
     La classe YamlData permet de définir des documents contenant une ou plusieurs tables d'enregistrements
   accessibles au travers d'une clé éventuellement composite.  
-  La clé est utilisée dans la structure Php ; pour une clé composite, plusieurs clés successives Php son utilisées.
+  La clé est utilisée dans la structure Php ; pour une clé composite, plusieurs clés successives Php sont utilisées.
   Un document YamlData doit définir à la racine un champ yamlClass avec la valeur YamlData.  
   Il peut alors:
   

@@ -133,7 +133,7 @@ doc: |
             {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
       Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.  
       {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.  
-      Un {filtre} retenu sera le premire pour lequel le bbox courant intersecte la {geoZone}.
+      Un {filtre} retenu sera le premier pour lequel le bbox courant intersecte la {geoZone}.
       
       Le filtre peut prendre les valeurs suivantes:
         - Si {filtre} == 'all' alors aucune sélection n'est effectuée.

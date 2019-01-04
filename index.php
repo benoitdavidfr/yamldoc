@@ -143,6 +143,7 @@ function show_menu(string $store, array $breadcrumb) {
     // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
     if (ydcheckWriteAccess($docuid)<>0)
       echo "<td><a href='?action=edit&amp;doc=$docuid$langp'>edit</a></td>\n";
+    echo "<td><a href='?action=check&amp;doc=$docp$ypatharg$langp'>check</a></td>\n";
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid$langp'>clone</a></td>\n";
@@ -153,7 +154,7 @@ function show_menu(string $store, array $breadcrumb) {
   echo "<td><a href='?action=dump$docp$ypatharg$langp'>dump</a></td>\n";
   // unset
   echo "<td><a href='?action=unset$docp$ypatharg$langp'>unset</a></td>\n";
-  // razrw - effacement eds variables mémorisant l'accès en lecture/écriture - utile pour débugger
+  // razrw - effacement des variables mémorisant l'accès en lecture/écriture - utile pour débugger
   //echo "<td><a href='?action=razrw",($docuid ? "&amp;doc=$docuid" : ''),"'>razrw</a></td>\n";
   if (isset($_SESSION['homeCatalog']) && in_array($_SESSION['homeCatalog'], ['benoit'])) {
     echo "<td><a href='?action=git_pull_src$docp$ypatharg$langp'>pull src</a></td>\n";
@@ -508,7 +509,7 @@ if ($_GET['action']=='edit') {
 
 // action store - enregistrement d'un contenu à la suite d'une édition
 if ($_GET['action']=='store') {
-  // graitement du cas d'appel de store non lié à l'edit
+  // traitement du cas d'appel de store non lié à l'edit
   if (!isset($_POST['text'])) {
     echo "<b>Erreur d'appel de la commande: aucun texte transmis</b><br>\n";
     $doc = new_yamlDoc($_GET['doc']);
@@ -540,7 +541,7 @@ if ($_GET['action']=='store') {
 
 // action check - verification de la conformité d'un document à son éventuel schema
 if ($_GET['action']=='check') {
-  if (!($doc = new_yamlDoc($_GET['doc'])))
+  if (!($doc = new_doc($_GET['doc'])))
     die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   die();
