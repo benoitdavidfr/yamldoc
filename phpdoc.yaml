@@ -32,7 +32,6 @@ doc: |
   L'interface YamlDocElement définit l'interface d'un élément d'un YamlDoc
   
   Les idées ont été déplacées dans docs/yamldoc/idees
-      
   
 journal: |
   12/9/2018:

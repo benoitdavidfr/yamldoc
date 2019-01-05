@@ -245,7 +245,7 @@ function cmp(array $a, array $b) {
   global $keys_for_sort;
   $key = $keys_for_sort[0];
   $asc = true;
-  if (!isset($a[$key]) and !isset($b[$key]))
+  if (!isset($a[$key]) && !isset($b[$key]))
     return 0;
   // une valeur indéfinie est inférieure à une valeur définie
   if (!isset($a[$key]))
@@ -266,26 +266,23 @@ function is_text($data) {
   return is_string($data) && (strpos($data, "\n")!==FALSE) && (strpos($data, "\n") < strlen($data)-1);
 }
 
-// test si un array est un tableau associatif ou une liste
-// [] n'est pas un assoc_array
+// test si un array est un tableau associatif ou une liste,  [] n'est pas un assoc_array
 if (!function_exists('is_assoc_array')) {
   function is_assoc_array(array $array): bool { return count(array_diff_key($array, array_keys(array_keys($array)))); }
 
   if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_assoc_array 
-  if (isset($_GET['test']) && ($_GET['test']=='is_assoc_array')) {
-    echo "Test is_assoc_array<br>\n";
-    foreach ([[], [1, 2, 3], ['a'=>'a','b'=>'b']] as $array) {
-      echo json_encode($array), (is_assoc_array($array) ? ' is_assoc_array' : ' is NOT assoc_array') , "<br>\n";
+    if (isset($_GET['test']) && ($_GET['test']=='is_assoc_array')) {
+      echo "Test is_assoc_array<br>\n";
+      foreach ([[], [1, 2, 3], ['a'=>'a','b'=>'b']] as $array) {
+        echo json_encode($array), (is_assoc_array($array) ? ' is_assoc_array' : ' is NOT assoc_array') , "<br>\n";
+      }
+      echo "FIN test is_assoc_array<br><br>\n";
     }
-    echo "FIN test is_assoc_array<br><br>\n";
+    $unitaryTests[] = 'is_assoc_array';
   }
-  $unitaryTests[] = 'is_assoc_array';
-}
 }
 
-// le paramètre est-il une liste ?
-// une liste est un array pour lequel les clés sont une liste des entiers s'incrémentant de 1 à partir de 0
-// [] est une liste
+// le par. est-il une liste ? cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
 function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
 
 // le paramètre est-il une liste d'atomes, y.c. list(list), ... ?

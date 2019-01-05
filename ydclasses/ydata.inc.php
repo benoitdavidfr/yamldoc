@@ -29,12 +29,39 @@ doc: |
           data: enregistrements contenus dans la table
   Une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
-  Implémente pour URI un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
+  Le ypath peut prendre une des formes suivantes:
+    - métadonnée du document,
+      [ex](?doc=dublincoreyd&ypath=/title)
+    - une table, renvoie la table y compris ses MD,
+      [ex](?doc=dublincoreyd&ypath=/dcmes)
+    - métadonnée d'une table dont le nom de MD ne correspond pas à un identifiant de tuple,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/elementURI)
+    - métadonnée d'une table dont le nom de MD correspond à un identifiant de tuple,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/_title)
+    - un tuple d'une table identifié par sa clé,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/subject)
+    - valeur d'un champ d'un tuple d'une table, tuple identifié par sa clé,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/subject/definition)
+    - valeur d'un sous-champ d'un tuple d'une table, tuple identifié par sa clé,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/subject/definition/fr),
+      [ex](?doc=dublincoreyd&ypath=/dcmes/description/refinements/tableOfContents/definition/fr)
+    - valeur d'un champ d'un tuple d'une table, tuple identifié par une valeur qqc,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/name.fr=Sujet/definition)
+    - valeur d'un champ des tuples d'une table,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/*/definition)
+    - valeurs de champs des tuples d'une table,
+      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name,definition),
+      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name.fr,definition.fr),
+      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
+      [ex](?doc=dublincoreyd&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
   
+  
+  http://localhost/yamldoc/?doc=dublincore est un prototype de Ydata
 journal: |
-  3/1/2019:
+  3-5/1/2019:
   - correction affichage
   - ajout test de conformité d'une table à son schéma
+  - traitement du ypath
   29/7/2018:
   - mécanismes d'accès de base
   - manque projection, sélection
@@ -42,7 +69,9 @@ journal: |
 EOT;
 }
 require_once __DIR__.'/../../schema/jsonschema.inc.php';
-
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires 
+  require_once 'yamldoc.inc.php';
+}
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
@@ -50,11 +79,14 @@ class YData extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
-  // $yaml est généralement un array mais peut aussi être du texte
   function __construct($yaml, string $docid) {
     $this->_c = [];
     $this->_id = $docid;
+    if (isset($yaml['data']) && isset($yaml['tables']))
+      throw new Exception("Erreur de création de YData contient data et tables");
     foreach ($yaml as $prop => $value) {
+      if (in_array($prop, ['_id','_c']))
+        throw new Exception("Erreur de création de YData contient $prop");
       if ($prop == 'data')
         $this->_c['data'] = new YDataTable($value);
       elseif ($prop == 'tables') {
@@ -101,50 +133,52 @@ class YData extends YamlDoc {
   // Utilisé par YamlDoc::yaml() et YamlDoc::json()
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   function extract(string $ypath) {
+    //echo "YData::sextract(ypath=$ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       return $this;
-    elseif (preg_match('!^/([^/]*)$!', $ypath, $matches))
-      return $this->{$matches[1]};
-    elseif (preg_match('!^/data(/.*)$!', $ypath, $matches))
-      return $this->data->extract($matches[1]);
-    elseif (preg_match('!^/tables$!', $ypath))
-      return $this->tables;
-    elseif (preg_match('!^/tables/([^/]*)$!', $ypath, $matches))
-      return isset($this->tables[$matches[1]]) ? $this->tables[$matches[1]] : null;
-    elseif (preg_match('!^/tables/([^/]*)/([^/]*)$!', $ypath, $matches))
-      return isset($this->tables[$matches[1]][$matches[2]]) ? $this->tables[$matches[1]][$matches[2]] : null;
-    elseif (preg_match('!^/tables/([^/]*)/data(/.*)$!', $ypath, $matches))
-      return $this->tables[$matches[1]]['data']->extract($matches[2]);
-    else
+    if ($this->data) {
+      if ($res = $this->data->extract($ypath))
+        return $res;
+    }
+    elseif ($this->tables) {
+      if (preg_match('!^/([^/]+)(/.+)?$!', $ypath, $matches)) {
+        //print_r($matches); echo "<br>\n";
+        $tabid = $matches[1];
+        $ypath2 = isset($matches[2]) ? $matches[2] : '';
+        if (isset($this->tables[$tabid])) {
+          $table = $this->tables[$tabid];
+          if (!$ypath2)
+            return $table;
+          if ($res = $table['data']->extract($ypath2))
+            return $res;
+          if (!preg_match('!^/([^/]+)$!', $ypath2, $matches)) {
+            echo "$ypath don't match line ".__LINE__."<br>\n";
+            return null;
+          }
+          // cas d'un champ de MD sur la table
+          $propname = $matches[1];
+          if (substr($propname, 0, 1)=='_')
+            $propname = substr($propname, 1);
+          if (isset($table[$propname]))
+            return $table[$propname];
+        }
+      }
+    }
+    if (!preg_match('!^/([^/]+)$!', $ypath, $matches)) {
+      echo "$ypath don't match line ".__LINE__."<br>\n";
       return null;
+    }
+    // cas d'un champ de MD sur le doc
+    $propname = $matches[1];
+    if (substr($propname, 0, 1)=='_')
+      $propname = substr($propname, 1);
+    return $this->$propname;
   }
     
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  // implémnte un ypath réduit /{table}/{tupleid}/... ou /{tupleid}/...
   function extractByUri(string $ypath) {
-    $docuri = $this->_id;
     //echo "YData::extractByUri($docuri, $ypath)<br>\n";
-    $fragment = $this->extract($ypath);
-    $fragment = self::replaceYDEltByArray($fragment);
-    if ($fragment)
-      return $fragment;
-    //echo "fragment vide  test version ypath réduit\n"; // sinon test version ypath réduit
-    // /{table}
-    if ($this->tables && preg_match('!^/([^/]+)$!', $ypath, $matches) && isset($this->tables[$matches[1]])) {
-      //echo "table $matches[1] ok\n";
-      $table = $this->tables[$matches[1]];
-      return self::replaceYDEltByArray($table);;
-    }
-    // /{table}/{tupleid}
-    if ($this->tables && preg_match('!^/([^/]+)(/.*)$!', $ypath, $matches) && isset($this->tables[$matches[1]])) {
-      //echo "table $matches[1] ok ypath $matches[2]\n";
-      $table = $this->tables[$matches[1]];
-      return $table['data']->extract($matches[2]);
-    }
-    // /{tupleid}
-    if ($this->data)
-      return $this->data->extract($ypath);
-    return null;
+    return self::replaceYDEltByArray($this->extract($ypath));
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
@@ -153,8 +187,8 @@ class YData extends YamlDoc {
   function checkSchemaConformity(string $ypath): void {
     //echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
     // si le path pointe directement dans les données, je remonte dans le document de la table
-    if (substr($ypath, -5)=='/data')
-      $ypath = substr($ypath, 0, strlen($ypath)-5);
+    if (substr($ypath, -2)=='/*')
+      $ypath = substr($ypath, 0, strlen($ypath)-2);
     $subdoc = $this->extractByUri($ypath);
     //echo '<pre>',Yaml::dump($subdoc, 999),"</pre>\n";
     if (!isset($subdoc['jSchema']) || !isset($subdoc['data'])) {
@@ -204,12 +238,98 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   // extrait le sous-élément de l'élément défini par $ypath
   // permet de traverser les objets quand on connait son chemin
   function extract(string $ypath) {
-    if (!$ypath || ($ypath=='/'))
-      return $this->data;
-    else
-      return YamlDoc::sextract($this->data, $ypath);
+    return self::sextract($this->data, $ypath);
   }
   
+  static public function sextract(array $data, string $ypath) {
+    //echo "YDataTable::sextract(data=",json_encode($data),", ypath=$ypath)<br>\n";
+    //echo "ypath=$ypath<br>\n";
+    if (!preg_match('!^/([^/]+)(/.*)?$!', $ypath, $matches)) {
+      echo "$ypath don't match line ".__LINE__."<br>\n";
+      return null;
+    }
+    $field = $matches[1];
+    $ypath2 = isset($matches[2]) ? $matches[2] : '';
+    if ($field == '*') {
+      $result = [];
+      foreach ($data as $id => $tuple) {
+        $tuple = array_merge(['_id'=> $id], $tuple);
+        $result[] = $ypath2 ? self::sextract($tuple, $ypath2) : $tuple;
+      }
+      return $result;
+    }
+    elseif (strpos($field, ',') !== false) {
+      $fields = explode(',', $field);
+      foreach ($fields as $f) {
+        if (($f == '_id') && isset($data['_id']))
+          $result[$f] = $data['_id'];
+        else
+          $result[$f] = self::subValue($data, $f);
+      }
+      return $result;
+    }
+    // évaluation d'un critère de sélection
+    elseif (($pos = strpos($field, '=')) !== false) {
+      $key = substr($field, 0, $pos);
+      $val = substr($field, $pos+1);
+      if (!($data2 = self::select($data, $key, $val))) {
+        echo "resultat de select $key=$val null ligne ",__LINE__,"<br>\n";
+        return null;
+      }
+    }
+    // descente
+    elseif (isset($data[$field]))
+      $data2 = $data[$field];
+    else {
+      echo "field $field non valide ligne ",__LINE__,"<br>\n";
+      return null;
+    }
+    if (!$ypath2)
+      return $data2;
+    else
+      return self::sextract($data2, $ypath2);
+  }
+  
+  // selection dans la liste de tuples $data sur $key=$value
+  // si aucun résultat alors retourne null, sinon si un seul tuple en résultat alors retourne ce tuple
+  // sinon retourne la liste des tuples vérifiant le critère
+  static function select(array $data, string $key, string $value) {
+    //echo "select(data=",json_encode($data),", key=$key, value=$value)<br>\n";
+    $result = [];
+    foreach ($data as $id => $tuple)
+      if (self::subValue($tuple, $key) == $value)
+        $result[$id] = $tuple;
+    if (count($result)==0)
+      return null;
+    elseif (count($result)==1)
+      return array_values($result)[0];
+    else
+      return $result;
+  }
+  
+  // sous-valeur d'un tableau pour une clé composite avec . comme séparateur
+  static private function subValue(array $data, string $key) {
+    //echo "YDataTable::subValue(data, key=$key)<br>\n";
+    $key = explode('.', $key);
+    $k0 = array_shift($key);
+    $key = implode('.', $key);
+    if (!$key)
+      return isset($data[$k0]) ? $data[$k0] : null;
+    elseif (($k0 == '*') && ($key == '_id')) {
+      return array_keys($data);
+    }
+    elseif ($k0 == '*') {
+      $result = [];
+      foreach ($data as $k => $v)
+        $result[] = self::subValue($v, $key);
+      return $result;
+    }
+    elseif (!isset($data[$k0]))
+      return null;
+    else
+      return self::subValue($data[$k0], $key);
+  }
+      
   // décapsule l'objet et retourne son contenu sous la forme d'un array
   // permet de parcourir tout objet sans savoir a priori ce que l'on cherche
   // est utilisé par YamlDoc::replaceYDEltByArray()
@@ -242,3 +362,10 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   // interface IteratorAggregate
   function getIterator() { return new ArrayIterator($this->tuples()); }
 };
+
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires 
+  print_r(YDataTable::select(
+  ['a'=> ['f'=>['ff'=>'v']], 'b'=>['f'=>'v'], 'c'=>['f'=>'t']],
+  'f.ff', 'v'
+  ));
+}

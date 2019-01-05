@@ -16,7 +16,7 @@ doc: |
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal:
   15/9/2018:
-    - ajout d'une propriété Doc::$docid
+    - ajout d'une propriété Doc::$_id
     - modification de la signature des méthodes abstraites Doc::__construct(), Doc::show(), Doc::dump(),
       YamlDoc::extractByUri(), YamlDoc::writePser(), YamlDoc::writePserReally()
   28/7/2018:
@@ -122,9 +122,9 @@ abstract class YamlDoc extends Doc {
     }
   }
   
-  // remplace dans une structure Php les YamlDocElement par leur représentation array Php
-  // Utilise YamlDoc::asArray() et YamlDocElement::asArray()
-  // La valeur retournée est soit un atome Php non objet, soit un objet DateTime, soit un array de ca
+  // remplace récursivement dans une structure Php les YamlDocElement par leur représentation array Php
+  // Utilise pour cela YamlDoc::asArray() et YamlDocElement::asArray()
+  // La valeur retournée est soit un atome Php non objet, soit un objet DateTime, soit un array
   static protected function replaceYDEltByArray($data) {
     if (is_object($data) && (get_class($data)<>'DateTime'))
       $data = $data->asArray();
@@ -223,6 +223,8 @@ abstract class YamlDoc extends Doc {
   }
   
   // selection dans la liste de tuples $data sur $key=$value
+  // si aucun résultat alors retourne null, sinon si un seul tuple en résultat alors retourne ce tuple
+  // sinon retourne la liste des tuples vérifiant le critère
   static private function select(array $data, string $key, string $value) {
     //echo "select(data, key=$key, value=$value)<br>\n";
     $result = [];
