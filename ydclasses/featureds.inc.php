@@ -19,9 +19,11 @@ doc: |
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
     - définir une interface OAI
     - fabriquer une couche limite administrative pour la BD Parcellaire
-    - spécifier formellement (en JSON-Schema ?) le contenu d'un FeatureDataset
+    - améliorer la spécification du contenu d'un FeatureDataset
   
 journal:
+  7/1/2019:
+    - première version d'une spécification JSON-Schema du contenu d'un FeatureDataset
   11/10/2018:
     - ajout méthode FeatureDataset::numberOfFeatures() et api '/{lyrname}/nof?bbox={bbox}'
   23/9/2018:
@@ -187,6 +189,9 @@ require_once __DIR__.'/../../ogr2php/feature.inc.php';
 require_once __DIR__.'/../../phplib/mysql.inc.php';
 //require_once __DIR__.'/yamldoc.inc.php';
 
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
+
 class FeatureDataset extends YamlDoc {
   static $log = __DIR__.'/featureds.log.yaml'; // nom du fichier de log ou '' pour pas de log
   protected $_c; // contient les champs du document
@@ -293,9 +298,11 @@ class FeatureDataset extends YamlDoc {
             $this->showLayer($docid, $lyrid);
       }
     }
-    else
+    elseif ($this->layers)
       foreach ($this->layers as $lyrid => $layer)
         $this->showLayer($docid, $lyrid);
+    else
+      echo "Aucune couche<br>\n";
   }
   
   function showLayer(string $docid, string $lyrid) {
@@ -801,6 +808,22 @@ class FeatureDataset extends YamlDoc {
       );
     }
     die();
+  }
+  
+  function checkSchemaConformity(string $ypath): void {
+    if (!is_file(__DIR__.'/featureds.schema.yaml')) {
+      echo "Erreur fichier featureds.schema.yaml absent<br>\n";
+      return;
+    }
+    $schema = Yaml::parse(file_get_contents(__DIR__.'/featureds.schema.yaml'));
+    //echo "<pre>schema="; print_r($schema); echo "</pre>\n";
+    $schema = new JsonSchema($schema);
+    if ($schema->check($this->_c)) {
+      $schema->showWarnings();
+      echo "ok doc conforme au schéma featureds.schema.yaml<br>\n";
+    }
+    else
+      $schema->showErrors();
   }
 };
 

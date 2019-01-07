@@ -88,14 +88,14 @@ class YData extends YamlDoc {
       if (in_array($prop, ['_id','_c']))
         throw new Exception("Erreur de création de YData contient $prop");
       if ($prop == 'data')
-        $this->_c['data'] = new YDataTable($value);
+        $this->_c['data'] = $value ? new YDataTable($value) : null;
       elseif ($prop == 'tables') {
         $tables = $value;
         $this->_c['tables'] = [];
         foreach ($tables as $tabid => $table) {
           foreach ($table as $prop => $value) {
             if ($prop == 'data')
-              $this->_c['tables'][$tabid]['data'] = new YDataTable($value);
+              $this->_c['tables'][$tabid]['data'] = $value ? new YDataTable($value) : null;
             else
               $this->_c['tables'][$tabid][$prop] = $value;
           }
@@ -211,17 +211,22 @@ class YData extends YamlDoc {
 // objet se retouvant à l'intérieur d'un doc
 // est créé par YData 
 class YDataTable implements YamlDocElement, IteratorAggregate {
-  protected $attrs; // liste des attributs détectés dans la table
+  protected $attrs=[]; // liste des attributs détectés dans la table
   protected $data; // contenu de data sous forme d'un array Php
   
   // prend en entrée le contenu de la table sous la forme d'un array [ _id => array ]
   function __construct(array $data) {
     $this->data = $data;
-    $this->attrs = [ '_id' ];
-    foreach ($data as $_id => $tuple) {
-      foreach ($tuple as $attr => $value) {
-        if (!in_array($attr, $this->attrs))
-          $this->attrs[] = $attr;
+    if ($data) {
+      $this->attrs = [ '_id' ];
+      foreach ($data as $tuple) {
+        //print_r($tuple); echo "<br><br>\n";
+        if ($tuple) {
+          foreach (array_keys($tuple) as $attr) {
+            if (!in_array($attr, $this->attrs))
+              $this->attrs[] = $attr;
+          }
+        }
       }
     }
   }
