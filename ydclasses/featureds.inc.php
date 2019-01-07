@@ -19,11 +19,10 @@ doc: |
     - structurer la BD TOPO, définir une vue multi-échelles par défaut
     - définir une interface OAI
     - fabriquer une couche limite administrative pour la BD Parcellaire
-    - améliorer la spécification du contenu d'un FeatureDataset
   
 journal:
   7/1/2019:
-    - première version d'une spécification JSON-Schema du contenu d'un FeatureDataset
+    - spécification JSON-Schema du contenu d'un FeatureDataset
   11/10/2018:
     - ajout méthode FeatureDataset::numberOfFeatures() et api '/{lyrname}/nof?bbox={bbox}'
   23/9/2018:
@@ -104,6 +103,7 @@ doc: |
     6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
       ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
 
+  Un document FeatureDataset est décrit par le schéma featureds.schema.yaml
   Un document FeatureDataset contient:
   
     - des métadonnées génériques
