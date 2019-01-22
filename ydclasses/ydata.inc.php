@@ -185,7 +185,24 @@ class YData extends YamlDoc {
   function writePser(): void { YamlDoc::writePserReally(); }
   
   function checkSchemaConformity(string $ypath): void {
-    //echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
+    echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
+    if (!$ypath || ($ypath=='/')) { // validation du doc / son schéma
+      if (!is_file(__DIR__.'/ydata.schema.yaml')) {
+        echo "Erreur fichier ydata.schema.yaml absent<br>\n";
+        return;
+      }
+      $schema = Yaml::parse(file_get_contents(__DIR__.'/ydata.schema.yaml'));
+      //echo "<pre>schema="; print_r($schema); echo "</pre>\n";
+      $schema = new JsonSchema($schema);
+      $status = $schema->check($this->_c);
+      if ($status->ok()) {
+        echo "ok doc conforme au schéma ydata.schema.yaml<br>\n";
+        $status->showWarnings();
+      }
+      else
+        $status->showErrors();
+      return;
+    }
     // si le path pointe directement dans les données, je remonte dans le document de la table
     if (substr($ypath, -2)=='/*')
       $ypath = substr($ypath, 0, strlen($ypath)-2);
@@ -196,14 +213,13 @@ class YData extends YamlDoc {
       return;
     }
     $schema = new JsonSchema($subdoc['jSchema']);
-    if (isset($subdoc['data'])) {
-      if ($schema->check($subdoc['data'])) {
-        $schema->showWarnings();
-        echo "ok data conforme au schéma<br>\n";
-      }
-      else
-        $schema->showErrors();
+    $status = $schema->check($subdoc['data']);
+    if ($status->ok()) {
+      echo "ok data conforme au schéma<br>\n";
+      $status->showWarnings();
     }
+    else
+      $status->showErrors();
   }
 };
 

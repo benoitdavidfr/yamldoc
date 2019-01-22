@@ -1,7 +1,7 @@
 title: carte par défaut
 yamlClass: Map
 stylesheets:
-  - http://visu.gexplor.fr/viewer.css
+  - https://visu.gexplor.fr/viewer.css
   - https://unpkg.com/leaflet@1.3/dist/leaflet.css
 plugins:
   - http://visu.gexplor.fr/lib/leaflet.uGeoJSON.js

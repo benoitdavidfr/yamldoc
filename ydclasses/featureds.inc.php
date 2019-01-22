@@ -371,19 +371,19 @@ class FeatureDataset extends YamlDoc {
       'cartes'=> [
         'title'=> "Cartes IGN",
         'type'=> 'TileLayer',
-        'url'=> 'http://igngp.geoapi.fr/tile.php/cartes/{z}/{x}/{y}.jpg',
+        'url'=> 'https://igngp.geoapi.fr/tile.php/cartes/{z}/{x}/{y}.jpg',
         'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
       ],
       'orthos'=> [
         'title'=> "Ortho-images",
         'type'=> 'TileLayer',
-        'url'=> 'http://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg',
+        'url'=> 'https://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg',
         'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
       ],
       'whiteimg'=> [
         'title'=> "Fond blanc",
         'type'=> 'TileLayer',
-        'url'=> 'http://visu.gexplor.fr/utilityserver.php/whiteimg/{z}/{x}/{y}.jpg',
+        'url'=> 'https://visu.gexplor.fr/utilityserver.php/whiteimg/{z}/{x}/{y}.jpg',
         'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 21 ],
       ],
     ];
@@ -818,12 +818,13 @@ class FeatureDataset extends YamlDoc {
     $schema = Yaml::parse(file_get_contents(__DIR__.'/featureds.schema.yaml'));
     //echo "<pre>schema="; print_r($schema); echo "</pre>\n";
     $schema = new JsonSchema($schema);
-    if ($schema->check($this->_c)) {
-      $schema->showWarnings();
+    $status = $schema->check($this->_c);
+    if ($status->ok()) {
+      $status->showWarnings();
       echo "ok doc conforme au schéma featureds.schema.yaml<br>\n";
     }
     else
-      $schema->showErrors();
+      $status->showErrors();
   }
 };
 
