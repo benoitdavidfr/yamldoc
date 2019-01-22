@@ -391,14 +391,12 @@ class FeatureDataset extends YamlDoc {
         
     $request_scheme = isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME']
       : ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS']=='on')) ? 'https' : 'http');
-    echo "request_scheme=$request_scheme<br>\n";
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
         'type'=> 'UGeoJSONLayer',
         'endpoint'=> "$request_scheme://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
       ];
-      print_r($overlay);
       foreach (['pointToLayer','style','minZoom','maxZoom'] as $key)
         if (isset($layer[$key]))
           $overlay[$key] = $layer[$key];
