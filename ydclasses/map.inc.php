@@ -244,8 +244,10 @@ class LeafletTileLayer extends LeafletLayer {
 class LeafletUGeoJSONLayer extends LeafletLayer {
   function showAsCode(string $lyrid): void {
     //print_r($this);
-    if (strncmp($this->endpoint, 'http://', 7)<>0)
-      $this->_c['endpoint'] = "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/".$this->endpoint;
+    $request_scheme = isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME']
+      : ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS']=='on')) ? 'https' : 'http');
+    if ((strncmp($this->endpoint, 'http://', 7)<>0) && (strncmp($this->endpoint, 'http://', 7)<>0))
+      $this->_c['endpoint'] = "$request_scheme://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/".$this->endpoint;
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
     echo "    lyrid: '$lyrid',\n";
     //echo "    title: '$this->title',\n";
