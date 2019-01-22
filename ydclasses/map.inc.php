@@ -246,7 +246,7 @@ class LeafletUGeoJSONLayer extends LeafletLayer {
     //print_r($this);
     $request_scheme = isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME']
       : ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS']=='on')) ? 'https' : 'http');
-    if ((strncmp($this->endpoint, 'http://', 7)<>0) && (strncmp($this->endpoint, 'http://', 7)<>0))
+    if ((strncmp($this->endpoint, 'http://', 7)<>0) && (strncmp($this->endpoint, 'https://', 8)<>0))
       $this->_c['endpoint'] = "$request_scheme://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/".$this->endpoint;
     echo "  \"$this->title\" : new L.UGeoJSONLayer({\n";
     echo "    lyrid: '$lyrid',\n";
