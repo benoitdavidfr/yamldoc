@@ -389,6 +389,8 @@ class FeatureDataset extends YamlDoc {
     ];
     $map['defaultLayers'] = ['whiteimg'];
         
+    echo "<pre>_SERVER="; print_r($_SERVER);
+    // REQUEST_SCHEME
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
