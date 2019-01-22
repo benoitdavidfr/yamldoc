@@ -398,6 +398,7 @@ class FeatureDataset extends YamlDoc {
         'type'=> 'UGeoJSONLayer',
         'endpoint'=> "$request_scheme://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/$docuri/$lyrid",
       ];
+      print_r($overlay);
       foreach (['pointToLayer','style','minZoom','maxZoom'] as $key)
         if (isset($layer[$key]))
           $overlay[$key] = $layer[$key];
