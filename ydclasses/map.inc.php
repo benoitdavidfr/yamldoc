@@ -21,6 +21,8 @@ doc: |
   Voir comme exemple id.php/geodata/route500/map
   
 journal:
+  22/1/2019:
+    - passage des UGeoJSONLayer en https
   20/8/2018:
     - ajout de symboles, test sur les pai_religieux de la BDTopo
   19/8/2018:

@@ -21,6 +21,8 @@ doc: |
     - fabriquer une couche limite administrative pour la BD Parcellaire
   
 journal:
+  22/1/2019:
+    - passage des UGeoJSONLayer en https
   7/1/2019:
     - spécification JSON-Schema du contenu d'un FeatureDataset
   11/10/2018:

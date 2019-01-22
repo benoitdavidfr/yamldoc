@@ -1,4 +1,6 @@
 title: carte par défaut
+description: |
+  Passage le 22/1/2019 en https des stylesheets et des plugins pour corriger une erreur sur Firefox
 yamlClass: Map
 stylesheets:
   - https://visu.gexplor.fr/viewer.css
