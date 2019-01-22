@@ -4,8 +4,8 @@ stylesheets:
   - https://visu.gexplor.fr/viewer.css
   - https://unpkg.com/leaflet@1.3/dist/leaflet.css
 plugins:
-  - http://visu.gexplor.fr/lib/leaflet.uGeoJSON.js
-  - http://visu.gexplor.fr/lib/leaflet.edgebuffer.js
+  - https://visu.gexplor.fr/lib/leaflet.uGeoJSON.js
+  - https://visu.gexplor.fr/lib/leaflet.edgebuffer.js
 mapStyle: { height: 100%, width: 100%}
 view:
   latlon: [48, 3]
