@@ -391,6 +391,7 @@ class FeatureDataset extends YamlDoc {
         
     $request_scheme = isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME']
       : ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS']=='on')) ? 'https' : 'http');
+    echo "request_scheme=$request_scheme<br>\n";
     foreach ($this->layers as $lyrid => $layer) {
       $overlay = [
         'title'=> $layer['title'],
