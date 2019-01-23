@@ -143,7 +143,7 @@ function show_menu(string $store, array $breadcrumb) {
     // edit - la possibilité n'est pas affichée si le doc courant n'est pas éditable
     if (ydcheckWriteAccess($docuid)<>0)
       echo "<td><a href='?action=edit&amp;doc=$docuid$langp'>edit</a></td>\n";
-    echo "<td><a href='?action=check&amp;doc=$docp$ypatharg$langp'>check</a></td>\n";
+    echo "<td><a href='?action=check$docp$ypatharg$langp'>check</a></td>\n";
     // clone - uniquement s'il existe un catalogue parent
     if ($catuid = CallingGraph::parent($docuid))
       echo "<td><a href='?clone=$docuid&amp;doc=$catuid$langp'>clone</a></td>\n";

@@ -186,40 +186,33 @@ class YData extends YamlDoc {
   
   function checkSchemaConformity(string $ypath): void {
     echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
-    if (!$ypath || ($ypath=='/')) { // validation du doc / son schéma
+    if (!$ypath || ($ypath=='/')) { // validation du doc / schéma ydata.schema.yaml
       if (!is_file(__DIR__.'/ydata.schema.yaml')) {
         echo "Erreur fichier ydata.schema.yaml absent<br>\n";
         return;
       }
-      $schema = Yaml::parse(file_get_contents(__DIR__.'/ydata.schema.yaml'));
-      //echo "<pre>schema="; print_r($schema); echo "</pre>\n";
-      $schema = new JsonSchema($schema);
-      $status = $schema->check($this->_c);
-      if ($status->ok()) {
-        echo "ok doc conforme au schéma ydata.schema.yaml<br>\n";
-        $status->showWarnings();
+      $schema = new JsonSchema(__DIR__.'/ydata.schema.yaml');
+      $schema->check($this->_c, [
+        'showWarnings'=> "ok doc conforme au schéma ydata.schema.yaml",
+        'showErrors'=> "KO doc NON conforme au schéma ydata.schema.yaml",
+      ]);
+    }
+    else {
+      // si le path pointe directement dans les données, je remonte dans le document de la table
+      if (substr($ypath, -2)=='/*')
+        $ypath = substr($ypath, 0, strlen($ypath)-2);
+      $subdoc = $this->extractByUri($ypath);
+      //echo '<pre>',Yaml::dump($subdoc, 999),"</pre>\n";
+      if (!isset($subdoc['jSchema']) || !isset($subdoc['data'])) {
+        echo "Erreur: jSchema ou data absent du sous-document<br>\n";
+        return;
       }
-      else
-        $status->showErrors();
-      return;
+      $schema = new JsonSchema($subdoc['jSchema']);
+      $status = $schema->check($subdoc['data'], [
+        'showWarnings'=> "ok data conforme au schéma de la table",
+        'showErrors'=> "KO data NON conforme au schéma de la table",
+      ]);
     }
-    // si le path pointe directement dans les données, je remonte dans le document de la table
-    if (substr($ypath, -2)=='/*')
-      $ypath = substr($ypath, 0, strlen($ypath)-2);
-    $subdoc = $this->extractByUri($ypath);
-    //echo '<pre>',Yaml::dump($subdoc, 999),"</pre>\n";
-    if (!isset($subdoc['jSchema']) || !isset($subdoc['data'])) {
-      echo "Erreur: jSchema ou data absent du sous-document<br>\n";
-      return;
-    }
-    $schema = new JsonSchema($subdoc['jSchema']);
-    $status = $schema->check($subdoc['data']);
-    if ($status->ok()) {
-      echo "ok data conforme au schéma<br>\n";
-      $status->showWarnings();
-    }
-    else
-      $status->showErrors();
   }
 };
 
@@ -330,7 +323,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   
   // sous-valeur d'un tableau pour une clé composite avec . comme séparateur
   static private function subValue(array $data, string $key) {
-    //echo "YDataTable::subValue(data, key=$key)<br>\n";
+    //echo "YDataTable::subValue(data=",json_encode($data),", key=$key)<br>\n";
     $key = explode('.', $key);
     $k0 = array_shift($key);
     $key = implode('.', $key);
@@ -345,7 +338,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
         $result[] = self::subValue($v, $key);
       return $result;
     }
-    elseif (!isset($data[$k0]))
+    elseif (!isset($data[$k0]) || !is_array($data[$k0]))
       return null;
     else
       return self::subValue($data[$k0], $key);

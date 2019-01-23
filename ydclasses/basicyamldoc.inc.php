@@ -42,9 +42,4 @@ class BasicYamlDoc extends YamlDoc {
     //echo "<pre>show(ypath=$ypath) data="; print_r($this->data); echo "</pre>\n";
     showDoc($this->_id, YamlDoc::sextract($this->data, $ypath));
   }
-  
-  // vérification de la conformité du document à son schéma
-  function checkSchemaConformity() {
-    echo "methode YamlDoc::checkSchemaConformity() non implémentée<br>\n";
-  }
 };

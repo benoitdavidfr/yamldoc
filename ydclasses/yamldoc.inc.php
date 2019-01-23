@@ -356,6 +356,22 @@ abstract class YamlDoc extends Doc {
     return json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
 
+  // validation de la conformité du document au schéma JSON associé à la classe de documents
+  // Si aucun schéma n'est associé, cette méthode n'a pas à être définie pour la classe Php
+  // et la validation s'effectue par rapport au schéma YamlDoc
+  function checkSchemaConformity(string $ypath): void {
+    echo "YamlDoc::checkSchemaConformity(ypath=$ypath)<br>\n";
+    try {
+      $schema = new JsonSchema(__DIR__.'/yamldoc.schema.yaml');
+      $schema->check($this->asArray(), [
+        'showWarnings'=> "ok doc conforme au schéma yamldoc<br>\n",
+        'showErrors'=> "KO doc NON conforme au schéma yamldoc<br>\n",
+      ]);
+    } catch (Exception $e) {
+      echo "Erreur dans YamlDoc::checkSchemaConformity(ypath=$ypath) : ",$e->getMessage(),"<br>\n";
+    }
+  }
+
   // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
   function checkReadAccess(): bool {
     // si le doc a déjà été marqué comme accessible alors retour OK
