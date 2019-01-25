@@ -34,6 +34,8 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  25/1/2019:
+    - remplacement du mot-clé YamlClass par l'utilisation de $schema avec un URI commencant par YamlDoc::SCHEMAURIPREFIX
   12/9/2018:
     - transfert des fichiers des classes de docs dans ydclasses, touche de nbrx fichiers
   29/7/2018:

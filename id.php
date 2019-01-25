@@ -5,17 +5,19 @@ title: id.php - resolveur d'URI de YamlDoc
 doc: |
   S'utilise soit par appel direct de l'URI,
   soit par appel du script avec l'URI en paramètre uri={URI}
+  L'appel à l'URI utilise la définition sur Alwaysdata d'un site id.georef.eu comme site Php pointant sur
+    ~/prod/georef/yamldoc/id.php/
 
-  La difficulté est de traiter tous les cas, notamment:
-    - document index d'un répertoire
-    - document existant avec un répertoire du même nom
-    - document Yaml incorrect
   Exemples:
     http://id.georef.eu/iso639/concepts/fre
     http://localhost/yamldoc/id.php/iso639/concepts/fre
     http://localhost/yamldoc/id.php?uri=http://id.georef.eu/iso639/concepts/fre
     http://localhost/yamldoc/id.php/view/igngp
-  Un site id.georef.eu doit être défini comme site Php ~/prod/georef/yamldoc/id.php/
+
+  La difficulté est de traiter tous les cas, notamment:
+    - document index d'un répertoire
+    - document existant avec un répertoire du même nom
+    - document Yaml incorrect
 journal: |
   4/1/2019:
     - chgt du site Alwaysdata eu.georef.id en Php sur yamldoc/id.php qui permet que les URI ne soient pas réécrites

@@ -17,6 +17,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
     
 journal:
+  25/1/2019:
+  - remplacement du mot-clé YamlClass par l'utilisation de $schema avec un URI commencant par YamlDoc::SCHEMAURIPREFIX
   3/1/2019:
   - améliorations
   - ajout de tests unitaires
@@ -520,17 +522,22 @@ function new_doc(string $docid): ?Doc {
   if (!is_array($data)) {
     $doc = new BasicYamlDoc($text, $docid);
   }
-  // Sinon Si c'est un array alors détermine sa classe en fonction du champ yamlClass
-  elseif (!isset($data['yamlClass'])) {
-    // si pas de YamlClass c'est un YamlDoc de base
-    $doc = new BasicYamlDoc($data, $docid);
-  }
-  elseif (class_exists($data['yamlClass'])) {
-    $doc = new $data['yamlClass'] ($data, $docid);
-  }
   else {
-    echo "<b>Erreur: la classe $data[yamlClass] n'est pas définie</b><br>\n";
-    $doc = new BasicYamlDoc($data, $docid);
+    // Sinon détermine sa classe en fonction du champ schema
+    $yamlClass = (isset($data['$schema'])
+          && (substr($data['$schema'], 0, strlen(YamlDoc::SCHEMAURIPREFIX)) == YamlDoc::SCHEMAURIPREFIX)) ?
+              substr($data['$schema'], strlen(YamlDoc::SCHEMAURIPREFIX)) : null;
+    if (!$yamlClass) {
+      // si pas de YamlClass c'est un YamlDoc de base
+      $doc = new BasicYamlDoc($data, $docid);
+    }
+    elseif (class_exists($yamlClass)) {
+      $doc = new $yamlClass ($data, $docid);
+    }
+    else {
+      echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
+      $doc = new BasicYamlDoc($data, $docid);
+    }
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
   ydsetWriteAccess($docid, $doc->authorizedWriter());

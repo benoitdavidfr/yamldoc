@@ -83,6 +83,8 @@ doc: |
 EOT;
 }
 abstract class YamlDoc extends Doc {
+  const SCHEMAURIPREFIX = 'http://yamldoc.georef.eu/ydclasses/';
+  
   // Les méthodes abstraites
 
   // décapsule l'objet et retourne son contenu sous la forme d'un array
