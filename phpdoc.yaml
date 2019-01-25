@@ -7,7 +7,7 @@ doc: |
   La connaissance de l'uid d'un document permet d'y accéder en lecture et en mise à jour sauf s'il est protégé,
   ce qui est effectué en indiquant la liste des écrivains autorisés.
   Il est aussi possible de protéger un document en lecture en définissant dans le document un mot de passe.
-  Un document peut être typé défini par le champ yamlClass.
+  Un document peut être typé défini par le champ $schema.
   La navigation entre documents est organisée au travers de documents particuliers de type catalogue, qui référencent
   d'autres documents par leur id en leur affectant notamment un titre.
   Le visualiseur de documents mémorise le chemin des catalogues traversés ; chaque nouveau document est référencé 
@@ -36,6 +36,7 @@ doc: |
 journal: |
   25/1/2019:
     - remplacement du mot-clé YamlClass par l'utilisation de $schema avec un URI commencant par YamlDoc::SCHEMAURIPREFIX
+    - commit et synchro sur les 2 serveurs
   12/9/2018:
     - transfert des fichiers des classes de docs dans ydclasses, touche de nbrx fichiers
   29/7/2018:
