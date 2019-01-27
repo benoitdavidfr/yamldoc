@@ -5,14 +5,11 @@ title: catalog.inc.php - classes des catalogues V2
 doc: |
   <a href='/yamldoc/?action=version&name=catalog.inc.php'>voir le code</a>
 */
-{
-$phpDocs['catalog.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['catalog.inc.php']['file'] = <<<'EOT'
 name: catalog.inc.php
 title: catalog.inc.php - classes YamlCatalog des catalogues V2
 doc: |
-  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.  
-  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]  
-  En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
 journal:
   26/1/2019:
     - prise en compte de l'utilisation du champ $schema à la place de yamlClass
@@ -26,7 +23,15 @@ EOT;
 }
 use Symfony\Component\Yaml\Yaml;
 
-// classe des catalogues
+{ // doc 
+$phpDocs['catalog.inc.php']['classes']['YamlCatalog'] = <<<'EOT'
+title: gestion d'un catalogue (V2)
+doc: |
+  Dans la première version, les catalogues sont composés d'un champ title et d'un champ contents.  
+  Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]  
+  En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
+EOT;
+}
 class YamlCatalog extends BasicYamlDoc {
   
   function show(string $ypath=''): void {

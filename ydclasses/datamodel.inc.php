@@ -10,6 +10,18 @@ $phpDocs['datamodel.inc.php']['file'] = <<<EOT
 name: datamodel.inc.php
 title: datamodel.inc.php - gestion d'un modèle de données comme extension d'un YamlSkos
 doc: |
+journal:
+  17/7/2018:
+    - ajout de la classe Attribute
+  4-8/7/2018:
+    - création
+EOT;
+}
+
+{ // doc 
+$phpDocs['datamodel.inc.php']['classes']['DataModel'] = <<<EOT
+title: gestion d'un modèle de données comme extension d'un YamlSkos
+doc: |
   Un document modèle de données est une extension d'un document YamlSkos,
   il contient en outre un champ objectTypes qui est un dictionnaire de types d'objets de la classe ObjectType
 
@@ -23,14 +35,8 @@ doc: |
       - objecttype.broadMatch
     - lien vers la source du règlement: source ?  
       ex: http://docinspire.eu/eutext/?CELEX=02010R1089&annex=IV&section=20.3.3.14.&language=es
-journal:
-  17/7/2018:
-    - ajout de la classe Attribute
-  4-8/7/2018:
-    - création
 EOT;
 }
-
 class DataModel extends YamlSkos {
   static $keyTranslations = [
     'attributes'=> ['fr'=>"Attributs", 'en'=>"Attributes"],
@@ -156,7 +162,11 @@ class DataModel extends YamlSkos {
   }
 };
 
-// classe du domainScheme adaptée pour DataModel
+{ // doc 
+$phpDocs['datamodel.inc.php']['classes']['DMDomainScheme'] = <<<EOT
+title: classe du domainScheme adaptée pour DataModel
+EOT;
+}
 class DMDomainScheme extends DomainScheme {
   // Affiche l'arbre des domaines avec un lien vers chaque scheme
   function show(array $domains, array $schemes) {
@@ -170,7 +180,11 @@ class DMDomainScheme extends DomainScheme {
   }
 };
   
-// Domain adapté pour DataModel
+{ // doc 
+$phpDocs['datamodel.inc.php']['classes']['DMDomain'] = <<<EOT
+title: classe Domain adaptée pour DataModel
+EOT;
+}
 class DMDomain extends Domain {
   function showDomainTree(string $id, array $domains, array $schemes) {
     //echo "DMDomain::showDomainTree()<br>\n";
@@ -242,7 +256,6 @@ doc: |
     - relations est le dictionnaire des relations, objets de la classe Attribute
 EOT;
 }
-
 class ObjectType extends SkosElt {
   static $strFields = ['label'];
   static $textFields = ['definition','note','scopeNote','editorialNote','changeNote','historyNote','example'];
@@ -383,7 +396,6 @@ journal: |
   - création
 EOT;
 }
-
 class Attribute extends SkosElt {
   static $strFields = ['label'];
   static $textFields = ['definition','note','scopeNote','editorialNote','changeNote','historyNote','example'];

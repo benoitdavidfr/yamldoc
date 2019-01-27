@@ -38,7 +38,7 @@ require_once __DIR__.'/mlstring.inc.php';
 { // doc 
 $phpDocs[basename(__FILE__)]['classes']['LegalDoc'] = <<<EOT
 name: class LegalDoc
-title: définition de la classe LegalDoc gérant un texte juridique
+title: gestion d'un texte juridique
 doc: |
   document juridique pouvant définir des thésaurus (et un modèle de données ?)
     - Il hérite de YamlSkos et comporte donc des champs title, domainScheme, domains, schemes et concepts,

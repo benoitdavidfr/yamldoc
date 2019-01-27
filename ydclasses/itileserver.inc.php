@@ -9,6 +9,20 @@ doc: <a href='/yamldoc/?action=version&name=itileserver.inc.php'>doc intégrée 
 $phpDocs['itileserver.inc.php']['file'] = <<<'EOT'
 name: itileserver.inc.php
 title: itileserver.inc.php - serveur abstrait de tuiles
+journal:
+  11-15/10/2018:
+    - modification de l'interface pour que le résultat de tile() soit réutilisable
+    - ajout de displayTile() qui affiche la tuile
+  7/10/2018:
+    - restructuration comme interface et non comme classe abstraite
+  2/10/2018:
+    - création
+EOT;
+}
+
+{ // doc 
+$phpDocs['itileserver.inc.php']['classes']['iTileServer'] = <<<'EOT'
+title: interface définissant un serveur de tuiles utilisé par ViewDataset
 doc: |
   L'interface iTileServer définit l'interface des serveurs WMS, WMTS, TileServer et FeatureViewer utilisés par ViewDataset
   
@@ -24,18 +38,8 @@ doc: |
       - layer($lyrName): array
       - tile($lyrName, $style, $zoom, $x, $y, $fmt): renvoie une tuile
       - displayTile($lyrName, $style, $zoom, $x, $y, $fmt): void qui affiche une tuile
-
-journal:
-  11-15/10/2018:
-    - modification de l'interface pour que le résultat de tile() soit réutilisable
-    - ajout de displayTile() qui affiche la tuile
-  7/10/2018:
-    - restructuration comme interface et non comme classe abstraite
-  2/10/2018:
-    - création
 EOT;
 }
-
 Interface iTileServer {
   /* renvoie la liste des couches sous la forme:
     [name => [

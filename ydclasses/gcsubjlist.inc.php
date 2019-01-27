@@ -9,6 +9,20 @@ doc: <a href='/yamldoc/?action=version&name=gcsubjlist.inc.php'>doc intégrée e
 $phpDocs['gcsubjlist.inc.php']['file'] = <<<'EOT'
 name: gcsubjlist.inc.php
 title: gcsubjlist.inc.php - sous-document d'un géocatalogue constitué des mots-clés présents
+journal:
+  2/9/2018:
+    - gestion multi-lingue
+  29/8/2018:
+    - création
+EOT;
+}
+
+require_once __DIR__.'/yamldoc.inc.php';
+
+// Correspond à un ensemble de Cvoc construits à partir des mots-clés d'une moisson
+{ // doc 
+$phpDocs['gcsubjlist.inc.php']['classes']['SubjectList'] = <<<'EOT'
+title: sous-document d'un géocatalogue constitué des mots-clés présents
 doc: |
   La classe SubjectList définit des objets qui enregistrent les mots-clés présents dans un géocatalogue.
 
@@ -23,18 +37,8 @@ doc: |
   
   NON: De même pour les labels des cvocs.
   Pour les labels des cvocs, utilisant comme identifiant d'un no d'ordre.
-
-journal:
-  2/9/2018:
-    - gestion multi-lingue
-  29/8/2018:
-    - création
 EOT;
 }
-
-require_once __DIR__.'/yamldoc.inc.php';
-
-// Correspond à un ensemble de Cvoc construits à partir des mots-clés d'une moisson
 class SubjectList extends YamlDoc {
   private $cvocs = []; // [ cvocname => Cvoc ]
   

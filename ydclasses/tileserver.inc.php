@@ -9,6 +9,13 @@ doc: <a href='/yamldoc/?action=version&name=tileserver.inc.php'>doc intégrée e
 $phpDocs['tileserver.inc.php']['file'] = <<<'EOT'
 name: tileserver.inc.php
 title: tileserver.inc.php - serveur de tuiles
+EOT;
+}
+require_once __DIR__.'/inc.php';
+
+{ // doc 
+$phpDocs['tileserver.inc.php']['classes']['TileServer'] = <<<'EOT'
+title: serveur de tuiles
 doc: |
   La classe TileServer permet d'utiliser des serveurs de tuiles.
   
@@ -22,14 +29,8 @@ doc: |
     - 'minZoom': niveau min de zoom
     - 'maxZoom': niveau max de zoom
     - 'format': format des tuiles, soit 'image/png', soit 'image/jpeg', soit 'png', 
-  
-journal:
-  30/9-1/10/2018:
-    - création
 EOT;
 }
-require_once __DIR__.'/inc.php';
-
 class TileServer extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/tileserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   //static $log = false; // nom du fichier de log ou false pour pas de log

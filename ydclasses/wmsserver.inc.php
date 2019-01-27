@@ -9,16 +9,6 @@ doc: <a href='/yamldoc/?action=version&name=wmsserver.inc.php'>doc intégrée en
 $phpDocs['wmsserver.inc.php']['file'] = <<<'EOT'
 name: wmsserver.inc.php
 title: wmsserver.inc.php - serveur WMS
-doc: |
-  La classe abstraite OgcServer implémente des méthodes communes aux serveurs OGC.
-  La classe WmsServer permet d'utiliser des serveurs WMS.
-
-  Outre les champs de métadonnées, le document doit définir les champs suivants:
-    - url : url du serveur
-
-  Il peut aussi définir les champs suivants:
-    - referer: referer à transmettre à chaque appel du serveur.
-
 journal:
   3/11/2018:
     - prise en compte de la possibilité d'avoir un " dans le titre d'une couche
@@ -27,7 +17,17 @@ journal:
 EOT;
 }
 
-// implémente des méthodes communes à WmsServer et WmtsServer
+{ // doc 
+$phpDocs['wmsserver.inc.php']['classes']['OgcServer'] = <<<'EOT'
+title: classe abstraite implémentant des méthodes communes aux serveurs OGC
+doc: |
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+    - url : url du serveur
+
+  Il peut aussi définir les champs suivants:
+    - referer: referer à transmettre à chaque appel du serveur.
+EOT;
+}
 abstract class OgcServer extends YamlDoc implements iTileServer {
   static $capCache = __DIR__.'/ogccapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML de capacités
   protected $_c; // contient les champs
@@ -365,6 +365,17 @@ abstract class OgcServer extends YamlDoc implements iTileServer {
   }
 };
 
+{ // doc 
+$phpDocs['wmsserver.inc.php']['classes']['WmsServer'] = <<<'EOT'
+title: serveur WMS
+doc: |
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+    - url : url du serveur
+
+  Il peut aussi définir les champs suivants:
+    - referer: referer à transmettre à chaque appel du serveur.
+EOT;
+}
 class WmsServer extends OgcServer {
   static $log = __DIR__.'/wmsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   static $serviceTag = 'WMS';

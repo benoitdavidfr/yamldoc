@@ -78,8 +78,8 @@ journal:
 EOT;
 }
 { // specs des docs 
-$phpDocs['featureds.inc.php']['docSpecs'] = <<<'EOT'
-title: spécification du document définissant une série de données géo constituéen d'un ensemble de couches d'objets
+$phpDocs['featureds.inc.php']['classes']['FeatureDataset'] = <<<'EOT'
+title: série de données géo constituée d'un ensemble de couches d'objets
 doc: |
   Une SD d'objets (FeatureDataset) est composée de couches d'objets, chacune correspondant à une FeatureCollection
   [GeoJSON](https://tools.ietf.org/html/rfc7946) ;

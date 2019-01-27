@@ -9,8 +9,18 @@ doc: <a href='/yamldoc/?action=version&name=wmtsserver.inc.php'>doc intégrée e
 $phpDocs['wmtsserver.inc.php']['file'] = <<<'EOT'
 name: wmtsserver.inc.php
 title: wmtsserver.inc.php - serveur WMTS
+journal:
+  3/11/2018:
+    - prise en compte de la possibilité d'avoir un " dans le titre d'une couche
+  22/9/2018:
+    - création
+EOT;
+}
+
+{ // doc 
+$phpDocs['wmtsserver.inc.php']['classes']['WmtsServer'] = <<<'EOT'
+title: serveur WMTS
 doc: |
-  La classe WmtsServer permet d'utiliser des serveurs WMTS.
   Seules sont utilisables les couches définies dans un TileMatrixSet compatible avec GoogleMaps
   (urn:ogc:def:wkss:OGC:1.0:GoogleMapsCompatible)
 
@@ -21,15 +31,9 @@ doc: |
   Il peut aussi définir les champs suivants:
   
     - referer: referer à transmettre à chaque appel du serveur.
-
-journal:
-  3/11/2018:
-    - prise en compte de la possibilité d'avoir un " dans le titre d'une couche
-  22/9/2018:
     - création
 EOT;
 }
-
 class WmtsServer extends OgcServer {
   static $log = __DIR__.'/wmtsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   static $serviceTag = 'WMTS';

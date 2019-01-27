@@ -5,21 +5,11 @@ title: map.inc.php - sous-classe de documents pour l'affichage d'une carte Leafl
 functions:
 doc: <a href='/yamldoc/?action=version&name=map.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['map.inc.php'] = <<<'EOT'
+{ //doc 
+$phpDocs['map.inc.php']['file'] = <<<'EOT'
 name: map.inc.php
 title: map.inc.php - sous-classe de documents pour l'affichage d'une carte Leaflet
-doc: |
-  La carte peut être affichée par appel de son URI suivie de /display  
-  Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.  
-  Le fichier map-default.yaml est utilisé pour définir une carte par défaut.  
-  Cette carte par défaut contient 3 couches de base et 0 calques (overlays).
-  
-  Voir la carte geodata/testmap.yaml comme exemple et spécification.
-  
-  La carte peut aussi être généré dynamiquement par un autre document, par un FeatureDataset.
-  Voir comme exemple id.php/geodata/route500/map
-  
+doc: |  
 journal:
   22/1/2019:
     - passage des UGeoJSONLayer en https
@@ -41,6 +31,22 @@ EOT;
 }
 
 use Symfony\Component\Yaml\Yaml;
+
+{ // doc
+$phpDocs['map.inc.php']['classes']['Map'] = <<<'EOT'
+title: affichage d'une carte Leaflet
+doc: |
+  La carte peut être affichée par appel de son URI suivie de /display  
+  Chaque couche définie dans la carte génère un objet d'une sous-classe de LeafletLayer en fonction de son type.  
+  Le fichier map-default.yaml est utilisé pour définir une carte par défaut.  
+  Cette carte par défaut contient 3 couches de base et 0 calques (overlays).
+  
+  Voir la carte geodata/testmap.yaml comme exemple et spécification.
+  
+  La carte peut aussi être généré dynamiquement par un autre document, par un FeatureDataset.
+  Voir comme exemple id.php/geodata/route500/map
+EOT;
+}
 
 class Map extends YamlDoc {
   protected $_c; // contient les champs

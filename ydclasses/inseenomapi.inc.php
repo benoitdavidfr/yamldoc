@@ -8,14 +8,19 @@ doc: <a href='/yamldoc/?action=version&name=sireneapi.inc.php'>doc intégrée en
 $phpDocs['inseenomapi.inc.php']['file'] = <<<'EOT'
 name: inseenomapi.inc.php
 title: inseenomapi.inc.php - Utilisation de l'API INSEE Nomenclatures V1
-doc: |
-  La classe InseeNomApi facilite l'accès à l'API INSEE Nomenclatures V1.  
 journal:
   21/10/2018:
     - création
 EOT;
 }
 
+{ // doc 
+$phpDocs['inseenomapi.inc.php']['classes']['InseeNomApi'] = <<<'EOT'
+title: Utilisation de l'API INSEE Nomenclatures V1
+doc: |
+  La classe InseeNomApi facilite l'accès à l'API INSEE Nomenclatures V1.  
+EOT;
+}
 class InseeNomApi extends InseeApi {
   static $baseUrl = 'https://api.insee.fr/metadonnees/nomenclatures/v1'; // Url de base de l'API
   static $log = __DIR__.'/inseenomapi.log.yaml'; // nom du fichier de log ou false pour pas de log

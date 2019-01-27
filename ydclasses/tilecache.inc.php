@@ -9,6 +9,23 @@ doc: <a href='/yamldoc/?action=version&name=tilecache.inc.php'>doc intégrée en
 $phpDocs['tilecache.inc.php']['file'] = <<<'EOT'
 name: tilecache.inc.php
 title: tilecache.inc.php - Cache de tuiles implémentant l'interface iTileServer
+journal:
+  17/10/2018:
+    - présentation de la carte d'arrêt du glyphosate à l'Elysée
+  15/10/2018:
+    - première version un peu opérationnelle
+  11/10/2018:
+    - changement de stratégie de remplissage du cache
+  8/10/2018:
+    - création
+EOT;
+}
+
+//require_once __DIR__.'/../inc.php';
+
+{ // doc 
+$phpDocs['tilecache.inc.php']['classes']['TileCache'] = <<<'EOT'
+title: Cache de tuiles implémentant l'interface iTileServer
 doc: |
   La classe TileCache gère un cache de tuiles implémentant l'interface iTileServer
   
@@ -46,21 +63,8 @@ doc: |
     - tileServer : identifiant d'un document iTileServer correspondant au serveur de tuiles à mettre en cache
     - layers
       - lyrName : nom de la couche du tileServer à mettre en cache
-
-journal:
-  17/10/2018:
-    - présentation de la carte d'arrêt du glyphosate à l'Elysée
-  15/10/2018:
-    - première version un peu opérationnelle
-  11/10/2018:
-    - changement de stratégie de remplissage du cache
-  8/10/2018:
-    - création
 EOT;
 }
-
-//require_once __DIR__.'/../inc.php';
-
 class TileCache extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/tilecache.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs du doc initial

@@ -5,8 +5,8 @@ title: gestion des fichiers PDF
 doc: |
   voir le code
 */
-{
-$phpDocs['pdfdoc.inc.php'] = <<<EOT
+{ // doc 
+$phpDocs['pdfdoc.inc.php']['file'] = <<<EOT
 name: pdfdoc.inc.php
 title: pdfdoc.inc.php - affichage des fichiers PDF
 doc: |
@@ -18,6 +18,12 @@ journal:
 EOT;
 }
 
+{ // doc 
+$phpDocs['pdfdoc.inc.php']['classes']['PdfDoc'] = <<<EOT
+title: affichage des fichiers PDF
+doc: |
+EOT;
+}
 class PdfDoc extends Doc  {
   public $authorizedReaders, $authRd, $authorizedWriters, $authWr, $yamlPassword , $language;
   private $path = '';

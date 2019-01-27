@@ -5,10 +5,19 @@ title:  mlstring.inc.php - Multi-lingual string class
 doc: |
   voir le code
 */
-{
-$phpDocs['mlstring.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['mlstring.inc.php']['file'] = <<<'EOT'
 name: mlstring.inc.php
 title:  mlstring.inc.php - class MLString définissant des chaines de caractères multi-lingues
+journal:
+  18/7/2018:
+  - améliorations: ajout de getStringsInLang(), renommage php() en asArray()
+EOT;
+}
+
+{ // doc 
+$phpDocs['mlstring.inc.php']['classes']['MLString'] = <<<'EOT'
+title: class MLString définissant des chaines de caractères multi-lingues
 doc: |
   Un objet correspond à une chaine ou une liste de chaines dans différentes langues
   Outre la liste des langues possibles, prend pour l'initialiser :
@@ -22,10 +31,6 @@ doc: |
   Ajout du code 'n' correspondant au neutre (aucune langue).
   La conversion en string utilise s'il existe le paramètre lang, sinon l'ordre des langues défini dans la variable
   statique $default de la classe.
-  
-journal:
-  18/7/2018:
-  - améliorations: ajout de getStringsInLang(), renommage php() en asArray()
 EOT;
 }
 class MLString implements YamlDocElement {

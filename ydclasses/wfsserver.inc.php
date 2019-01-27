@@ -5,36 +5,11 @@ title: wfsserver.inc.php - document correspondant à un serveur WFS
 functions:
 doc: <a href='/yamldoc/?action=version&name=wfsserver.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['wfsserver.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['wfsserver.inc.php']['file'] = <<<'EOT'
 name: wfsserver.inc.php
 title: wfsserver.inc.php - document correspondant à un serveur WFS
 doc: |
-  La classe abstraite WfsServer implémente qqs méthodes communes aux classes concrètes.
-  
-  évolutions à réaliser:
-  
-    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
-  
-  Outre les champs de métadonnées, le document doit définir les champs suivants:
-  
-    - wfsUrl: fournissant l'URL du serveur à compléter avec les paramètres,
-  
-  Il peut aussi définir les champs suivants:
-  
-    - wfsOptions: définit des options parmi les suivantes
-      - referer: définissant le referer à transmettre à chaque appel du serveur,
-      - gml: booléen indiquant si le retour est en GML et non en GeoJSON (par défaut)
-      - version: version WFS, par défaut 2.0.0, possible '1.0.0'
-      - coordOrderInGml: 'lngLat' pour indiquer que les coordonnées GML sont en LngLat et non en LatLng
-        
-  Résolution:
-    zoom = 0, image 256x256
-    resolution(zoom=0) Lng à l'équateur = 360/256
-    A chaque zoom supérieur, division par 2 de la résolution
-    256 = 2 ** 8
-    => resolution = 360 / 2**(zoom+8) degrés
-        
 journal: |
   3-4/11/2018:
     - ajout de WfsServer::defaultCrs()
@@ -75,7 +50,36 @@ require_once __DIR__.'/inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-// classe simplifiant l'envoi de requêtes WFS
+{ // doc 
+$phpDocs['wfsserver.inc.php']['classes']['WfsServer'] = <<<'EOT'
+title: classe abstraite de documents correspondants à un serveur WFS
+doc: |
+  La classe abstraite WfsServer implémente qqs méthodes communes aux classes concrètes.
+  
+  évolutions à réaliser:
+  
+    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
+  
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+  
+    - wfsUrl: fournissant l'URL du serveur à compléter avec les paramètres,
+  
+  Il peut aussi définir les champs suivants:
+  
+    - wfsOptions: définit des options parmi les suivantes
+      - referer: définissant le referer à transmettre à chaque appel du serveur,
+      - gml: booléen indiquant si le retour est en GML et non en GeoJSON (par défaut)
+      - version: version WFS, par défaut 2.0.0, possible '1.0.0'
+      - coordOrderInGml: 'lngLat' pour indiquer que les coordonnées GML sont en LngLat et non en LatLng
+        
+  Résolution:
+    zoom = 0, image 256x256
+    resolution(zoom=0) Lng à l'équateur = 360/256
+    A chaque zoom supérieur, division par 2 de la résolution
+    256 = 2 ** 8
+    => resolution = 360 / 2**(zoom+8) degrés
+EOT;
+}
 abstract class WfsServer extends YamlDoc {
   static $log = __DIR__.'/wfsserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   static $capCache = __DIR__.'/wfscapcache'; // nom du répertoire dans lequel sont stockés les fichiers XML

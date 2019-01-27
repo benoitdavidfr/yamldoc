@@ -6,17 +6,23 @@ functions:
 doc: doc intégrée en Php
 */
 {
-$phpDocs['markerlib.inc.php'] = <<<'EOT'
+$phpDocs['markerlib.inc.php']['file'] = <<<'EOT'
 name: markerlib.inc.php
 title: markerlib.inc.php - classe MarkerLib - bibliothèque de symboles
+journal:
+  20/8/2018:
+  - création
+EOT;
+}
+
+{
+$phpDocs['markerlib.inc.php']['classes']['MarkerLib'] = <<<'EOT'
+title: bibliothèque de symboles utilisés pour dessiner des objets géographiques vecteur
 doc: |
   Contient les définitions d'icones pour les cartes Leaflet.  
   Une bibliothèque correspond à un répertoire de fichier png plus un fichier index.yaml
   qui contient la description des fichiers png.  
   La méthode asJavaScript() génère le code Javascript à intégrer en début de code de la carte
-journal:
-  20/8/2018:
-  - création
 EOT;
 }
 

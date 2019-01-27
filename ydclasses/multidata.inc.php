@@ -5,10 +5,20 @@ title: multidata.inc.php - multi-data
 functions:
 doc: <a href='/yamldoc/?action=version&name=multidata.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['multidata.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['multidata.inc.php']['file'] = <<<'EOT'
 name: multidata.inc.php
 title: multidata.inc.php - class MultiData pour décomposer une grande table en sous-tables stockées chacune dans un sous-document
+doc: |
+journal:
+  14/6/2018:
+  - première version simple
+EOT;
+}
+
+{ // doc 
+$phpDocs['multidata.inc.php']['classes']['MultiData'] = <<<'EOT'
+title: décompose une grande table en sous-tables stockées chacune dans un sous-document
 doc: |
   Le concept MultiData permet de décomposer une grande table en sous-tables stockées chacune dans un sous-document.  
   Tous les sous-documents sont stockés dans un répertoire portant comme nom celui du MultiData.  
@@ -16,16 +26,12 @@ doc: |
   situé dans le répertoire ayant pour nom l'id du document multi.
   Chaque sous-document est un YamlData composé d'une seule table.  
   Le document MultiData créé est composé d'une table qui est la concaténation des tables des sous-documents.
-  
+
   ### A FAIRE:
-  
+
     - il serait utile de vérifier la compatibilité des différents schémas déclarés et/ou effectifs.
-journal:
-  14/6/2018:
-  - première version simple
 EOT;
 }
-
 class MultiData extends BasicYamlDoc {
   // fabrique à la volée la table par concaténation des tables des sous-documents
   function buildTable() {

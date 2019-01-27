@@ -5,33 +5,11 @@ title: wfsgml.inc.php - document correspondant à un serveur WFS capable de gén
 functions:
 doc: <a href='/yamldoc/?action=version&name=wfsgml.inc.php'>doc intégrée en Php</a>
 */
-{
-$phpDocs['wfsgml.inc.php'] = <<<'EOT'
+{ // doc 
+$phpDocs['wfsgml.inc.php']['file'] = <<<'EOT'
 name: wfsgml.inc.php
 title: wfsgml.inc.php - serveur WFS capable de générer du GML EPSG:4306
 doc: |
-  La classe WfsServerGml expose différentes méthodes utilisant un serveur WFS capable de générer du GML EPSG:4306.
-  Un GetFeature avec un WfsServerGml réalise un filtrage en fonction du bbox et du zoom:
-    1) les polygones, les trous ou les linestring qui n'intersectent pas la bbox sont rejetés,
-    2) les polygones, les trous ou les linestring dont la taille est inférieure à la résolution sont rejetés,
-    3) dans les lignes et les contours, si un point est trop proche du point précédent alors il est rejeté.
-    4) Si un Feature ne contient finalement aucune géométrie, le centre d'une des bbox est affecté comme point
-    La résolution est fixée à 360 / 2**(zoom+8) degrés, cad au zoom 0 res = 360°/256
-  
-  évolutions à réaliser:
-  
-    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
-            
-  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml
-  avec un serveur WFS 2.0.0 et GML 3.2.1.
-  
-  Le document http://localhost/yamldoc/?doc=geocats/geoide-zvuln41 permet de tester la classe WfsServerGml
-  avec un serveur WFS 1.0.0 et GML 2.
-    
-  Des tests unitaires de la transformation GML -> JSON sont définis.
-  
-  Les requêtes ne fonctionnenet que si le defaultCrs de la couche est 'EPSG:4326'
-  
 journal: |
   4/11/2018:
   - vérification que le defaultCrs de la couche est bien 'EPSG:4326'
@@ -55,6 +33,34 @@ function substrcmpp(string $mainstr, int &$pos, string $substr): bool {
 }
 
 // Essai d'une classe implémentant les requêtes pour un serveur WFS ne parlant pas JSON
+{ // doc 
+$phpDocs['wfsgml.inc.php']['classes']['WfsServerGml'] = <<<'EOT'
+name: wfsgml.inc.php
+title: serveur WFS capable de générer du GML EPSG:4306
+doc: |
+  La classe WfsServerGml expose différentes méthodes utilisant un serveur WFS capable de générer du GML EPSG:4306.
+  Un GetFeature avec un WfsServerGml réalise un filtrage en fonction du bbox et du zoom:
+    1) les polygones, les trous ou les linestring qui n'intersectent pas la bbox sont rejetés,
+    2) les polygones, les trous ou les linestring dont la taille est inférieure à la résolution sont rejetés,
+    3) dans les lignes et les contours, si un point est trop proche du point précédent alors il est rejeté.
+    4) Si un Feature ne contient finalement aucune géométrie, le centre d'une des bbox est affecté comme point
+    La résolution est fixée à 360 / 2**(zoom+8) degrés, cad au zoom 0 res = 360°/256
+  
+  évolutions à réaliser:
+  
+    - adapter au zoom le nbre de chiffres transmis dans les coordonnées
+            
+  Le document http://localhost/yamldoc/?doc=geocats/sextant-dcsmm permet de tester la classe WfsServerGml
+  avec un serveur WFS 2.0.0 et GML 3.2.1.
+  
+  Le document http://localhost/yamldoc/?doc=geocats/geoide-zvuln41 permet de tester la classe WfsServerGml
+  avec un serveur WFS 1.0.0 et GML 2.
+    
+  Des tests unitaires de la transformation GML -> JSON sont définis.
+  
+  Les requêtes ne fonctionnenet que si le defaultCrs de la couche est 'EPSG:4326'
+EOT;
+}
 class WfsServerGml extends WfsServer {
   private $xsltProcessors=[];
   

@@ -6,22 +6,10 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=cswserver.inc.php'>doc intégrée en Php</a>
 */
 { // phpDocs 
-$phpDocs['cswserver.inc.php'] = <<<'EOT'
+$phpDocs['cswserver.inc.php']['file'] = <<<'EOT'
 name: cswserver.inc.php
 title: cswserver.inc.php - document correspondant à un serveur CSW
 doc: |
-  La classe CswServer expose différentes méthodes utilisant un serveur CSW.
-  
-  Outre les champs de métadonnées, le document doit définir les champs suivants:
-  
-    - cswUrl: fournissant l'URL du serveur à compléter avec les paramètres,
-  
-  Il peut aussi définir les champs suivants:
-  
-    - referer: définissant le referer à transmettre à chaque appel du serveur.
-    
-  Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
-  
 journal:
   25/8/2018:
     - création
@@ -35,7 +23,24 @@ EOT;
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-// classe simplifiant l'envoi de requêtes WFS
+{ // phpDocs 
+$phpDocs['cswserver.inc.php']['classes']['CswServer'] = <<<'EOT'
+name: cswserver.inc.php
+title: serveur CSW
+doc: |
+  La classe CswServer expose différentes méthodes utilisant un serveur CSW.
+  
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+  
+    - cswUrl: fournissant l'URL du serveur à compléter avec les paramètres,
+  
+  Il peut aussi définir les champs suivants:
+  
+    - referer: définissant le referer à transmettre à chaque appel du serveur.
+    
+  Le document http://localhost/yamldoc/?doc=geocats/sigloirecsw permet de tester cette classe.
+EOT;
+}
 class CswServer extends YamlDoc {
   static $log = __DIR__.'/cswserver.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs

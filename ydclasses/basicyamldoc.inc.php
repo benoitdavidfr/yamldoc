@@ -6,15 +6,20 @@ functions:
 doc: doc intégrée en Php
 */
 {
-$phpDocs['basicyamldoc.inc.php'] = <<<'EOT'
+$phpDocs['basicyamldoc.inc.php']['file'] = <<<'EOT'
 name: basicyamldoc.inc.php
 title: basicyamldoc.inc.php - classe BasicYamlDoc
-doc: |
 journal:
   18/7/2018:
   - première version par fork de yd.inc.php
   - chgt de nom de la classe
   - transfert des métodes génériques dans YamlDoc
+EOT;
+}
+
+{
+$phpDocs['basicyamldoc.inc.php']['classes']['BasicYamlDoc'] = <<<'EOT'
+title: document de base
 EOT;
 }
 

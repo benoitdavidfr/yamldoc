@@ -5,7 +5,7 @@ title: yamldoc.inc.php - classe abstraite YamlDoc et interface YamlDocElement
 functions:
 doc: doc intégrée en Php
 */
-{
+{ // doc 
 $phpDocs['yamldoc.inc.php']['file'] = <<<'EOT'
 name: yamldoc.inc.php
 title: yamldoc.inc.php - classes abstraites Doc et YamlDoc et interface YamlDocElement
@@ -34,9 +34,9 @@ EOT;
 
 use Symfony\Component\Yaml\Yaml;
 
-{
+{ // doc
 $phpDocs['yamldoc.inc.php']['classes']['Doc'] = <<<'EOT'
-title: classe abstraite Doc correspondant à un document affichable
+title: classe abstraite correspondant à un document affichable
 doc: |
   La classe abstraite Doc définit:
     - 2 méthodes abstraites que chaque sous-classe doit définir
@@ -67,9 +67,9 @@ abstract class Doc {
   function isHomeCatalog() { return false; }
 };
 
-{
+{ // doc 
 $phpDocs['yamldoc.inc.php']['classes']['YamlDoc'] = <<<'EOT'
-title: classe abstraite YamlDoc correspond à un document Yaml
+title: classe abstraite correspond à un document Yaml
 doc: |
   La classe abstraite YamlDoc définit:
     - 4 méthodes abstraites que chaque sous-classe doit définir

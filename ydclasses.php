@@ -67,25 +67,26 @@ if (!$path || ($path == '/')) {
   foreach ($phpDocs as $fiphp => $phpDoc) {
     //echo "<pre>$fiphp:"; print_r($phpDoc); echo "</pre>\n";
     if (!isset($phpDoc['classes'])) {
-      echo "<li><b>$fiphp - Aucune classe définie</b>\n";
+      //echo "<li><b>$fiphp - Aucune classe définie</b>\n";
     }
     else {
-      echo "<li><b>$fiphp</b><ul>\n";
+      //echo "<li><b>$fiphp</b><ul>\n";
       foreach ($phpDoc['classes'] as $className => $classDoc) {
         $class_parents = @class_parents("$className", false);
         if ($class_parents === false)
           echo "<li><b>Erreur $className n'est pas une classe</b>\n";
-        elseif (!in_array('Doc', $class_parents))
-          echo "<li><i>$className n'est pas une sous-classe de Doc (",implode(',', $class_parents),")</i>\n";
+        elseif (($className<>'Doc') && !in_array('Doc', $class_parents))
+          echo ''; //'"<li><i>$className n'est pas une sous-classe de Doc (",implode(',', $class_parents),")</i>\n";
         else {
           $classDoc = Yaml::parse($classDoc);
           $href = "$_SERVER[SCRIPT_NAME]/$className";
           echo "<li><a href='$href'>$className</a> : $classDoc[title]\n";
-          echo "<br>parentes: (",implode(',', $class_parents),")</b>\n";
+          if ($class_parents)
+            echo " - fille de: ",implode(', ', $class_parents),"\n";
         }
         //echo "<pre>$className:"; print_r($classDoc); echo "</pre>\n";
       }
-      echo "</ul>\n";
+      //echo "</ul>\n";
     }
   }
   die("</ul>\n");
@@ -99,11 +100,12 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
   foreach ($phpDocs as $fiphp => $phpDoc) {
     if (isset($phpDoc['classes'][$className])) {
       $classDoc = Yaml::parse($phpDoc['classes'][$className]);
+      break;
     }
   }
   if (!$classDoc)
     die("Erreur : classe $className non trouvée<br>\n");
-  echo "<h2>$classDoc[title]</h2>\n";
+  echo "<h2>$className - $classDoc[title]</h2>\n";
   
   $class_parents = @class_parents("$className", false);
   echo "classes parentes: (",implode(', ', $class_parents),")<br>\n";
@@ -118,11 +120,15 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
     echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
     $href = "$_SERVER[SCRIPT_NAME]/$schemaClass.schema";
-    echo "Les documents de cette classe doivent respecter le schéma <a href='$href.yaml'>$schemaClass.schema.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
+    echo "Les documents de cette classe doivent respecter le schéma ",
+         "<a href='$href.yaml'>$schemaClass.schema.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
   }
-  echo "<h3>Documentation de la classe</h3>\n";
-  //echo '<pre>',$classDoc['doc'],"</pre>\n\n";
-  echo MarkdownExtra::defaultTransform($classDoc['doc']);
+  echo "La classe est définie dans le fichier $fiphp<br>\n";
+  if (isset($classDoc['doc'])) {
+    echo "<h3>Documentation de la classe</h3>\n";
+    //echo '<pre>',$classDoc['doc'],"</pre>\n\n";
+    echo MarkdownExtra::defaultTransform($classDoc['doc']);
+  }
   die();
 }
 

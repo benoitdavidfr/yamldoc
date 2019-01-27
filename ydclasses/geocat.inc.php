@@ -9,6 +9,20 @@ doc: <a href='/yamldoc/?action=version&name=geocat.inc.php'>doc intégrée en Ph
 $phpDocs['geocat.inc.php']['file'] = <<<'EOT'
 name: geocat.inc.php
 title: geocat.inc.php - document définissant un géocatalogue
+journal:
+  24-26/8/2018:
+    - création
+EOT;
+}
+//require_once __DIR__.'/yamldoc.inc.php';
+//require_once __DIR__.'/search.inc.php';
+require_once __DIR__.'/../isometadata.inc.php';
+require_once __DIR__.'/inc.php';
+
+{ // doc 
+$phpDocs['geocat.inc.php']['classes']['Geocat'] = <<<'EOT'
+name: geocat.inc.php
+title: document définissant un géocatalogue
 doc: |
   La classe Geocat étend CswServer et expose différentes méthodes utilisant un géocatalogue.
 
@@ -31,17 +45,8 @@ doc: |
   
   A FAIRE:
     - limiter l'indexation en restreignant les champs indexables
-
-journal:
-  24-26/8/2018:
-    - création
 EOT;
 }
-//require_once __DIR__.'/yamldoc.inc.php';
-//require_once __DIR__.'/search.inc.php';
-require_once __DIR__.'/../isometadata.inc.php';
-require_once __DIR__.'/inc.php';
-
 class Geocat extends CswServer {
   static $log = __DIR__.'/geocat.log.yaml'; // nom du fichier de log ou '' pour pas de log
   

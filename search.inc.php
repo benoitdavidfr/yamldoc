@@ -5,14 +5,10 @@ title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
 doc: |
   <a href='/yamldoc/?action=version&name=search.inc.php'>voir le code</a>
 */
-{
-$phpDocs['search.inc.php'] = <<<'EOT'
+{ // doc
+$phpDocs['search.inc.php']['file'] = <<<'EOT'
 name: search.inc.php
 title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
-doc: |
-  La ré-indexation globale efface la base et la reconstruit à partir des fichiers.
-  La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
-  Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
 journal:
   26/8/2018:
     - correction d'un bug dans scanfiles()
@@ -40,6 +36,15 @@ require_once __DIR__.'/../phplib/mysql.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+{ // doc
+$phpDocs['search.inc.php']['classes']['FullTextSearch'] = <<<'EOT'
+title: fonctions pour l'indexation et la recherche plein texte
+doc: |
+  La ré-indexation globale efface la base et la reconstruit à partir des fichiers.
+  La ré-indexation incrémentale ne ré-indexe que les fichiers plus récents que la version en base.
+  Pour la ré-indexation incrémentale je vérifie que tous les docs indexés existent encore.
+EOT;
+}
 class FullTextSearch {
   static $currentDocs = []; // en mode incrémental liste des docs avec leur date de mise à jour en base
   

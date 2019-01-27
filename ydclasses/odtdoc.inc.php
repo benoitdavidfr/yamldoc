@@ -6,9 +6,9 @@ doc: |
   voir le code
 */
 {
-$phpDocs['odtdoc.inc.php'] = <<<EOT
+$phpDocs['odtdoc.inc.php']['file'] = <<<EOT
 name: odtdoc.inc.php
-title: odtdoc.inc.php - affichage des fichiers ODT
+title: odtdoc.inc.php - class OdtDoc d'affichage des fichiers ODT
 doc: |
 journal:
   22/8/2018:
@@ -19,6 +19,13 @@ EOT;
 }
 require_once __DIR__.'/../../phplib/ophir.inc.php';
 
+{
+$phpDocs['odtdoc.inc.php']['classes']['OdtDoc'] = <<<EOT
+name: odtdoc.inc.php
+title: affichage des fichiers ODT
+doc: |
+EOT;
+}
 class OdtDoc extends Doc  {
   public $authorizedReaders, $authRd, $authorizedWriters, $authWr, $yamlPassword , $language;
   private $path = '';

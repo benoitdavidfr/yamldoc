@@ -5,7 +5,7 @@ title: ydata.inc.php - sous-classe de documents pour la gestion des données
 functions:
 doc: <a href='/yamldoc/?action=version&name=ydata.inc.php'>doc intégrée en Php</a>
 */
-{
+{ // doc 
 $phpDocs['ydata.inc.php']['file'] = <<<'EOT'
 name: ydata.inc.php
 title: ydata.inc.php - sous-classes YData et YDataTable pour la gestion des données
@@ -27,10 +27,11 @@ if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
-{
-$phpDocs['ydata.inc.php']['classes']['YData'] = <<<'EOT'
+{ // doc 
+$prototype = "http://georef.eu/yamldoc/index.php?doc=dublincore";
+$phpDocs['ydata.inc.php']['classes']['YData'] = <<<"EOT"
 name: class YData
-title: classe YData pour la gestion des données structurées en tables
+title: gestion des données structurées en tables
 doc: |
   Un document YData correspond à un ensemble tables, chacune contenant un ensemble de lignes appelées n-uplets,
   ces n-uplets doivent tous respecter un schéma JSON commun défini pour la table.
@@ -53,32 +54,32 @@ doc: |
   Le ypath peut prendre une des formes suivantes:
   
     - métadonnée du document,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/title)
+      [ex]($prototype&ypath=/title)
     - une table, renvoie la table y compris ses MD,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes)
+      [ex]($prototype&ypath=/dcmes)
     - métadonnée d'une table dont le nom de MD ne correspond pas à un identifiant de tuple,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/elementURI)
+      [ex]($prototype&ypath=/dcmes/elementURI)
     - métadonnée d'une table dont le nom de MD correspond à un identifiant de tuple,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/_title)
+      [ex]($prototype&ypath=/dcmes/_title)
     - un tuple d'une table identifié par sa clé,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject)
+      [ex]($prototype&ypath=/dcmes/subject)
     - valeur d'un champ d'un tuple d'une table, tuple identifié par sa clé,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject/definition)
+      [ex]($prototype&ypath=/dcmes/subject/definition)
     - valeur d'un sous-champ d'un tuple d'une table, tuple identifié par sa clé,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject/definition/fr),
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/description/refinements/tableOfContents/definition/fr)
+      [ex]($prototype&ypath=/dcmes/subject/definition/fr),
+      [ex]($prototype&ypath=/dcmes/description/refinements/tableOfContents/definition/fr)
     - valeur d'un champ d'un tuple d'une table, tuple identifié par une valeur qqc,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/name.fr=Sujet/definition)
+      [ex]($prototype&ypath=/dcmes/name.fr=Sujet/definition)
     - valeur d'un champ des tuples d'une table,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/definition)
+      [ex]($prototype&ypath=/dcmes/*/definition)
     - valeurs de champs des tuples d'une table,
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name,definition),
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name.fr,definition.fr),
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
-      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
+      [ex]($prototype&ypath=/dcmes/*/name,definition),
+      [ex]($prototype&ypath=/dcmes/*/name.fr,definition.fr),
+      [ex]($prototype&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
+      [ex]($prototype&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
   
   
-  [prototype de Ydata](/yamldoc/?doc=dublincore)
+  [prototype de Ydata]($prototype)
   
 EOT;
 }
@@ -250,10 +251,7 @@ class YData extends YamlDoc {
   }
 };
 
-// 
-// objet se retouvant à l'intérieur d'un doc
-// est créé par YData 
-{
+{ // doc 
 $phpDocs['ydata.inc.php']['classes']['YDataTable'] = <<<'EOT'
 title: stockage des données contenues dans une table, classe utilisée par YData
 doc: |

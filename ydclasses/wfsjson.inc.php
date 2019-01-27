@@ -34,7 +34,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 { // doc 
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJson'] = <<<EOT
 name: class WfsServerJson
-title: définition de la classe WfsServerJson exploitant un serveur WFS capable de générer du GeoJSON
+title: serveur WFS capable de générer du GeoJSON
 doc: |
   La classe WfsServerJson expose différentes méthodes utilisant un serveur WFS capable de générer du GeoJSON.
 
@@ -177,7 +177,7 @@ class WfsServerJson extends WfsServer {
 { // doc 
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJsonAugmented'] = <<<EOT
 name: class WfsServerJsonAugmented
-title: définition de la classe WfsServerJsonAugmented permettant de modifier les retours des requêtes WFS
+title: serveur WFS capable de générer du GeoJSON modifiant les retours des requêtes WFS
 doc: |
   La classe WfsServerJsonAugmented hérite de WfsServerJson et permet de modifier les retours des requêtes WFS.
   

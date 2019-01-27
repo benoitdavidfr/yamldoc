@@ -60,6 +60,50 @@ EOT;
 //require_once __DIR__.'/yamldoc.inc.php';
 //require_once __DIR__.'/inc.php';
 
+{ // doc 
+$phpDocs['viewds.inc.php']['classes']['ViewDataset'] = <<<'EOT'
+title: série de données de consultation constituée de couches issues de serveurs conformes à l'interface iTileServer
+doc: |
+  La classe ViewDataset définit une série de données (SD) de consultation constituée de couches de consultation
+  provenant de serveurs WMS/WMTS/... conformes à l'interface iTileServer.  
+  Les objectifs sont:
+    1) exposer les couches indépendamment des types de serveur sous-jacents (WMS, WMTS)
+    2) définir une liste de couches en:
+      a) simplifiant les noms de couche
+      b) définissant un ordre plus pratique, notamment avec:
+        i) les couches les plus utilisées en premier
+        ii) un regroupement des couches similaires
+      c) mieux documenter les couches
+    3) corriger des paramètres posant problème
+    4) fournir une API XYZ
+  
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+
+    - layersByGroups: liste de couches de la SD structurée par sous-liste, chaque couche identifiée est définie par:
+      - title: son titre (obligatoire)
+      - server: l'id du document définissant son serveur qui doit être un WmsServer ou un WmtsServer (obligatoire)
+      - name: identifiant de la couche dans le serveur (obligatoire)
+      - abstract: résumé expliquant le contenu de la couche
+      - doc:
+        - soit l'URL d'une doc complémentaire,
+        - soit, si la doc dépend du zoom, un array avec comme clé le niveau de zoom minimum et comme champs:
+          - max: le zoom maximum correspondant à cette doc
+          - title: le titre
+          - www: l'URL de la doc
+      - format: le format d'images de la couche, pour forcer un format quand il n'est pas imposé (WMS)
+      - minZoom: zoom minimum pour lequel la couche est définie, pour forcer une valeur quand elle n'est pas définie
+        ou qu'elle est incorrecte
+      - maxZoom: zoom maximum pour lequel la couche est définie, pour forcer une valeur quand elle n'est pas définie
+        ou qu'elle est incorrecte
+
+  A faire:
+    - Vérifier que les paramètres de couche définis dans le document sont bien pris en compte dans la carte
+      
+  Exemples:
+    - view/igngp.yaml
+    - view/shomgt.yaml
+EOT;
+}
 class ViewDataset extends YamlDoc {
   static $log = __DIR__.'/viewds.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs

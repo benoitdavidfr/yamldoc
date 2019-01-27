@@ -5,12 +5,12 @@ title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   voir le code
 */
-{
+{ // doc 
 $phpDocs['yamlskos.inc.php']['file'] = <<<EOT
 name: yamlskos.inc.php
 title: yamlskos.inc.php - gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
-  La structuration est inspirée de celle utilisée pour EuroVoc.
+  La structuration d'un thésaurus Skos est inspirée de celle utilisée pour EuroVoc.
   Elle a été étendue pour gérer les listes de codes et énumérations du règlement interopérabilité Inspire.
   
   Un YamlSkos définit un ensemble de concepts Skos organisés en micro-thésaurus.
@@ -43,10 +43,10 @@ function suppAccents(string $str): string {
   return strtolower(str_replace(['é','É','Î'],['e','e','i'], $str));
 }
 
-{
+{ // doc 
 $phpDocs['yamlskos.inc.php']['classes']['YamlSkos'] = <<<EOT
 name: class YamlSkos
-title: définition de la classe YamlSkos gérant un thésaurus Skos organisé en micro-thésaurus
+title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   La classe YamlSkos hérite de la classe abstraite YamlDoc.
   Un document YamlSkos comprend:
@@ -339,7 +339,7 @@ class YamlSkos extends YamlDoc {
 };
 
 
-{
+{ // doc 
 $phpDocs['yamlskos.inc.php']['classes']['SkosElt'] = <<<'EOT'
 name: class SkosElt
 title: définition de la classe abstraite SkosElt super-classe de DomainScheme, Domain, Scheme et Concept
@@ -491,7 +491,11 @@ abstract class SkosElt implements YamlDocElement {
   }
 };
 
-// classe du domainScheme
+{ // doc 
+$phpDocs['yamlskos.inc.php']['classes']['DomainScheme'] = <<<'EOT'
+title: définition de la classe DomainScheme
+EOT;
+}
 class DomainScheme extends SkosElt {
   // Affiche l'arbre des domaines avec un lien vers chaque micro-thésaurus
   function show(array $domains, array $schemes) {
@@ -505,6 +509,11 @@ class DomainScheme extends SkosElt {
   }
 };
   
+{ // doc 
+$phpDocs['yamlskos.inc.php']['classes']['Domain'] = <<<'EOT'
+title: définition de la classe Domain
+EOT;
+}
 class Domain extends SkosElt {
   // affiche le sous-arbre correspondant au domaine avec un lien vers chaque micro-thésaurus
   function showDomainTree(string $id, array $domains, array $schemes) {
@@ -535,9 +544,8 @@ class Domain extends SkosElt {
   function addSchemeChild(string $sid) { $this->_c['schemeChildren'][] = $sid; }
 };
 
-{
+{ // doc 
 $phpDocs['yamlskos.inc.php']['classes']['Scheme'] = <<<EOT
-name: class Scheme
 title: définition de la classe Scheme des micro-thésaurus
 doc: |
   La notion Skos de scheme est étendue pour gérer les listes de listes de codes définies pour Inspire.
@@ -650,7 +658,6 @@ doc: |
       - broader qui contient les identifiants des concepts plus génériques
 EOT;
 }
-
 class Concept extends SkosElt {
   static $txtFields = ['definition','note','scopeNote','historyNote','example','editorialNote','changeNote'];
   static $linkFields = [ // sous la forme tag => dictionnaire arrivée

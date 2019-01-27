@@ -8,11 +8,6 @@ doc: <a href='/yamldoc/?action=version&name=sireneapi.inc.php'>doc intégrée en
 $phpDocs['sireneapi.inc.php']['file'] = <<<'EOT'
 name: sireneapi.inc.php
 title: sireneapi.inc.php - Utilisation de l'API SIRENE
-doc: |
-  La classe SireneApi facilite l'accès à l'API SIRENE.  
-  Le document peut soit ne contenir aucune info soit contenir:
-  - un no SIRET ou SIREN
-  - une requête sur SIREN ou sur SIRET
 journal:
   20/10/2018:
     - création
@@ -34,6 +29,16 @@ function clean(array $tab): array {
   return $result;
 }
 
+{ // doc 
+$phpDocs['sireneapi.inc.php']['classes']['SireneApi'] = <<<'EOT'
+name: sireneapi.inc.php
+title: utilisation l'API SIRENE
+doc: |
+  Le document peut soit ne contenir aucune info soit contenir:
+  - un no SIRET ou SIREN
+  - une requête sur SIREN ou sur SIRET
+EOT;
+}
 class SireneApi extends InseeApi {
   static $baseUrl = 'https://api.insee.fr/entreprises/sirene/V3'; // Url de base de l'API
   static $log = __DIR__.'/sireneapi.log.yaml'; // nom du fichier de log ou false pour pas de log

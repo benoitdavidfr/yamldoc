@@ -9,12 +9,6 @@ doc: <a href='/yamldoc/?action=version&name=featureviewer.inc.php'>doc intégré
 $phpDocs['featureviewer.inc.php']['file'] = <<<'EOT'
 name: featureviewer.inc.php
 title: featureviewer.inc.php - Viewer d'objets implémentant l'interface iTileServer
-doc: |
-  La classe FeatureViewer dessine les objets d'un featureDataset.
-  
-  Outre les champs de métadonnées, le document doit définir les champs suivants:
-    - featureDataset : identifiant d'un featureDataset
-
 journal:
   7/10/2018:
     - création
@@ -23,6 +17,16 @@ EOT;
 
 require_once __DIR__.'/../inc.php';
 
+{ // doc 
+$phpDocs['featureviewer.inc.php']['classes']['FeatureViewer'] = <<<'EOT'
+title: Viewer d'objets géographiques implémentant l'interface iTileServer
+doc: |
+  La classe FeatureViewer dessine les objets d'un featureDataset.
+  
+  Outre les champs de métadonnées, le document doit définir les champs suivants:
+    - featureDataset : identifiant d'un featureDataset
+EOT;
+}
 class FeatureViewer extends YamlDoc implements iTileServer {
   static $log = __DIR__.'/featureviewer.log.yaml'; // nom du fichier de log ou false pour pas de log
   protected $_c; // contient les champs du doc initial
@@ -314,7 +318,12 @@ class FeatureViewer extends YamlDoc implements iTileServer {
   }
 };
 
-// génère le dessin d'une tuile correspondant au bbox en WM, les ordres sont transmis au travers du package geometry
+{ // doc 
+$phpDocs['featureviewer.inc.php']['classes']['Drawing'] = <<<'EOT'
+title: génère le dessin d'une tuile correspondant au bbox en WM, les ordres sont transmis au travers du package geometry
+doc: |
+EOT;
+}
 class Drawing {
   static $colorDef = [ // 'RRGGBB' en hexa, voir https://www.rapidtables.com/web/color/html-color-codes.html
     'black' => '000000',

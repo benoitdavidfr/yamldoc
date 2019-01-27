@@ -9,14 +9,6 @@ doc: <a href='/yamldoc/?action=version&name=mddb.inc.php'>doc intégrée en Php<
 $phpDocs['mddb.inc.php']['file'] = <<<'EOT'
 name: mddb.inc.php
 title: mddb.inc.php - base de données de Metadata
-doc: |
-  Une BD de MD est une base YData composé des 5 tables suivantes :
-  
-  - une table data des MD de données
-  - une table services des MD de service
-  - une table maps des MD de cartes
-  - une table nonGeographicDataset des MD de SD non géographiques (type=nonGeographicDataset)
-  - une table others des autres MD
 journal:
   26/8/2018:
     - création
@@ -25,6 +17,19 @@ EOT;
 //require_once __DIR__.'/yamldoc.inc.php';
 require_once __DIR__.'/../search.inc.php';
 
+{ // doc 
+$phpDocs['mddb.inc.php']['classes']['MetadataDb'] = <<<'EOT'
+title: base de données de Metadata
+doc: |
+  Une BD de MD est une base YData composé des 5 tables suivantes :
+  
+    - une table data des MD de données
+    - une table services des MD de service
+    - une table maps des MD de cartes
+    - une table nonGeographicDataset des MD de SD non géographiques (type=nonGeographicDataset)
+    - une table others des autres MD
+EOT;
+}
 class MetadataDb extends YData {
   static $log = __DIR__.'/mddb.log.yaml'; // nom du fichier de log ou '' pour pas de log
   protected $_c; // contient les champs

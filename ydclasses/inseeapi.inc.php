@@ -8,17 +8,21 @@ doc: <a href='/yamldoc/?action=version&name=inseeapi.inc.php'>doc intégrée en 
 $phpDocs['inseeapi.inc.php']['file'] = <<<'EOT'
 name: inseeapi.inc.php
 title: inseeapi.inc.php - Utilisation des API INSEE
-doc: |
-  La classe abstraite InseeApi facilite l'accès aux API INSEE.  
-  La méthode getToken() renvoie le token courant.
-  La méthode generateToken() en génère un nouveau.
-  Nécessite l'existence du fichier inseecredentials.json contenant les champs 'key' et 'secret'
 journal:
   21/10/2018:
     - création
 EOT;
 }
 
+{ // doc 
+$phpDocs['inseeapi.inc.php']['classes']['InseeApi'] = <<<'EOT'
+title: classe abstraite facilitant l'accès aux API INSEE
+doc: |
+  La méthode getToken() renvoie le token courant.
+  La méthode generateToken() en génère un nouveau.
+  Nécessite l'existence du fichier inseecredentials.json contenant les champs 'key' et 'secret'
+EOT;
+}
 abstract class InseeApi extends YamlDoc {
   static $tokenUrl = 'https://api.insee.fr/token'; // Url pour renouveller le token
   static $inseecredentialsHelp = <<<EOT
