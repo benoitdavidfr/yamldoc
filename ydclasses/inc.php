@@ -26,6 +26,7 @@ require_once __DIR__.'/featureds.inc.php';
 require_once __DIR__.'/markerlib.inc.php';
 require_once __DIR__.'/map.inc.php';
 
+# consultation
 require_once __DIR__.'/itileserver.inc.php';
 require_once __DIR__.'/wmsserver.inc.php';
 require_once __DIR__.'/wmtsserver.inc.php';
@@ -34,10 +35,13 @@ require_once __DIR__.'/featureviewer.inc.php';
 require_once __DIR__.'/tilecache.inc.php';
 require_once __DIR__.'/viewds.inc.php';
 
+# métadonnées
 require_once __DIR__.'/cswserver.inc.php';
 require_once __DIR__.'/geocat.inc.php';
 require_once __DIR__.'/mddb.inc.php';
 require_once __DIR__.'/gcsubjlist.inc.php';
+
+# API INSEE
 require_once __DIR__.'/inseeapi.inc.php';
 require_once __DIR__.'/sireneapi.inc.php';
 require_once __DIR__.'/inseenomapi.inc.php';

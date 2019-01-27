@@ -27,19 +27,22 @@ if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
+//echo '<pre>'; print_r($_SERVER);
+
 { // doc 
-$prototype = "http://georef.eu/yamldoc/index.php?doc=dublincore";
+$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=dublincore';
 $phpDocs['ydata.inc.php']['classes']['YData'] = <<<"EOT"
 name: class YData
 title: gestion des données structurées en tables
 doc: |
-  Un document YData correspond à un ensemble tables, chacune contenant un ensemble de lignes appelées n-uplets,
-  ces n-uplets doivent tous respecter un schéma JSON commun défini pour la table.
+  Un document YData correspond à un ensemble tables, chacune composée d'un ensemble de lignes appelées n-uplets,
+  qui doivent tous respecter un schéma JSON commun défini pour la table.  
+  Chaque n-uplet est identifié par un champ particulier noté _id comme dans MongoDB.  
   Cette structuration homogène des n-uplets permet de leur appliquer des traitements,
-  comme de sélectionner uniquement certains champs dans les n-uplets.
+  comme de sélectionner uniquement certains champs dans les n-uplets.  
+  Chaque table comporte des métadonnées.
   
-  Cette classe remplace la classe YamlData, elle utilise les schémas JSON, elle hérite de YamlDoc.
-  Les n-uplets comportent une clé utilisateur appélée _id comme dans MongoDB.
+  Cette classe remplace la classe YamlData, elle utilise les schémas JSON et hérite de YamlDoc.
   
   Un document YData peut:
   
@@ -49,7 +52,11 @@ doc: |
         {nomtable}:
           title: titre de la table
           data: enregistrements contenus dans la table
+  
   Une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
+  
+  
+  prototype de Ydata: [$prototype]($prototype)
   
   Le ypath peut prendre une des formes suivantes:
   
@@ -77,9 +84,6 @@ doc: |
       [ex]($prototype&ypath=/dcmes/*/name.fr,definition.fr),
       [ex]($prototype&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
       [ex]($prototype&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
-  
-  
-  [prototype de Ydata]($prototype)
   
 EOT;
 }

@@ -964,7 +964,7 @@ doc: |
     
 /*PhpDoc: methods
 name: function standardize
-title: static function standardize($xml) - Standardise une fiche de métadonnées
+title: "static function standardize($xml) - Standardise une fiche de métadonnées"
 doc: |
   La standardisation a pour objectif de faciliter les traitements consommant les données JSON
   en générant une structure JSON homogène ce qui n'est pas le cas en sortie de la simplification.
@@ -1024,7 +1024,7 @@ doc: |
     
 /*PhpDoc: methods
 name: function standardizeMl
-title: static function standardize(SimpleXMLElement $xml): array - Standardise une fiche de métadonnées
+title: "static function standardize(SimpleXMLElement $xml): array - Standardise une fiche de métadonnées"
 doc: |
   La standardisation a pour objectif de faciliter les traitements consommant les données JSON
   en générant une structure JSON homogène ce qui n'est pas le cas en sortie de la simplification.
@@ -1192,7 +1192,7 @@ hrefs:
   - ?action=xslXml
   - ?action=xslXmlMl
   - ?action=xslHtml
-  - ?action=simplify
+  - ?action=titles
 doc: |
   Menu de choix
 */
@@ -1223,7 +1223,7 @@ if ($_GET['action']=='eltsHtml') {
 }
 
 /*PhpDoc: screens
-name:  action=asXml
+name:  action=xslXml
 title: Affichage du fichier XSL pour XML
 */
 if ($_GET['action']=='xslXml') {
@@ -1233,7 +1233,7 @@ if ($_GET['action']=='xslXml') {
 }
 
 /*PhpDoc: screens
-name:  action=asXml
+name:  action=xslXmlMl
 title: Affichage du fichier XSL ML pour XML
 */
 if ($_GET['action']=='xslXmlMl') {
@@ -1255,7 +1255,7 @@ if ($_GET['action']=='xslHtml') {
 $docsPath = __DIR__.'/pub'; // chemin d'accès aux fichiers XML des getrecords
 
 /*PhpDoc: screens
-name:  action=simplify
+name:  action=titles
 title: Affichage en JSON des MD simplifiées mais non standardisées
 hrefs:
   - ?main

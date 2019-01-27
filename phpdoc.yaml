@@ -34,6 +34,9 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  27/1/2019:
+    - mise en oeuvre du résolveur de ydclasses, amélioration de la doc des ydclasses
+    - création du sous-module ydclasses
   26/1/2019:
     - mise en oeuvre de la validation des documents par rapport à leur schéma
   25/1/2019:
@@ -90,6 +93,7 @@ journal: |
   - première version
 submodules:
   - /yamldoc/docinspire
+  - /yamldoc/ydclasses
 sqlFiles:
   - /yamldoc/yamldoc.sql
 sqlDBs:
@@ -101,40 +105,20 @@ sqlDBs:
 phpScripts:
   - /yamldoc/index.php
   - /yamldoc/id.php
+  - /yamldoc/ydclasses.php
   - /yamldoc/admin.php
   - /yamldoc/indexdoc.php
   - /yamldoc/search.php
   - /yamldoc/frag.php
-  - /yamldoc/crypt.php
   - /yamldoc/file.php
   - /yamldoc/latest.php
-  - /yamldoc/password.php
-  - /yamldoc/tpassword.php
-  - /yamldoc/pasactions.php
-  - /yamldoc/pasbesoins.php
-  - /yamldoc/params.php
-  - /yamldoc/testcrypt.php
-  - /yamldoc/tlocation.php
+  - /yamldoc/label.php
 phpIncludes:
+  - /yamldoc/inc.php
   - /yamldoc/store.inc.php
+  - /yamldoc/isometadata.inc.php
   - /yamldoc/yd.inc.php
   - /yamldoc/git.inc.php
-  - /yamldoc/mlstring.inc.php
   - /yamldoc/search.inc.php
   - /yamldoc/mysqlparams.inc.php
-  - /yamldoc/srvr_name.inc.php
   - /yamldoc/place.inc.php
-  - /yamldoc/ydclasses.inc.php
-  - /yamldoc/yamldoc.inc.php
-  - /yamldoc/dumbdoc.inc.php
-  - /yamldoc/basicyamldoc.inc.php
-  - /yamldoc/catalog.inc.php
-  - /yamldoc/tree.inc.php
-  - /yamldoc/yamldata.inc.php
-  - /yamldoc/multidata.inc.php
-  - /yamldoc/yamlskos.inc.php
-  - /yamldoc/datamodel.inc.php
-  - /yamldoc/legaldoc.inc.php
-  - /yamldoc/odtdoc.inc.php
-  - /yamldoc/pdfdoc.inc.php
-  - /yamldoc/servreg.inc.php

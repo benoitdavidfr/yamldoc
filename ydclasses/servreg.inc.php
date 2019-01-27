@@ -2,15 +2,26 @@
 /*PhpDoc:
 name: servreg.inc.php
 title: servreg.inc.php - classe du registre des serveurs
-doc: |
+doc: <a href='/yamldoc/?action=version&name=servreg.inc.php'>doc intégrée en Php</a>
+*/
+{ // doc 
+$phpDocs['servreg.inc.php']['file'] = <<<'EOT'
+name: servreg.inc.php
+title: servreg.inc.php - classe du registre des serveurs
 journal: |
   18/7/2018:
   - adaptation
   12/5/2018:
   - création
-*/
+EOT;
+}
 
-// classe du registre des serveurs
+// classe du 
+{ // doc 
+$phpDocs['servreg.inc.php']['classes']['Servreg'] = <<<"EOT"
+title: registre des serveurs
+EOT;
+}
 class Servreg extends BasicYamlDoc {
   function title() { return $this->phpDoc['title']; }
   

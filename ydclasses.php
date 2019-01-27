@@ -76,7 +76,7 @@ if (!$path || ($path == '/')) {
         if ($class_parents === false)
           echo "<li><b>Erreur $className n'est pas une classe</b>\n";
         elseif (($className<>'Doc') && !in_array('Doc', $class_parents))
-          echo ''; //'"<li><i>$className n'est pas une sous-classe de Doc (",implode(',', $class_parents),")</i>\n";
+          echo ''; // '"<li><i>$className n'est pas une sous-classe de Doc (",implode(',', $class_parents),")</i>\n";
         else {
           $classDoc = Yaml::parse($classDoc);
           $href = "$_SERVER[SCRIPT_NAME]/$className";
