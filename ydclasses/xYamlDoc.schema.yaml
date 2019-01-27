@@ -1,16 +1,17 @@
 $schema: http://json-schema.org/draft-07/schema#
 $id: http://yamldoc.georef.eu/ydclasses/yamldoc.schema.yaml
 title: Définition du schema JSON d'un YamlDoc générique
-description: reprend le schéma Dublin Core en lui ajoutant les ropriétéds spécifiques YamlDoc
-issued: 2019-01-23
+description: reprend le schéma Dublin Core en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
+modified: 2019-01-26
 allOf:
   - $ref: ../pub/dublincore.schema.yaml
-  - description: propriétés supplémentaires par rapport au DublinCore
+  - description: propriétés supplémentaires par rapport à un doc DublinCore
     type: object
     properties:
-      yamlClass:
+      $schema:
         description: définition de la classe de document
         type: string
+        pattern: ^http://ydclasses.georef.eu/
       yamlPassword:
         description: définition de la classe de document
         type: string
@@ -31,5 +32,4 @@ allOf:
       
 examples:
   - title: un exemple simple monolingue
-    yamlClass: YData
-
+    $schema: http://ydclasses.georef.eu/YData

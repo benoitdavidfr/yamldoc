@@ -187,30 +187,57 @@ class YData extends YamlDoc {
   function checkSchemaConformity(string $ypath): void {
     echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
     if (!$ypath || ($ypath=='/')) { // validation du doc / schéma ydata.schema.yaml
-      if (!is_file(__DIR__.'/ydata.schema.yaml')) {
+      if (!is_file(__DIR__.'/YData.schema.yaml')) {
         echo "Erreur fichier ydata.schema.yaml absent<br>\n";
         return;
       }
-      $schema = new JsonSchema(__DIR__.'/ydata.schema.yaml');
-      $schema->check($this->_c, [
-        'showWarnings'=> "ok doc conforme au schéma ydata.schema.yaml",
-        'showErrors'=> "KO doc NON conforme au schéma ydata.schema.yaml",
+      JsonSchema::autoCheck(__DIR__.'/YData.schema.yaml', [
+        'showWarnings'=> "ok schéma conforme au méta-schéma<br>\n",
+        'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
+        //'verbose'=> true,
       ]);
+      $schema = new JsonSchema(__DIR__.'/YData.schema.yaml');
+      $schema->check($this->_c, [
+        'showWarnings'=> "ok doc conforme au schéma ydata.schema.yaml<br>\n",
+        'showErrors'=> "KO doc NON conforme au schéma ydata.schema.yaml<br>\n",
+      ]);
+      foreach ($this->tables as $tableId => $table) {
+        if (!isset($table['dataSchema']) || !isset($table['data'])) {
+          echo "Erreur: champ dataSchema ou data absent de la table $tableId <br>\n";
+        }
+        else {
+          $metaschema = new JsonSchema('http://json-schema.org/draft-07/schema#');
+          $metaschema->check($table['dataSchema'], [
+            'showWarnings'=> "ok schéma de la table $tableId conforme au méta-schéma<br>\n",
+            'showErrors'=> "KO schéma de la table $tableId NON conforme au méta-schéma",
+          ]);
+          $schema = new JsonSchema($table['dataSchema']);
+          $status = $schema->check($table['data']->asArray(), [
+            'showWarnings'=> "ok data conforme au schéma de la table $tableId<br>\n",
+            'showErrors'=> "KO data NON conforme au schéma de la table $tableId<br>\n",
+          ]);
+        }
+      }
     }
     else {
       // si le path pointe directement dans les données, je remonte dans le document de la table
       if (substr($ypath, -2)=='/*')
         $ypath = substr($ypath, 0, strlen($ypath)-2);
-      $subdoc = $this->extractByUri($ypath);
+      $table = $this->extractByUri($ypath);
       //echo '<pre>',Yaml::dump($subdoc, 999),"</pre>\n";
-      if (!isset($subdoc['jSchema']) || !isset($subdoc['data'])) {
-        echo "Erreur: jSchema ou data absent du sous-document<br>\n";
+      if (!isset($table['dataSchema']) || !isset($table['data'])) {
+        echo "Erreur: champ dataSchema ou data absent de la table $ypath <br>\n";
         return;
       }
-      $schema = new JsonSchema($subdoc['jSchema']);
-      $status = $schema->check($subdoc['data'], [
-        'showWarnings'=> "ok data conforme au schéma de la table",
-        'showErrors'=> "KO data NON conforme au schéma de la table",
+      $metaschema = new JsonSchema('http://json-schema.org/draft-07/schema#');
+      $metaschema->check($table['dataSchema'], [
+        'showWarnings'=> "ok schéma conforme au méta-schéma<br>\n",
+        'showErrors'=> "KO schéma NON conforme au méta-schéma",
+      ]);
+      $schema = new JsonSchema($table['dataSchema']);
+      $status = $schema->check($table['data'], [
+        'showWarnings'=> "ok data conforme au schéma de la table<br>\n",
+        'showErrors'=> "KO data NON conforme au schéma de la table<br>\n",
       ]);
     }
   }

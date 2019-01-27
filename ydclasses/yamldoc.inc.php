@@ -83,7 +83,7 @@ doc: |
 EOT;
 }
 abstract class YamlDoc extends Doc {
-  const SCHEMAURIPREFIX = 'http://yamldoc.georef.eu/ydclasses/';
+  const SCHEMAURIPREFIX = 'http://ydclasses.georef.eu/';
   
   // Les méthodes abstraites
 
@@ -364,7 +364,7 @@ abstract class YamlDoc extends Doc {
   function checkSchemaConformity(string $ypath): void {
     echo "YamlDoc::checkSchemaConformity(ypath=$ypath)<br>\n";
     try {
-      $schema = new JsonSchema(__DIR__.'/yamldoc.schema.yaml');
+      $schema = new JsonSchema(__DIR__.'/YamlDoc.schema.yaml');
       $schema->check($this->asArray(), [
         'showWarnings'=> "ok doc conforme au schéma yamldoc<br>\n",
         'showErrors'=> "KO doc NON conforme au schéma yamldoc<br>\n",

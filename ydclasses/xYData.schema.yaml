@@ -1,0 +1,33 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://ydclasses.georef.eu/YData
+title: Schema d'un YData
+modified: 2019-01-26
+description: un document YData correspond à un ensemble de tables
+allOf:
+  - description: schéma YamlDoc générique
+    $ref: yamldoc.schema.yaml 
+  - description: schéma spécifique à YData
+    type: object
+    required: [tables]
+    properties:
+      $schema:
+        const: http://ydclasses.georef.eu/YData
+      tables:
+        description: dictionnaire des tables indexé par l'identifiant de la table
+        type: object
+        additionalProperties:
+          description: contenu d'une table avee d'une part des MD et d'autre part des données définies par un schéma
+          allOf:
+            - description: champs Dublin core décrivant les MD de la table
+              $ref: ../pub/dublincore.schema.yaml
+            - description: champs spécifiques au données de la table
+              type: object
+              required: [dataSchema, data]
+              properties:
+                dataSchema:
+                  description: définit le schéma des données contenues dans la table 
+                  $ref: http://schema.georef.eu/json-schema.schema.json
+                data:
+                  description: données contenues dans la table respectant le schéma défini par dataSchema
+                  type: object
+  

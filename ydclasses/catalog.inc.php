@@ -14,6 +14,8 @@ doc: |
   Le champ contents correspond à un dictionnaire [ docid => [ 'title' => titre ]]  
   En V2, on conserve la compatibilité en permettant d'avoir d'autres champs.
 journal:
+  26/1/2019:
+    - prise en compte de l'utilisation du champ $schema à la place de yamlClass
   18/7/2018:
     - prise en compte de la nouvelle classe YamlDoc
   21/6/2018:
@@ -54,7 +56,7 @@ class YamlCatalog extends BasicYamlDoc {
         }
         echo "</ul>\n";
       }
-      elseif (!in_array($key,['title','yamlClass','authorizedWriters','yamlPassword'])) {
+      elseif (!in_array($key,['title','$schema','authorizedWriters','yamlPassword'])) {
         echo "<h3>$key</h3>\n";
         showDoc($_GET['doc'], $this->data[$key], $key);
         $otherKeyShown = true;
