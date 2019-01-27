@@ -34,6 +34,8 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  26/1/2019:
+    - mise en oeuvre de la validation des documents par rapport à leur schéma
   25/1/2019:
     - remplacement du mot-clé YamlClass par l'utilisation de $schema avec un URI commencant par YamlDoc::SCHEMAURIPREFIX
     - commit et synchro sur les 2 serveurs

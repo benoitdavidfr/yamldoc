@@ -6,21 +6,41 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=ydata.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['ydata.inc.php'] = <<<'EOT'
+$phpDocs['ydata.inc.php']['file'] = <<<'EOT'
 name: ydata.inc.php
 title: ydata.inc.php - sous-classes YData et YDataTable pour la gestion des données
-doc: |
-  objectifs:
-  
-    - abandon du YamlSchema au profit de json-schema, spécification mieux définie des données et plus standard
-    - réécriture à la suite de la restructuration des classes YamlDoc et BasicYamlDoc.
-      La nouvelle classe hérite de YamlDoc et non de BasicYamlDoc.'
-    - Simplification en se limitant à une seule clé que j'appelle _id comme dans MongoDB.
-      Les données historisées seront traitées avec HistoData.'
+journal: |
+  3-5/1/2019:
+  - correction affichage
+  - ajout test de conformité d'une table à son schéma
+  - traitement du ypath
+  29/7/2018:
+  - mécanismes d'accès de base
+  - manque projection, sélection
+  - manque json-schema
+EOT;
+}
+require_once __DIR__.'/../../schema/jsonschema.inc.php';
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires 
+  require_once 'yamldoc.inc.php';
+}
+use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Exception\ParseException;
 
-  Un document YData doit définir à la racine un champ yamlClass avec la valeur YData.
-  Il peut alors:
+{
+$phpDocs['ydata.inc.php']['classes']['YData'] = <<<'EOT'
+name: class YData
+title: classe YData pour la gestion des données structurées en tables
+doc: |
+  Un document YData correspond à un ensemble tables, chacune contenant un ensemble de lignes appelées n-uplets,
+  ces n-uplets doivent tous respecter un schéma JSON commun défini pour la table.
+  Cette structuration homogène des n-uplets permet de leur appliquer des traitements,
+  comme de sélectionner uniquement certains champs dans les n-uplets.
   
+  Cette classe remplace la classe YamlData, elle utilise les schémas JSON, elle hérite de YamlDoc.
+  Les n-uplets comportent une clé utilisateur appélée _id comme dans MongoDB.
+  
+  Un document YData peut:
     - soit contenir une seule table stockée en Yaml dans le champ data
     - soit contenir une liste de tables stockée dans une structure Yaml
       tables:
@@ -57,24 +77,8 @@ doc: |
   
   
   http://localhost/yamldoc/?doc=dublincore est un prototype de Ydata
-journal: |
-  3-5/1/2019:
-  - correction affichage
-  - ajout test de conformité d'une table à son schéma
-  - traitement du ypath
-  29/7/2018:
-  - mécanismes d'accès de base
-  - manque projection, sélection
-  - manque json-schema
 EOT;
 }
-require_once __DIR__.'/../../schema/jsonschema.inc.php';
-if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // tests unitaires 
-  require_once 'yamldoc.inc.php';
-}
-use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\Yaml\Exception\ParseException;
-
 class YData extends YamlDoc {
   protected $_c; // contient les champs
   
@@ -243,9 +247,15 @@ class YData extends YamlDoc {
   }
 };
 
-// contenu d'une table
+// 
 // objet se retouvant à l'intérieur d'un doc
 // est créé par YData 
+{
+$phpDocs['ydata.inc.php']['classes']['YDataTable'] = <<<'EOT'
+title: stockage des données contenues dans une table, classe utilisée par YData
+doc: |
+EOT;
+}
 class YDataTable implements YamlDocElement, IteratorAggregate {
   protected $attrs=[]; // liste des attributs détectés dans la table
   protected $data; // contenu de data sous forme d'un array Php
