@@ -37,10 +37,11 @@ require_once __DIR__.'/ydclasses/inc.php';
 
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
+use Michelf\MarkdownExtra;
 
-ini_set('memory_limit', '2048M');
+/*ini_set('memory_limit', '2048M');
 if (php_sapi_name()<>'cli')
-  ini_set('max_execution_time', 600);
+  ini_set('max_execution_time', 600);*/
 
 // URL de tests
 if (isset($_GET['action']) && ($_GET['action']=='tests')) {
@@ -120,7 +121,8 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
     echo "Les documents de cette classe doivent respecter le schéma <a href='$href.yaml'>$schemaClass.schema.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
   }
   echo "<h3>Documentation de la classe</h3>\n";
-  echo '<pre>',$classDoc['doc'],"</pre>\n\n";
+  //echo '<pre>',$classDoc['doc'],"</pre>\n\n";
+  echo MarkdownExtra::defaultTransform($classDoc['doc']);
   die();
 }
 

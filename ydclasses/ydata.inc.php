@@ -41,6 +41,7 @@ doc: |
   Les n-uplets comportent une clé utilisateur appélée _id comme dans MongoDB.
   
   Un document YData peut:
+  
     - soit contenir une seule table stockée en Yaml dans le champ data
     - soit contenir une liste de tables stockée dans une structure Yaml
       tables:
@@ -50,33 +51,35 @@ doc: |
   Une version serialisée du doc est enregistrée pour accélérer la lecture des gros documents.
   
   Le ypath peut prendre une des formes suivantes:
+  
     - métadonnée du document,
-      [ex](?doc=dublincoreyd&ypath=/title)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/title)
     - une table, renvoie la table y compris ses MD,
-      [ex](?doc=dublincoreyd&ypath=/dcmes)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes)
     - métadonnée d'une table dont le nom de MD ne correspond pas à un identifiant de tuple,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/elementURI)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/elementURI)
     - métadonnée d'une table dont le nom de MD correspond à un identifiant de tuple,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/_title)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/_title)
     - un tuple d'une table identifié par sa clé,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/subject)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject)
     - valeur d'un champ d'un tuple d'une table, tuple identifié par sa clé,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/subject/definition)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject/definition)
     - valeur d'un sous-champ d'un tuple d'une table, tuple identifié par sa clé,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/subject/definition/fr),
-      [ex](?doc=dublincoreyd&ypath=/dcmes/description/refinements/tableOfContents/definition/fr)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/subject/definition/fr),
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/description/refinements/tableOfContents/definition/fr)
     - valeur d'un champ d'un tuple d'une table, tuple identifié par une valeur qqc,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/name.fr=Sujet/definition)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/name.fr=Sujet/definition)
     - valeur d'un champ des tuples d'une table,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/*/definition)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/definition)
     - valeurs de champs des tuples d'une table,
-      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name,definition),
-      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name.fr,definition.fr),
-      [ex](?doc=dublincoreyd&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
-      [ex](?doc=dublincoreyd&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name,definition),
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name.fr,definition.fr),
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/name.fr,definition.fr,refinements.*.name.fr)
+      [ex](/yamldoc/index.php?doc=dublincore&ypath=/dcmes/*/_id,name.fr,definition.fr,refinements.*.name.fr,refinements.*._id)
   
   
-  http://localhost/yamldoc/?doc=dublincore est un prototype de Ydata
+  [prototype de Ydata](/yamldoc/?doc=dublincore)
+  
 EOT;
 }
 class YData extends YamlDoc {
