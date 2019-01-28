@@ -6,7 +6,7 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=yd.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['yd.inc.php'] = <<<'EOT'
+$phpDocs['yd.inc.php']['file'] = <<<'EOT'
 name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 doc: |

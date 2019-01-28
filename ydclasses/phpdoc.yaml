@@ -1,0 +1,44 @@
+path: /yamldoc/ydclasses
+title: ydclasses - Définition des classes de documents de YamlDoc
+doc: |
+  
+journal: |
+  27/1/2019:
+  - création de ce sous-module
+phpIncludes:
+  - /yamldoc/ydclasses/inc.php
+  - /yamldoc/ydclasses/mlstring.inc.php
+  - /yamldoc/ydclasses/yamldoc.inc.php
+  - /yamldoc/ydclasses/dumbdoc.inc.php
+  - /yamldoc/ydclasses/basicyamldoc.inc.php
+  - /yamldoc/ydclasses/catalog.inc.php
+  - /yamldoc/ydclasses/servreg.inc.php
+  - /yamldoc/ydclasses/tree.inc.php
+  - /yamldoc/ydclasses/ydata.inc.php
+  - /yamldoc/ydclasses/yamldata.inc.php
+  - /yamldoc/ydclasses/multidata.inc.php
+  - /yamldoc/ydclasses/yamlskos.inc.php
+  - /yamldoc/ydclasses/datamodel.inc.php
+  - /yamldoc/ydclasses/legaldoc.inc.php
+  - /yamldoc/ydclasses/odtdoc.inc.php
+  - /yamldoc/ydclasses/pdfdoc.inc.php
+  - /yamldoc/ydclasses/wfsserver.inc.php
+  - /yamldoc/ydclasses/wfsjson.inc.php
+  - /yamldoc/ydclasses/wfsgml.inc.php
+  - /yamldoc/ydclasses/featureds.inc.php
+  - /yamldoc/ydclasses/markerlib.inc.php
+  - /yamldoc/ydclasses/map.inc.php
+  - /yamldoc/ydclasses/itileserver.inc.php
+  - /yamldoc/ydclasses/wmsserver.inc.php
+  - /yamldoc/ydclasses/wmtsserver.inc.php
+  - /yamldoc/ydclasses/tileserver.inc.php
+  - /yamldoc/ydclasses/featureviewer.inc.php
+  - /yamldoc/ydclasses/tilecache.inc.php
+  - /yamldoc/ydclasses/viewds.inc.php
+  - /yamldoc/ydclasses/cswserver.inc.php
+  - /yamldoc/ydclasses/geocat.inc.php
+  - /yamldoc/ydclasses/mddb.inc.php
+  - /yamldoc/ydclasses/gcsubjlist.inc.php
+  - /yamldoc/ydclasses/inseeapi.inc.php
+  - /yamldoc/ydclasses/sireneapi.inc.php
+  - /yamldoc/ydclasses/inseenomapi.inc.php

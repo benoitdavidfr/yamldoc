@@ -34,6 +34,9 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  28/1/2019:
+    - la validation d'un document par rapport au schéma doit s'effectuer sur le document d'origine et non celui chargé
+    - la validation nécessite que l'objet existe ce qui peut être impossible lors le document d'origine est faux
   27/1/2019:
     - mise en oeuvre du résolveur de ydclasses, amélioration de la doc des ydclasses
     - création du sous-module ydclasses

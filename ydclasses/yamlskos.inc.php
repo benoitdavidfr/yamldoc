@@ -48,8 +48,9 @@ $phpDocs['yamlskos.inc.php']['classes']['YamlSkos'] = <<<EOT
 name: class YamlSkos
 title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
-  La classe YamlSkos hérite de la classe abstraite YamlDoc.
+  La classe YamlSkos hérite de la classe abstraite YamlDoc.  
   Un document YamlSkos comprend:
+  
     - des champs de métadonnées DublinCore dont au moins:
       - title: le titre du thésaurus
       - language: la ou les langues utilisées

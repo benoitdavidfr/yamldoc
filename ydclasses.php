@@ -19,17 +19,15 @@ doc: |
   Exemples:
     http://ydclasses.georef.eu/YData
     http://localhost/yamldoc/ydclasses.php/YData
-    http://localhost/yamldoc/ydclasses.php/YData/schema
-    http://localhost/yamldoc/ydclasses.php/YData
+    http://localhost/yamldoc/ydclasses.php/YData.schema.yaml
+    http://localhost/yamldoc/ydclasses.php/YData.schema.json
   
   A FAIRE:
-    - nettoyer la documentation des classes
-    - mettre en oeuvre et tester sur georef.eu
     - mettre en oeuvre une version machine to machine
 
 journal: |
   27/1/2019:
-    première version minimum
+    première version
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/store.inc.php';
@@ -56,6 +54,49 @@ if (isset($_GET['action']) && ($_GET['action']=='tests')) {
   echo "<pre>_GET="; print_r($_GET); echo "</pre>\n";
   echo "<pre>_SERVER = "; print_r($_SERVER);
   die("Fin des tests");
+}
+
+if (isset($_GET['action']) && ($_GET['action']=='phpfiles')) {
+  if (!isset($_GET['file'])) {
+    echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>ydc phpfiles</title></head><body>\n";
+    echo "<h2>Liste des fichiers Php</h2><ul>";
+    foreach ($phpDocs as $fiphp => $phpDoc) {
+      $phpDocFile = Yaml::parse($phpDoc['file']);
+      echo "<li><a href='?action=phpfiles&amp;file=$fiphp'>$fiphp</a> - $phpDocFile[title]\n";
+      if (isset($phpDoc['classes'])) {
+        echo "<br><i>classes</i>: \n";
+        foreach ($phpDoc['classes'] as $className => $docClass) {
+          echo "<a href='$_SERVER[SCRIPT_NAME]/$className'>$className</a> \n";
+        }
+      }
+    }
+    echo "</ul>\n";
+  }
+  else {
+    echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>ydc $_GET[file]</title></head><body>\n";
+    echo "<h2>Fichier $_GET[file]</h2>";
+    $doc = $phpDocs[$_GET['file']];
+    if (isset($doc['file'])) {
+      $docfile = Yaml::parse($doc['file']);
+      echo "<h3>File: $docfile[title]</h3>\n";
+      if (isset($docfile['doc']) && $docfile['doc'])
+        echo '<h4>doc</h4><pre>',$docfile['doc'],"</pre>\n";
+      if (isset($docfile['journal']))
+        echo "<h4>journal</h4><pre>",$docfile['journal'],"</pre>\n";
+    }
+    //echo '<pre>',$doc['file'],"</pre>\n";
+    if (isset($doc['classes'])) {
+      foreach ($doc['classes'] as $cname => $cdoc) {
+        $cdoc = Yaml::parse($cdoc);
+        echo "<h3>classe $cname : $cdoc[title]</h3>";
+        if (isset($cdoc['doc']))
+          echo MarkdownExtra::defaultTransform($cdoc['doc']);
+      }
+    }
+    //var_dump($doc);
+    //echo '<pre>',Yaml::dump($doc, 999),"</pre>\n";
+  }
+  die();
 }
 
 $path = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : null;
@@ -89,7 +130,9 @@ if (!$path || ($path == '/')) {
       //echo "</ul>\n";
     }
   }
-  die("</ul>\n");
+  echo "</ul>\n";
+  echo "<a href='$_SERVER[SCRIPT_NAME]?action=phpfiles'>Liste des fichiers Php<br>\n";
+  die();
 }
 
 // cas /{yamlClass} - description de la classe

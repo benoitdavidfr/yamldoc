@@ -48,7 +48,6 @@ doc: |
     - $language  
 EOT;
 }
-
 abstract class Doc {
   protected $_id;
   // Les méthodes abstraites
@@ -363,11 +362,36 @@ abstract class YamlDoc extends Doc {
   // et la validation s'effectue par rapport au schéma YamlDoc
   function checkSchemaConformity(string $ypath): void {
     echo "YamlDoc::checkSchemaConformity(ypath=$ypath)<br>\n";
+    //echo "get_class=",get_class($this),"<br>\n";
+    //echo "<pre>this="; print_r($this); echo "</pre>\n";
+    //echo "<pre>this="; print_r(self::replaceYDEltByArray($this->asArray())); echo "</pre>\n";
+    $class = get_class($this);
+    $classSchema = null;
+    if (is_file(__DIR__."/$class.schema.yaml"))
+      $classSchema = $class;
+    else {
+      echo "$class.schema.yaml n'existe pas<br>\n";
+      foreach (class_parents($this) as $parent_class) {
+        if (is_file(__DIR__."/$parent_class.schema.yaml"))
+          $classSchema = $parent_class;
+      }
+    }
+    if (!$classSchema)
+      die("Aucun schéma trouvé pour la classe $class");
     try {
-      $schema = new JsonSchema(__DIR__.'/YamlDoc.schema.yaml');
-      $schema->check($this->asArray(), [
-        'showWarnings'=> "ok doc conforme au schéma yamldoc<br>\n",
-        'showErrors'=> "KO doc NON conforme au schéma yamldoc<br>\n",
+      JsonSchema::autoCheck(__DIR__."/$classSchema.schema.yaml", [
+        'showWarnings'=> "ok schéma $classSchema conforme au méta-schéma<br>\n",
+        'showErrors'=> "KO schéma $classSchema NON conforme au méta-schéma<br>\n",
+        //'verbose'=> true,
+      ]);
+      // validation du document d'origine par rapport au schéma
+      $schema = new JsonSchema(__DIR__."/$classSchema.schema.yaml");
+      $storepath = Store::storepath();
+      $docid = $this->_id;
+      $doc = JsonSch::file_get_contents(__DIR__."/../$storepath/$docid.yaml");
+      $schema->check($doc, [
+        'showWarnings'=> "ok doc conforme au schéma $classSchema<br>\n",
+        'showErrors'=> "KO doc NON conforme au schéma $classSchema<br>\n",
       ]);
     } catch (Exception $e) {
       echo "Erreur dans YamlDoc::checkSchemaConformity(ypath=$ypath) : ",$e->getMessage(),"<br>\n";

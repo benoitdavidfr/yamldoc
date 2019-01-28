@@ -32,6 +32,7 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 { // doc 
+$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geodata/igngpwfs';
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJson'] = <<<EOT
 name: class WfsServerJson
 title: serveur WFS capable de générer du GeoJSON
@@ -51,6 +52,8 @@ doc: |
         générant ainsi un risque de confusion entre typename
       - en XML, le schéma de chaque type n'est pas fourni
       - la solution retenue consiste à effectuer un appel JSON par typename et à le bufferiser en JSON 
+  
+  Le document [geodata/igngpwfs]($prototype) permet de tester cette classe.
 
 EOT;
 }
@@ -175,6 +178,7 @@ class WfsServerJson extends WfsServer {
 };
 
 { // doc 
+$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geodata/igngpwfsa';
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJsonAugmented'] = <<<EOT
 name: class WfsServerJsonAugmented
 title: serveur WFS capable de générer du GeoJSON modifiant les retours des requêtes WFS
@@ -188,7 +192,7 @@ doc: |
   Les requêtes sont moins performantes car les résulatts sont décodés et réencodés en JSON.  
   Elles sont aussi plus facilement maintenables car l'optimisation de WfsServerJson dépend du serveur interrogé.
   
-  Le document [geodata/igngpwfsa](?doc=geodata/igngpwfsa) permet de tester cette classe.
+  Le document [geodata/igngpwfsa]($prototype) permet de tester cette classe.
 EOT;
 }
 class WfsServerJsonAugmented extends WfsServerJson {

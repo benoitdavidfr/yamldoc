@@ -6,7 +6,7 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=store.inc.php'>doc intégrée en Php</a>
 */
 {
-$phpDocs['store.inc.php'] = <<<'EOT'
+$phpDocs['store.inc.php']['file'] = <<<'EOT'
 name: store.inc.php
 title: gestion des store
 doc: |
@@ -28,7 +28,7 @@ doc: |
   Les cas 2 et 3 fonctionnent en sapi=='cli' mais nécessite alors le fichier place.inc.php
   qui définit le lieu d'éxécution.
   
-journal:
+journal: |
   4/1/2019:
     modification de Store:$definition et Store::ids() pour tenir compte de la possibilité d'avoir différents serveurs
     pour une instance et une place (georef.eu + id.georef.eu)

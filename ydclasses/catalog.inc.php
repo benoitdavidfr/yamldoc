@@ -9,8 +9,7 @@ doc: |
 $phpDocs['catalog.inc.php']['file'] = <<<'EOT'
 name: catalog.inc.php
 title: catalog.inc.php - classes YamlCatalog des catalogues V2
-doc: |
-journal:
+journal: |
   26/1/2019:
     - prise en compte de l'utilisation du champ $schema à la place de yamlClass
   18/7/2018:
@@ -85,7 +84,12 @@ class YamlCatalog extends BasicYamlDoc {
   }
 };
 
-// classe des catalogues d'accueil
+// classe des 
+{ // doc 
+$phpDocs['catalog.inc.php']['classes']['YamlHomeCatalog'] = <<<'EOT'
+title: catalogues d'accueil
+EOT;
+}
 class YamlHomeCatalog extends YamlCatalog {
   function isHomeCatalog() { return true; }
 };

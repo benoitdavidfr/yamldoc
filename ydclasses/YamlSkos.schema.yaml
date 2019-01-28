@@ -1,0 +1,267 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://ydclasses.georef.eu/YamlSkos
+title: Schema d'un YamlSkos
+modified: '2019-01-28'
+description: |
+  un document YamlSkos contient un thésaurus organisé en micro-thésaurus (Scheme), chacun contenant des concepts.
+  Les micro-thésaurus appartiennent à un ou plusieurs domaines, eux-mêmes organisés dans un scheme des domaines.
+  Un YamlSkos peut être multi-lingie ou mono-lingue.
+  De plus, un document YamlSkos respecte le schéma YamlDoc.
+definitions:
+  mulString:
+    description: chaine multi-lingue, une chaine par langue
+    $ref: ../pub/dublincore.schema.yaml#/definitions/mulString
+  mulStrings:
+    description: liste de chaines organisée par langue, il peut y en avoir une ou plusieurs par langue
+    type: object
+    patternProperties:
+      ^[a-z][a-z]$:
+        type: [array, string]
+        items:
+          type: string
+  strings:
+    description: une ou plusieurs chaines
+    type: [array, string]
+    items:
+      type: string
+allOf:
+  - description: schéma YamlDoc générique
+    $ref: YamlDoc.schema.yaml 
+  - description: partie du schéma YamlSkos commune aux sous-schéma mono- et multi-lingue
+    type: object
+    required: [$schema, domainScheme, domains, schemes, concepts]
+    properties:
+      $schema:
+        const: http://ydclasses.georef.eu/YamlSkos
+      domainScheme:
+        description: Organisation des domaines dans un Scheme listant les domaines de premier niveau
+        type: object
+        required: [hasTopConcept]
+        properties:
+          hasTopConcept:
+            type: array
+            items:
+              type: [string, number]
+      domains:
+        description: dictionnaire des domaines
+        type: object
+        additionalProperties:
+          description: domaine
+          type: object
+          properties:
+            type:
+              description: liste de types, défini par EuroVoc
+              type: array
+              items:
+                type: string
+            inScheme:
+              description: liste des scheme contenant le domaine, optionel
+              type: array
+              items:
+                type: [string, number]
+            notation:
+              description: utilisé dans EuroVoc
+              type: array
+              items:
+                type: [string, number]
+            topConceptOf:
+              description: liste des scheme dont le domaine est topConcept, déduit de domainScheme.hasTopConcept
+              type: array
+              items:
+                type: [string, number]
+      schemes:
+        description: dictionnaire des schemes
+        type: object
+        additionalProperties:
+          description: scheme
+          type: object
+          properties:
+            domain:
+              description: liste des domaines dans lesquels le scheme apparait, optionnel
+              type: array
+              items:
+                type: [string, number]
+            hasTopConcept:
+              description: liste des topConcepts du scheme
+              type: array
+              items:
+                type: [string, number]
+            notation:
+              description: utilisé dans EuroVoc
+              type: array
+              items:
+                type: [string, number]
+            sameAsPrefix:
+              description: prefix correspondant à un enregistrement sameAs
+              type: string
+            options:
+              description: liste d'options possibles
+              type: array
+              items:
+                enum: [nosort]
+      concepts:
+        description: dictionnaire des concepts
+        type: object
+        additionalProperties:
+          description: concept
+          type: object
+          required: [inScheme]
+          properties:
+            inScheme:
+              description: liste des scheme contenant le concept
+              type: array
+              items:
+                type: [string, number]
+            topConceptOf:
+              description: liste des schemes dont le concept est topConcept
+              type: array
+              items:
+                type: [string, number]
+            broader:
+              description: liste des concepts génériques 
+              type: array
+              items:
+                type: [string, number]
+            narrower:
+              description: liste des concepts spécifiques, déduit de broader 
+              type: array
+              items:
+                type: [string, number]
+            related:
+              description: liste des concepts avec lesquels existe une relation d'association sémantique
+              type: array
+              items:
+                type: [string, number]
+            notation:
+              description: utilisé dans EuroVoc
+              type: array
+              items:
+                type: [string, number]
+  - description: partie spécifique au sous-schéma mono- ou multi-lingue
+    oneOf:
+      - description: sous-schéma multi-lingue du schéma YamlSkos
+        type: object
+        required: [domainScheme, domains, schemes, concepts]
+        properties:
+          domainScheme:
+            description: Organisation des domaines dans un Scheme listant les domaines de premier niveau
+            type: object
+            required: [prefLabel]
+            properties:
+              prefLabel:
+                description: étiquette multi-lingue, une seule par langue
+                $ref: '#/definitions/mulString'
+          domains:
+            description: dictionnaire des domaines
+            type: object
+            additionalProperties:
+              description: domaine
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, multi-lingue, une seule par langue
+                  $ref: '#/definitions/mulString'
+          schemes:
+            description: dictionnaire des schemes
+            type: object
+            additionalProperties:
+              description: scheme
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, multi-lingue, une seule par langue
+                  $ref: '#/definitions/mulString'
+          concepts:
+            description: dictionnaire des concepts
+            type: object
+            additionalProperties:
+              description: concept
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, multi-lingue, une seule par langue
+                  $ref: '#/definitions/mulString'
+                altLabel:
+                  description: synonymes organisés par langue, il peut y en avoir un ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+                definition:
+                  description: définition du concept par langue, il peut y en avoir un ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+                scopeNote:
+                  description: notes d'application organisées par langue, il peut y en avoir une ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+                editorialNote:
+                  description: note éditoriale par langue, il peut y en avoir une ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+                changeNote:
+                  description: note de modification par langue, il peut y en avoir une ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+                historyNote:
+                  description: note historique par langue, il peut y en avoir une ou plusieurs par langue
+                  $ref: '#/definitions/mulStrings'
+      - description: sous-schéma mono-lingue du schéma YamlSkos
+        type: object
+        required: [domainScheme, domains, schemes, concepts]
+        properties:
+          domainScheme:
+            description: Organisation des domaines dans un Scheme listant les domaines de premier niveau
+            type: object
+            required: [prefLabel]
+            properties:
+              prefLabel:
+                description: étiquette mono-lingue
+                type: string
+          domains:
+            description: dictionnaire des domaines
+            type: object
+            additionalProperties:
+              description: domaine
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, mono-lingue
+                  type: string
+          schemes:
+            description: dictionnaire des schemes
+            type: object
+            additionalProperties:
+              description: scheme
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, mono-lingue
+                  type: string
+          concepts:
+            description: dictionnaire des concepts
+            type: object
+            additionalProperties:
+              description: concept
+              type: object
+              required: [prefLabel]
+              properties:
+                prefLabel:
+                  description: forme lexicale préférentielle, mono-lingue
+                  type: string
+                altLabel:
+                  description: synonymes
+                  $ref: '#/definitions/strings'
+                definition:
+                  description: définitions du concept mono-lingue
+                  $ref: '#/definitions/strings'
+                scopeNote:
+                  description: notes d'application mono-lingue
+                  $ref: '#/definitions/strings'
+                editorialNote:
+                  description: notes éditoriales mono-lingue
+                  $ref: '#/definitions/strings'
+                changeNote:
+                  description: notes de modification  mono-lingue
+                  $ref: '#/definitions/strings'
+                historyNote:
+                  description: notes historiques mono-lingue
+                  $ref: '#/definitions/strings'

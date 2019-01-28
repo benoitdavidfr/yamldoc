@@ -9,7 +9,7 @@ doc: |
 $phpDocs['mlstring.inc.php']['file'] = <<<'EOT'
 name: mlstring.inc.php
 title:  mlstring.inc.php - class MLString définissant des chaines de caractères multi-lingues
-journal:
+journal: |
   18/7/2018:
   - améliorations: ajout de getStringsInLang(), renommage php() en asArray()
 EOT;
