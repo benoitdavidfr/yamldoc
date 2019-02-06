@@ -17,6 +17,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
     
 journal:
+  5/2/2019:
+  - chgt de spec - un php renvoie un array Php au lieu d'un objet YamlDoc
   25/1/2019:
   - remplacement du mot-clé YamlClass par l'utilisation de $schema avec un URI commencant par YamlDoc::SCHEMAURIPREFIX
   3/1/2019:
@@ -502,21 +504,23 @@ function new_doc(string $docid): ?Doc {
       //throw new Exception("Erreur: le paramètre docuid n'est pas défini");
     // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
     ydcheckWriteAccessForPhpCode($docid);
-    // exécute le script et renvoie son retour qui doit donc être un YamlDoc ou null
+    // exécute le script et renvoie son retour qui doit donc être un array Php
+    // cght de spec le 5/2/2019 - vant cela devait être un YamlDoc
     $storepath = Store::storepath();
-    $doc = require "$storepath/$docid.php";
-    $doc->writePser();
-    return $doc;
+    echo "exécute $storepath/$docid.php<br>\n";
+    $data = require __DIR__."/$storepath/$docid.php";
   }
-  // Sinon parse le texte dans $data
-  try {
-    $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
-  }
-  catch (ParseException $exception) {
-    // en cas d'erreur d'analyse Yaml le doc est marqué comme modifiable
-    ydsetWriteAccess($store, $docid, 1);
-    // et je relance l'exception
-    throw $exception;
+  else {
+    // Sinon parse le texte dans $data
+    try {
+      $data = Yaml::parse($text, Yaml::PARSE_DATETIME);
+    }
+    catch (ParseException $exception) {
+      // en cas d'erreur d'analyse Yaml le doc est marqué comme modifiable
+      ydsetWriteAccess($store, $docid, 1);
+      // et je relance l'exception
+      throw $exception;
+    }
   }
   // si le doc correspond à un texte alors création d'un BasicYamlDoc avec le texte
   if (!is_array($data)) {
