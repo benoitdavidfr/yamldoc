@@ -507,8 +507,10 @@ function new_doc(string $docid): ?Doc {
     // exécute le script et renvoie son retour qui doit donc être un array Php
     // cght de spec le 5/2/2019 - vant cela devait être un YamlDoc
     $storepath = Store::storepath();
-    echo "exécute $storepath/$docid.php<br>\n";
-    $data = require __DIR__."/$storepath/$docid.php";
+    //echo "exécute ",__DIR__,"/$storepath/$docid.php<br>\n";
+    $data = require __DIR__."/$storepath/$docid.php"; // retourne un array Php
+    if (!is_array($data))
+      throw new Exception("Erreur $docid.php doit retourner un array Php ce qui n'est pas le cas");
   }
   else {
     // Sinon parse le texte dans $data
@@ -531,8 +533,10 @@ function new_doc(string $docid): ?Doc {
     $yamlClass = (isset($data['$schema'])
           && (substr($data['$schema'], 0, strlen(YamlDoc::SCHEMAURIPREFIX)) == YamlDoc::SCHEMAURIPREFIX)) ?
               substr($data['$schema'], strlen(YamlDoc::SCHEMAURIPREFIX)) : null;
-    if (!$yamlClass) {
-      // si pas de YamlClass c'est un YamlDoc de base
+    if (isset($data['$schema']) && ($data['$schema']=='http://json-schema.org/draft-07/schema#')) {
+      $doc = new YdJsonSchema($data, $docid);
+    }
+    elseif (!$yamlClass) { // si pas de YamlClass c'est un YamlDoc de base
       $doc = new BasicYamlDoc($data, $docid);
     }
     elseif (class_exists($yamlClass)) {

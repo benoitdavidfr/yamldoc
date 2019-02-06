@@ -18,6 +18,8 @@ require_once __DIR__.'/legaldoc.inc.php';
 require_once __DIR__.'/odtdoc.inc.php';
 require_once __DIR__.'/pdfdoc.inc.php';
 
+require_once __DIR__.'/ydjschema.inc.php';
+
 # données géo vecteur
 require_once __DIR__.'/wfsserver.inc.php';
 require_once __DIR__.'/wfsjson.inc.php';
