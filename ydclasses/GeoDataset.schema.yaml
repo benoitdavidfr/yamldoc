@@ -1,0 +1,31 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://yamldoc.georef.eu/ydclasses/GeoDataset.schema.yaml
+title: Définition du schema JSON d'une séride données Inspire
+description: reprend le schéma Inspire en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
+modified: 2019-02-04
+allOf:
+  - $ref: ../pub/inspire/schema.yaml
+  - description: propriétés supplémentaires par rapport à un doc Inspire
+    type: object
+    properties:
+      $schema:
+        description: définition de la classe de document
+        type: string
+        pattern: ^http://ydclasses.georef.eu/
+      yamlPassword:
+        description: définition d'un mot de passe de protection du document
+        type: string
+      authorizedWriters:
+        description: liste des utilisateurs YamlDoc autorisés à modifier le document
+        type: array
+      authWr:
+        description: liste des utilisateurs YamlDoc autorisés à modifier le document, synonyme de authorizedWriters
+        type: array
+      authorizedReaders:
+        description: liste des utilisateurs YamlDoc autorisés à lire le document
+        type: array
+        items: {type: string}
+      authRd:
+        description: liste des utilisateurs YamlDoc autorisés à lire le document, synonyme de authorizedReaders
+        type: array
+        items: {type: string}

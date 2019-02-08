@@ -10,9 +10,9 @@ $phpDocs['ydjschema.inc.php']['file'] = <<<'EOT'
 name: ydjschema.inc.php
 title: ydjschema.inc.php - classe JsonSchema comme classe YamlDoc
 doc: |
-  Permet de vérifier un schéma JSON et ses examples
+  Permet d'afficher le schéma JSON et de le vérifier ainsi que ses examples
 journal:
-  6/2/2019:
+  6-8/2/2019:
   - première version
 EOT;
 }
@@ -24,12 +24,12 @@ EOT;
 }
 
 class YdJsonSchema extends BasicYamlDoc {
-
+  // $data contient l'array Php correspondant au source Yaml
+  
   // validation de la conformité du schéma au au métaschéma
   function checkSchemaConformity(string $ypath): void {
     echo "YdJsonSchema::checkSchemaConformity(ypath=$ypath)<br>\n";
-    $metaschema = new JsonSchema(__DIR__.'/../../schema/json-schema.schema.json', false);
-    $metaschema->check($this->data, [
+    JsonSchema::autoCheck($this->data, [
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
     ]);
@@ -48,17 +48,15 @@ class YdJsonSchema extends BasicYamlDoc {
     }
     if (isset($this->data['definitions'])) {
       foreach ($this->data['definitions'] as $defName => $definition) {
-        $storepath = Store::storepath();
-        $docid = $this->_id;
-        $defSch = new JsonSchema(__DIR__."/../$storepath/$docid.yaml#/definitions/$defName", false);
+        $defSchFrgt = new JsonSchFragment($definition, $schema, false);
         foreach (['examples'=> 'exemple', 'counterexamples'=> 'contre-exemple'] as $key=> $label) {
           if (isset($definition[$key])) { # et je vérifie les exemples et contre-ex pour cette définition
             foreach ($definition[$key] as $i => $ex) {
               //echo "check de ",json_encode($ex),"<br>\n";
-              $defSch->check($ex, [
-                'showWarnings'=> "ok $label de $defName no $i conforme au schéma<br>\n",
-                'showErrors'=> "KO $label de $defName no $i NON conforme au schéma<br>\n",
-              ]);
+              if ($defSchFrgt->check($ex)->ok())
+                echo "ok $label de $defName no $i conforme au schéma<br>\n";
+              else
+                echo "KO $label de $defName no $i NON conforme au schéma<br>\n";
             }
           }
         }
