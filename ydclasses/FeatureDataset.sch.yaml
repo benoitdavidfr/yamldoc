@@ -1,0 +1,424 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://georef.eu/yamldoc/ydclasses/featureds.schema.yaml
+title: Schema d'un FeatureDataset
+modified: 2019-02-09
+description: |
+  Une SD d'objets (FeatureDataset) est composée de couches d'objets, chacune correspondant à une FeatureCollection
+  [GeoJSON](https://tools.ietf.org/html/rfc7946) ;
+  chaque couche est composée d'objets vecteur, cad des Feature GeoJSON.  
+  
+  Un document FeatureDataset contient:
+  
+    - des métadonnées génériques
+    - des infos générales par exemple permettant de charger les SHP en base
+    - un dictionnaire de couches (layerDictionary)
+
+  Chaque couche vecteur peut être définie de 4 manières différentes:
+    
+    - stockée dans une table MySQL (MySqlLayer) ;
+    - provenant d'un service WFS (WfsLayer) ;
+    - définie par une sélection dans une des couches précédentes définie dans la même SD (SelectionInAnOtherLayer) ;
+    - définie en fonction du zoom d'affichage et de la zone géographique par une des couches précédentes
+      définie dans la même SD ou dans une autre (onZoomGeoLayer) ; 
+  
+definitions:
+  onZoomGeo:
+    description: |
+      dictionnaire des filtres en fonction du zoom
+      Une couche MySQL ou WFS peut en outre être filtrée en fonction du zoom plus éventuellement en fonction du bbox ;
+      la couche doit alors comporter un champ *onZoomGeo* qui est un dictionnaire
+      
+          {zoomMin} : {filtre}
+          ou
+          {zoomMin} : 
+            {geoZone}: {filtre}
+          où:
+            {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
+      Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.  
+      {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.  
+      Un {filtre} retenu sera le premier pour lequel le bbox courant intersecte la {geoZone}.
+      
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
+      
+    type: object
+    patternProperties: # la clé est le niveau de zoom minimum
+      '^[0-9]+$':
+        oneOf:
+          - description: |
+              filtre pouvant prendre les valeurs suivantes:
+                - 'all' alors aucune sélection n'est effectuée.
+                - {where} = critère SQL ou CQL, ex "nature in ('Limite côtière','Frontière internationale')",
+                - {select} = sélection dans une autre couche de la SD de la forme "{lyrname} / {where}"
+                - {layerDefinition} =  chemin de définition d'une couche dans une autre SD commencant /,
+                  ex /geodata/ne_10m/admin_0_boundary_lines_land.
+            type: string
+          - description: |
+              filtre défini par zone définie par un des codes prédéfinis suivants de zone géographique :
+  
+                - 'FXX' pour la métropole,
+                - 'ANF' pour les Antilles françaises (Guadeloupe, Martinique, Saint-Barthélémy, Saint-Martin),
+                - 'ASP' pour les îles Saint-Paul et Amsterdam,
+                - 'CRZ' pour îles Crozet,
+                - 'GUF' pour la Guyane,
+                - 'KER' pour les îles Kerguelen,
+                - 'MYT' pour Mayotte,
+                - 'NCL' pour la Nouvelle Calédonie,
+                - 'PYF' pour la Polynésie Française,
+                - 'REU' pour la Réunion,
+                - 'SPM' pour Saint-Pierre et Miquelon,
+                - 'WLF' pour Wallis et Futuna,
+                - 'WLD' pour le monde entier
+              
+            type: object
+            patternProperties: # la clé est un code de geozone
+              '^[A-Z][A-Z][A-Z]$':
+                description: filtre défini comme ci-dessus
+                type: string
+    additionalProperties: false
+    
+  MySqlLayer:
+    description: |
+      couche stockée comme table MySQL chargée à partir d'une (ou plusieurs) couche(s) OGR ;
+      le nom de la table dans MySQL est l'identifiant de la couche ; 
+      la SD doit définir un champ *dbpath* qui définit le répertoire des couches OGR.
+      Le prototype est la couche id.php/geodata/route500/limite_administrative
+    type: object
+    required: [ogrPath]
+    properties:
+      ogrPath:
+        description: le (ou les) chemin(s) du (ou des) fichier(s) OGR à charger dans MySQL pour cette couche
+        oneOf:
+          - description: en général un seul chemin
+            type: string
+          - description: possibilité de plusieurs fichiers à charger
+            type: array
+            items:
+              type: string
+      indexes:
+        description: dict. des index à créer au chargement de la couche dans MySQL en fonction des noms de champ
+        type: object
+        additionalProperties: # la clé est le nom du champ de la table
+          description: true pour index à créer
+          type: boolean
+          const: true
+      onZoomGeo:
+        $ref: '#/definitions/onZoomGeo'
+      excludedFields:
+        description: liste des champs à exclure du chargement dans MySQL
+        type: array
+        items:
+          type: string
+      fieldtypes:
+        description: dictionnaire des types MySQL devant être corrigés identifiés par nom de champ dans la table SQL
+        type: object
+        additionalProperties: # la clé est le nom du champ de la table
+          description: type SQL en remplacement de celui fourni
+          type: string
+      
+    examples:
+      - title: Limite administrative
+        minZoom: 0
+        onZoomGeo:
+          0: /geodata/ne_110m/coastAdminBoundaryLines
+          4: /geodata/ne_10m/coastAdminBoundaryLines
+          7: nature in ('Limite côtière','Frontière internationale','Limite de région')
+          9: nature in ('Limite côtière','Frontière internationale','Limite de région','Limite de département')
+          11: all
+        style: |
+          function(feature) {
+              switch (feature.properties.nature) {
+                  case 'Limite côtière': return {color: 'blue', weight: 1};
+                  case 'Frontière internationale': return {color: 'chocolate', weight: 2};
+                  case 'Limite de région': return {color: 'red', weight: 1};
+                  case 'Limite de département': return {color: 'orange', weight: 1};
+                  case 'Limite d\'arrondissement':   return {color: 'lightGrey', weight: 1};
+                  case 'Limite de commune':   return {color: 'lightGrey', weight: 1};
+              }
+              // /geodata/ne_110m/coastAdminBoundaryLines + /geodata/ne_10m/coastAdminBoundaryLines
+              switch (feature.properties.featurecla) {
+                  case 'Coastline': return {color: 'blue', weight: 1};
+                  default: return {color: 'chocolate', weight: 2};
+              }
+          }
+        styleMap:
+          nature:
+            'Limite côtière': {color: 'blue', weight: 1}
+            'Frontière internationale': {color: 'chocolate', weight: 2}
+            'Limite de région': {color: 'red', weight: 1}
+            'Limite de département': {color: 'orange', weight: 1}
+            "Limite d'arrondissement": {color: 'lightGrey', weight: 1}
+            'Limite de commune': {color: 'lightGrey', weight: 1}
+          featurecla:
+            Coastline: {color: 'blue', weight: 1}
+          default: {color: 'chocolate', weight: 2}
+        displayedByDefault: true
+        ogrPath: ADMINISTRATIF/LIMITE_ADMINISTRATIVE.shp
+        indexes:
+          id_rte500: true
+      - title: Coast and land boundaries
+        style: |
+          function(feature) {
+              if (feature.properties.featurecla == 'Coastline') {
+                  return {color: 'blue', weight: 1};
+              } else {
+                  return {color: 'chocolate', weight: 1};
+              }
+          }
+        displayedByDefault: true
+        ogrPath:
+          - ne_110m_admin_0_boundary_lines_land.shp
+          - ne_110m_coastline.shp
+        excludedFields:
+          - name
+          - name_alt
+
+  WfsLayer:
+    description: |
+      couche exposée par un service WFS ;
+      dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
+      la SD doit définir un champ *wfsUrl* qui définit l'URL du serveur WFS
+      et peut définir un champ referer qui sera utilisé dans l'appel WFS.
+      Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
+    type: object
+    required: [typename]
+    properties:
+      typename:
+        description: nom du FeatureType WFS
+        type: string
+      onZoomGeo:
+        $ref: '#/definitions/onZoomGeo'
+      
+  SelectionInAnOtherLayer:
+    description: |
+      couche définie par une sélection dans une des couches précédentes définie dans la même SD ;  
+      Le prototype est la couche id.php/geodata/route500/coastline
+    type: object
+    required: [select]
+    properties:
+      select:
+        description: |
+          sélection de la forme "{lyrname} / {where}" ; la couche {lyrname} étant définie dans la même SD
+        type: string
+  
+  onZoomGeoLayer:
+    description: |
+      couche définie en fonction du zoom d'affichage et de la zone géographique par une des couches précédentes
+      définie dans la même SD ou dans une autre ;  
+      dans ce cas la couche comporte un champ *onZoomGeo* défini comme précédemment
+      en limitant les filtres possibles à {select} | {layerDefinition}  
+      Le prototype est la couche id.php/geodata/mscale/coastline
+    type: object
+    required: [onZoomGeo]
+    properties:
+      onZoomGeo:
+        description: filtre limité à {select} | {layerDefinition}
+        $ref: '#/definitions/onZoomGeo'
+  
+  commonLayerProperties:
+    description: propriétés communes aux différents types de couche
+    type: object
+    required: [title]
+    properties:
+      title:
+        description: titre de la couche pour un humain dans le contexte du document
+        type: string
+      abstract:
+        description: résumé
+        type: string
+      description:
+        type: string
+      conformsTo:
+        description: éléments de spécification de la couche
+        type: object
+        properties:
+          source:
+            type: string
+          description:
+            type: string
+          issues:
+            type: string
+          note:
+            type: string
+          geometryType:
+            description: le type géométrique des objets de la couche
+            type: string
+            enum: [Point, Point2D, Point3D, LineString, LineString3D]
+          properties:
+            description: dictionnaire de certains champs des objets identifiés par le nom du champ
+            type: object
+            additionalProperties: # la clé est le nom du champ
+              description: description de certains champs des objets de la couche
+              type: object
+              properties:
+                abstract:
+                  description: résumé du champ
+                  type: string
+                description:
+                  description: commentaire sur le champ
+                  type: string
+                enum:
+                  oneOf:
+                    - description: liste des valeurs autorisées pour le champ sous la forme d'un dictionnaire
+                      type: object
+                      additionalProperties: # la clé est la valeur autorisée
+                        description: description de la valeur autorisée
+                        type: object
+                        properties:
+                          description:
+                            description: commentaire sur la valeur
+                            type: string 
+                    - description: liste des valeurs autorisées pour le champ sous la forme d'une liste de valeurs
+                      type: array
+                      items:
+                        type: string
+      editorialNote:
+        type: string
+      minZoom:
+        description: zoom minimum d'affichage de la couche
+        type: integer
+      maxZoom:
+        description: zoom maximum d'affichage de la couche
+        type: integer
+      style:
+        description: style Leaflet des objets d'une couche linéaire ou surfacique
+        oneOf:
+          - description: fonction JavaScript retournant un objet style Leaflet
+            type: string
+          - description: style Leaflet défini 
+            $ref: '#/definitions/leafletStyle'
+      styleMap:
+        description: dictionnaire des styles par champ de la table et valeur pour ce champ ou style par défaut
+        type: object
+        properties:
+          default:
+            description: style par défaut
+            $ref: '#/definitions/leafletStyle'
+        additionalProperties: # la clé est le nom du champ de la table
+          description: dictionnaire des styles par valeur pour le champ
+          type: object
+          additionalProperties: # la clé est la valeur prise pour un champ de la table
+            description: objet style Leaflet
+            $ref: '#/definitions/leafletStyle'
+      pointToLayer:
+        description: pour les couches ponctuelles, fonction JavaScript indiquant le symbole à afficher
+        type: string
+      displayedByDefault:
+        description: si cette propriété est présente alors la couche est affichées par défaut dans la carte
+        type: boolean
+        const: true
+
+  layerDictionary:
+    description: dictionnaire des couches indexé par leur nom
+    type: object
+    additionalProperties: # la clé est l'identifiant de la couche
+      allOf:
+        - description: propriétés communes aux différents types de couche
+          $ref: '#/definitions/commonLayerProperties'
+          
+        - description: les différents types de couche
+          anyOf:
+            - $ref: '#/definitions/MySqlLayer'
+            - $ref: '#/definitions/WfsLayer'
+            - $ref: '#/definitions/SelectionInAnOtherLayer'
+            - $ref: '#/definitions/onZoomGeoLayer'
+   
+  leafletStyle:
+    description: style utilisé par Leaflet pour représenté graphiquement des objets GeoJSON d'une couche
+    type: object
+    properties:
+      color:
+        type: string
+      weight:
+        type: integer
+      opacity:
+        type: number
+    examples:
+      - { color: blue, weight: 2, opacity: 0.65 }
+    
+type: object
+required: [title, $schema]
+properties:
+  title:
+    type: string
+  abstract:
+    type: string
+  source:
+    type: string
+  creator:
+    type: string
+  identifier:
+    type: string
+  coverage:
+    type: string
+  licence:
+    description: définition de la licence
+    oneOf:
+      - description: licence générique avec URI
+        type: object
+        properties:
+          uri:
+            type: string
+          title:
+            type: string
+      - description: URL de la licence spécifique
+        type: string
+  doc_url:
+    description: URL de la documentation
+    type: string
+  metadata:
+    description: URL des métadonnées
+    type: string
+  $schema:
+    type: string
+    const: http://ydclasses.georef.eu/FeatureDataset
+  wfsUrl:
+    description: URL du service WFS exposant la couche
+    type: string
+  wfsOptions:
+    description: options pour l'appel au service WFS exposant la couche
+    type: object
+    properties:
+      referer:
+        type: string
+  featureModifier:
+    description: code Php définissant et retournant une fonction Php anonyme modifiant un feature (utilisée dans WfsServerJsonAugmented)
+    type: string
+  ftModContext:
+    description: propriété utilisée par featureModifier
+    type: object
+  dbpath:
+    description: chemin commun des fichiers OGR à ajouter avant ogrPath
+    type: string
+  precision:
+    description: nombre de décimales pour les coordonnées géographiques à conserver dans le chargement
+    type: integer
+  minZoom:
+    description: zoom minimum d'affichage de la série
+    type: integer
+  maxZoom:
+    description: zoom maximum d'affichage de la série
+    type: integer
+  layers:
+    description: dictionnaire des couches indexé par leur nom
+    $ref: '#/definitions/layerDictionary'
+  layersByTheme:
+    description: dictionnaire de thèmes regroupant des couches, chaque thème indexé par son nom
+    type: object
+    additionalProperties: # la clé est le nom du thème
+      description: dictionnaire de couches correspondant au thème
+      $ref: '#/definitions/layerDictionary'
+  shpfiles:
+    description: Fichiers shp non recopiés comme layer sous la forme d'une liste ou d'un texte
+    oneOf:
+      - description: cas de la liste
+        type: array
+        items: {type: string}
+      - description: cas du texte
+        type: string
+    
+  mysql_database:
+    description: Nom de la base MySQL en fonction du serveur MySQL défini dans mysqlparams.inc.php
+    type: object
+    additionalProperties: # la clé est le nom du serveur MySQL
+      description: nom de la base MySQL
+      type: string

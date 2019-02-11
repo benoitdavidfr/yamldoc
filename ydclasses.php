@@ -153,18 +153,18 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
   $class_parents = @class_parents("$className", false);
   echo "classes parentes: (",implode(', ', $class_parents),")<br>\n";
   $schemaClass = null;
-  if (is_file(__DIR__."/ydclasses/$className.schema.yaml"))
+  if (is_file(__DIR__."/ydclasses/$className.sch.yaml"))
     $schemaClass = $className;
   else
     foreach ($class_parents as $class_parent)
-      if (is_file(__DIR__."/ydclasses/$class_parent.schema.yaml"))
+      if (is_file(__DIR__."/ydclasses/$class_parent.sch.yaml"))
         $schemaClass = $class_parent;
   if (!$schemaClass)
     echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
-    $href = "$_SERVER[SCRIPT_NAME]/$schemaClass.schema";
+    $href = "$_SERVER[SCRIPT_NAME]/$schemaClass.sch";
     echo "Les documents de cette classe doivent respecter le schéma ",
-         "<a href='$href.yaml'>$schemaClass.schema.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
+         "<a href='$href.yaml'>$schemaClass.sch.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
   }
   echo "La classe est définie dans le fichier $fiphp<br>\n";
   if (isset($classDoc['doc'])) {
@@ -176,14 +176,14 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
 }
 
 // cas /{yamlClass}.schema.yaml - affichage du schéma JSON en Yaml
-if (preg_match('!^/([^/\.]+)\.schema\.yaml$!', $path, $matches)) {
+if (preg_match('!^/([^/\.]+)\.sch\.yaml$!', $path, $matches)) {
   $className = $matches[1];
-  if (!is_file(__DIR__."/ydclasses/$className.schema.yaml")) {
-    echo "pas de fichier $className.schema.yaml<br>\n";
+  if (!is_file(__DIR__."/ydclasses/$className.sch.yaml")) {
+    echo "pas de fichier $className.sch.yaml<br>\n";
   }
   else {
     header('Content-type: text/plain');
-    readfile(__DIR__."/ydclasses/$className.schema.yaml");
+    readfile(__DIR__."/ydclasses/$className.sch.yaml");
   }
   die();
 }

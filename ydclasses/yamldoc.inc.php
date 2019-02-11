@@ -367,28 +367,33 @@ abstract class YamlDoc extends Doc {
     //echo "<pre>this="; print_r(self::replaceYDEltByArray($this->asArray())); echo "</pre>\n";
     $class = get_class($this);
     $classSchema = null;
-    if (is_file(__DIR__."/$class.schema.yaml"))
+    if (is_file(__DIR__."/$class.sch.yaml"))
       $classSchema = $class;
     else {
-      echo "$class.schema.yaml n'existe pas<br>\n";
+      echo "$class.sch.yaml n'existe pas<br>\n";
       foreach (class_parents($this) as $parent_class) {
-        if (is_file(__DIR__."/$parent_class.schema.yaml"))
+        if (is_file(__DIR__."/$parent_class.sch.yaml"))
           $classSchema = $parent_class;
       }
     }
     if (!$classSchema)
       die("Aucun schéma trouvé pour la classe $class");
     try {
-      JsonSchema::autoCheck(__DIR__."/$classSchema.schema.yaml", [
+      JsonSchema::autoCheck(__DIR__."/$classSchema.sch.yaml", [
         'showWarnings'=> "ok schéma $classSchema conforme au méta-schéma<br>\n",
         'showErrors'=> "KO schéma $classSchema NON conforme au méta-schéma<br>\n",
         //'verbose'=> true,
       ]);
       // validation du document d'origine par rapport au schéma
-      $schema = new JsonSchema(__DIR__."/$classSchema.schema.yaml");
+      $schema = new JsonSchema(__DIR__."/$classSchema.sch.yaml");
       $storepath = Store::storepath();
       $docid = $this->_id;
-      $doc = JsonSch::file_get_contents(__DIR__."/../$storepath/$docid.yaml");
+      if (is_file(__DIR__."/../$storepath/$docid.yaml"))
+        $doc = JsonSch::file_get_contents(__DIR__."/../$storepath/$docid.yaml");
+      elseif (is_file(__DIR__."/../$storepath/$docid.php"))
+        $doc = JsonSch::file_get_contents(__DIR__."/../$storepath/$docid.php");
+      else
+        die("$docid non touvé");
       $schema->check($doc, [
         'showWarnings'=> "ok doc conforme au schéma $classSchema<br>\n",
         'showErrors'=> "KO doc NON conforme au schéma $classSchema<br>\n",

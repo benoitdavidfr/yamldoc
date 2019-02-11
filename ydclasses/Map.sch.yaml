@@ -1,0 +1,221 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://ydclasses.georef.eu/Map
+title: Schema d'une Map
+modified: 2019-02-09
+description: un document Map décrit le contenu d'une carte qui peut être affichée comme carte Leaflet
+definitions:
+  layer:
+    description: description d'une couche de fond ou calque
+    oneOf:
+      - description: une couche d'un service de tuiles
+        type: object
+        required: [title, type, url]
+        properties:
+          title: { type: string }
+          type: { const: TileLayer }
+          url:
+            description: |
+              URL paramétrée de la couche de tuiles contenant {z} pour le niveau de zoom
+              et {x} et {y} pour les nos de tuile.
+            type: string
+          options:
+            description: options d'affichage des tuiles
+            type: object
+            properties:
+              minZoom:
+                description: The minimum zoom level down to which this layer will be displayed (inclusive).
+                type: integer
+                minimum: 0
+              maxZoom:
+                description: The maximum zoom level up to which this layer will be displayed (inclusive).
+                type: integer
+                minimum: 0
+              detectRetina:
+                description: |
+                  If true and user is on a retina display, it will request four tiles of half the specified size
+                  and a bigger zoom level in place of one to utilize the high resolution.
+                type: boolean 
+              attribution:
+                description: One of the keys in the attributions dictionary of the map
+                type: string
+      - description: une couche UGeoJSONLayer
+        type: object
+        required: [title, type, endpoint]
+        properties:
+          title: { type: string }
+          type: { const: UGeoJSONLayer }
+          endpoint:
+            description: uid d'une couche d'un FeatureDataset ou URL
+            type: string
+          style:
+            description: "[style d'affichage de la couche](https://leafletjs.com/reference-1.4.0.html#path-option)"
+            type: object
+            properties:
+              color:
+                description: Stroke color
+                type: string
+              weight:
+                description: Stroke width in pixels
+                type: integer
+                minimum: 1
+              opacity:
+                description: Stroke opacity
+                type: number
+                minimum: 0
+                maximum: 1
+          pointToLayer:
+            description: |
+              A JS Function defining how GeoJSON points spawn Leaflet layers.
+              It is internally called when data is added, passing the GeoJSON point feature and its LatLng.
+              The default is to spawn a default Marker.
+            type: string
+          minZoom: { type: integer, minimum: 0 }
+          maxZoom: { type: integer, minimum: 0 }
+
+allOf:
+  - description: schéma YamlDoc générique
+    # true
+    $ref: YamlDoc.schema.yaml
+    
+  - description: schéma spécifique à Map
+    type: object
+    properties:
+      $schema:
+        const: http://ydclasses.georef.eu/Map
+      stylesheets:
+        description: liste d'URL correspondant chacune à un fichier CSS
+        type: array
+        items:
+          type: string
+      plugins:
+        description: liste d'URL correspondant chacune à un plugin Leaflet
+        type: array
+        items:
+          type: string
+      mapStyle:
+        description: height et width utilisés dans le style de l'élément div de la carte
+        type: object
+        properties:
+          height:
+            type: string
+          width:
+            type: string
+      view:
+        description: position de l'affichage intial de la carte
+        type: object
+        properties:
+          latlon:
+            description: latitude et longitude en degrés décimaux
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: {type: number, minimum: -180, maximum: 180}
+          zoom:
+            description: niveau de zoom
+            type: integer
+            minimum: 0
+      locate:
+        description: |
+          [attributs de géolocalisation de la carte sur un mobile ](https://leafletjs.com/reference-1.4.0.html#locate-options)
+        type: object
+        properties:
+          watch:
+            description: |
+              If true, starts continuous watching of location changes (instead of detecting it once)
+              using W3C watchPosition method. You can later stop watching using map.stopLocate() method.
+            type: boolean
+          setView:
+            description: |
+              If true, automatically sets the map view to the user location with respect to detection accuracy,
+              or to world view if geolocation failed.
+            type: boolean
+          maxZoom:
+            description: The maximum zoom for automatic view setting when using setView option.
+            type: integer
+            minimum: 0
+      scaleControl:
+        description: options du widget de visualisation de l'échelle
+        type: object
+        properties:
+          position:
+            description: The position of the control (one of the map corners).
+            type: string
+            enum: [topleft, topright, bottomleft, bottomright]
+          metric:
+            description: Whether to show the metric scale line (m/km).
+            type: boolean
+          imperial:
+            description: Whether to show the imperial scale line (mi/ft).
+            type: boolean
+      attributions:
+        description: |
+          dictionnaire d'attributions correspondant à un fragment HTML,
+          l'identifiant sera utilisé dans la description d'une couche.
+        additionalProperties:
+          type: string
+      bases:
+        description: dictionnaire de fonds
+        additionalProperties: { $ref: '#/definitions/layer' }
+      overlays:
+        description: dictionnaire de calques
+        additionalProperties: { $ref: '#/definitions/layer' }
+      defaultLayers:
+        description: liste des couches affichées par défaut identifiées par leur clé dans chacun des 2 dictionnaires
+        type: array
+        items: { type: string }
+examples:
+  - title: carte test
+    abstract: |
+      Carte test simplifiée de la classe Map.
+      La carte de etst complète est disponible [ici](?doc=geodata/testmap).
+    $schema: http://ydclasses.georef.eu/Map
+    stylesheets:
+      - http://visu.gexplor.fr/viewer.css
+      - https://unpkg.com/leaflet@1.3/dist/leaflet.css
+    plugins:
+      - http://visu.gexplor.fr/lib/leaflet.uGeoJSON.js
+      - http://visu.gexplor.fr/lib/leaflet.edgebuffer.js
+    mapStyle: { height: 100%, width: 100%}
+    view:
+      latlon: [48, 3]
+      zoom: 8
+    locate: {setView: true, maxZoom: 16}
+    scaleControl: { position: bottomleft, metric: true, imperial: false }
+    attributions:
+      ign: "&copy; <a href='http://www.ign.fr'>IGN</a>"
+    bases:
+      whiteimg:
+        title: Fond blanc
+        type: TileLayer
+        url: http://visu.gexplor.fr/utilityserver.php/whiteimg/{z}/{x}/{y}.jpg
+        options: { format: image/jpeg, minZoom: 0, maxZoom: 21, detectRetina: true }
+      cartes:
+        title: Cartes IGN
+        type: TileLayer
+        url: http://igngp.geoapi.fr/tile.php/cartes/{z}/{x}/{y}.jpg
+        options: { format: image/jpeg, minZoom: 0, maxZoom: 18, detectRetina: true, attribution: ign }
+      orthos:
+        title: Ortho-images
+        type: TileLayer
+        url: http://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg
+        options: { format: image/jpeg, minZoom: 0, maxZoom: 20, detectRetina: true, attribution: ign }
+    overlays:
+      routes:
+        title: routes
+        type: TileLayer
+        url: http://igngp.geoapi.fr/tile.php/routes/{z}/{x}/{y}.png
+        options: { format: image/png, minZoom: 6, maxZoom: 18, detectRetina: true, attribution: ign }
+      r500-coastline:
+        title: r500-coastline
+        type: UGeoJSONLayer
+        endpoint: geodata/route500/coastline
+      r500-troncon_voie_ferree:
+        title: r500-troncon_voie_ferree
+        type: UGeoJSONLayer
+        endpoint: geodata/route500/troncon_voie_ferree
+        style:
+          color: black
+          weight: 2
+          opacity: 0.65
+    defaultLayers:
+      - cartes

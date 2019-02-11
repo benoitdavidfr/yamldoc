@@ -1,0 +1,195 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://georef.eu/yamldoc/ydclasses/FDsSpecs.schema.yaml
+title: Schema d'un FDsSpecs
+modified: 2019-02-09
+description: |
+  Une SD d'objets (FeatureDataset) est composée de collections d'objets, chacune correspondant à une FeatureCollection
+  [GeoJSON](https://tools.ietf.org/html/rfc7946) ;
+  chaque collection est composée d'objets vecteur, cad des Feature GeoJSON.  
+  
+  Un document FDsSpecs décrit la structuration des spécifications d'un FeatureDataset.
+  Il contient:
+  
+    - des métadonnées génériques
+    - un dictionnaire de collections (collectionDictionary) contenant des specifications de chaque collection.
+
+definitions:
+  W3CDTF:
+    description: spécification des formats de dates et d'heures du W3C (http://www.w3.org/TR/NOTE-datetime)
+    type: [string, number]
+    pattern: ^\d\d\d\d(-\d\d(-\d\d(T\d\d:\d\d(:\d\d(\.\d+)?)?[-+]\d\d:\d\d)?)?)?
+    examples:
+      - 1997
+      - 1997-07
+      - 1997-07-16
+      - 1997-07-16T19:20+01:00
+      - 1997-07-16T19:20:30+01:00
+      - 1997-07-16T19:20:30.45+01:00
+
+  stringOrArray:
+    description: chaine ou liste de chaines
+    oneOf:
+      - type: string
+      - { type: array, items: { type: string } }
+  
+  fcDictionary:
+    description: dictionnaire de collections d'objets évent. organisées hiérarchiquement par thèmes, sous-thèmes, ...
+    type: object
+    additionalProperties: # la clé est soit l'identifiant de la collection d'objets soit celui du thème, sous-thème, ...
+      oneOf:
+        - description: définition d'une collection d'objets indexée par son id
+          type: object
+          required: [title]
+          properties:
+            title:
+              description: titre de la collection pour un humain dans le contexte de la série de données
+              type: string
+            abstract:
+              description: résumé
+              type: string
+            source:
+              type: string
+            description:
+              type: string
+            issues:
+              type: string
+            note:
+              type: string
+            geometryType:
+              description: |
+                le type géométrique des objets de la collection défini en étendant
+                le [type GeoJSON](https://tools.ietf.org/html/rfc7946#section-3.1.1)
+                avec la possibilité de spécifier l'utilisation de 2 ou 3 coordonnées
+                plus le type None qui signifie qu'aucune géométrie n'est associée aux objets de la collection.
+              type: string
+              enum:
+                - None
+                - Point
+                - Point2D
+                - Point3D
+                - MultiPoint
+                - MultiPoint2D
+                - MultiPoint3D
+                - LineString
+                - LineString2D
+                - LineString3D
+                - MultiLineString
+                - MultiLineString2D
+                - MultiLineString3D
+                - Polygon
+                - Polygon2D
+                - Polygon3D
+                - MultiPolygon
+                - MultiPolygon2D
+                - MultiPolygon3D
+                - GeometryCollection
+            properties:
+              description: dictionnaire de certains champs des objets identifiés par leur nom
+              type: object
+              additionalProperties: # la clé est le nom du champ
+                description: description de certains champs des objets de la couche
+                type: object
+                properties:
+                  abstract:
+                    description: résumé du champ
+                    type: string
+                  description:
+                    description: commentaire sur le champ
+                    type: string
+                  enum:
+                    description: liste des valeurs autorisées pour le champ
+                    oneOf:
+                      - description: liste décrite comme dictionnaire ayant pour clé la valeur autorisée
+                        type: object
+                        additionalProperties: # la clé est la valeur autorisée
+                          description: description de la valeur autorisée
+                          type: object
+                          properties:
+                            description:
+                              description: commentaire sur la valeur
+                              type: string 
+                      - description: liste décrite comme liste de valeurs ne nécessitant pas de commmentaire
+                        type: array
+                        items:
+                          type: string
+                      - description: liste définie par une clé dans le dictionnaire des codelists
+                        type: string
+            editorialNote:
+              type: string
+            minZoom:
+              description: zoom minimum d'affichage de la couche
+              type: integer
+            maxZoom:
+              description: zoom maximum d'affichage de la couche
+              type: integer
+        - description: organisation hiérarchique par thèmes, sous-thèmes, ... avec un nbre qqc de niveaux
+          $ref: '#/definitions/fcDictionary'
+        
+type: object
+required: [title, $schema, featureCollections]
+properties:
+  title:
+    type: string
+  abstract:
+    type: string
+  source:
+    type: string
+  creator:
+    $ref: '#/definitions/stringOrArray'
+  identifier:
+    type: string
+  issued:
+    description: La date de parution formelle (par exemple, la publication) de la ressource.
+    $ref: '#/definitions/W3CDTF'
+  modified:
+    description: Date de modification de la ressource.
+    $ref: '#/definitions/W3CDTF'
+  coverage:
+    type: string
+  $schema:
+    type: string
+    const: http://ydclasses.georef.eu/FDsSpecs
+  precision:
+    description: nombre de décimales pour les coordonnées géographiques à conserver dans le chargement
+    type: integer
+  minZoom:
+    description: zoom minimum d'affichage de la série
+    type: integer
+  maxZoom:
+    description: zoom maximum d'affichage de la série
+    type: integer
+  codeLists:
+    description: dictionnaire des listes de codes, chacune identifiée par son id
+    type: object
+    additionalProperties: # la clé est l'identifiant de la codelist
+      description: chaque codelist
+      type: object
+      required: [title, items]
+      properties:
+        title:
+          description: titre de la liste de codes
+          type: string
+        description:
+          type: string
+        codeLength:
+          description: taille des codes
+          type: integer
+          minimum: 1
+        items:
+          description: dictionnaire valeurs possibles identifiés par leur code
+          type: object
+          additionalProperties: # la clé est le code
+            description: description de chaque code de la codelist
+            type: object
+            required: [label]
+            properties:
+              label:
+                description: étiquette associée à ce code
+                type: string
+              definition:
+                description: définition de ce code
+                type: string
+    
+  featureCollections:
+    description: dictionnaire de collections d'objets évent. organisées hiérarchiquement par thèmes, sous-thèmes, ...
+    $ref: '#/definitions/fcDictionary'

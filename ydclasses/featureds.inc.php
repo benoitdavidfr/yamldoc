@@ -105,86 +105,8 @@ doc: |
     6. {docid}/map/display : renvoie le code HTML d'affichage de la carte standard affichant la SD
       ([exemple d'affichage de la carte Route500](id.php/geodata/route500/map/display)),
 
-  Un document FeatureDataset est décrit par le schéma featureds.schema.yaml
-  Un document FeatureDataset contient:
-  
-    - des métadonnées génériques
-    - des infos générales par exemple permettant de charger les SHP en base
-    - la description du dictionnaire de couches (layers)
+  Un document FeatureDataset est décrit par le [schéma FeatureDataset](ydclasses.php/FeatureDataset.sch.yaml)
 
-  Une couche vecteur peut être définie de 4 manières différentes:
-  
-    1. elle correspond à une (ou plusieurs) couche(s) OGR chargée(s) dans une table MySQL ;
-      dans ce cas la couche doit comporter un champ *ogrPath* définissant le (ou les) couche(s) OGR correspondante(s),
-      le(s) couche(s) OGR est(sont) chargée(s) dans MySQL dans la table ayant pour nom l'id de la couche ;
-      la SD doit définir un champ *dbpath* qui définit le répertoire des couches OGR.
-      Le prototype est la couche id.php/geodata/route500/limite_administrative
-      
-    2. elle peut aussi correspondre à une couche exposée par un service WFS ;
-      dans ce cas la couche doit comporter un champ *typename* qui définit la couche dans le serveur WFS ;
-      la SD doit définir un champ *wfsUrl* qui définit l'URL du serveur WFS
-      et peut définir un champ referer qui sera utilisé dans l'appel WFS.
-      Le prototype est la couche id.php/geodata/bdcarto/troncon_hydrographique
-      
-      Une couche OGR ou WFS peut en outre être filtrée en fonction du zoom plus éventuellement en fonction du bbox ;
-      la couche doit alors comporter un champ *onZoomGeo* qui est un dictionnaire
-      
-          {zoomMin} : {filtre}
-          ou
-          {zoomMin} : 
-            {geoZone}: {filtre}
-          où:
-            {filtre} ::= {where} | 'all' | {select} | {layerDefinition}
-      Pour un {zoom} donné, le filtre sera le dernier pour lequel {zoom} >= {zoomMin}.  
-      {geoZone} est un des codes prédéfinis de zone géographique définis plus bas.  
-      Un {filtre} retenu sera le premier pour lequel le bbox courant intersecte la {geoZone}.
-      
-      Le filtre peut prendre les valeurs suivantes:
-        - Si {filtre} == 'all' alors aucune sélection n'est effectuée.
-        - {where} est un critère SQL ou CQL, ex "nature in ('Limite côtière','Frontière internationale')",
-        - {select} est une sélection dans une autre couche de la SD de la forme "{lyrname} / {where}"
-        - {layerDefinition} est le chemin de définition d'une couche dans une autre SD commencant /,
-          ex /geodata/ne_10m/admin_0_boundary_lines_land.
-      Le prototype est la couche id.php/geodata/route500/limite_administrative
-    
-    3. elle peut être définie par une sélection dans une des couches précédentes définie dans la même SD ;  
-      dans ce cas la couche comporte un champ *select* de la forme "{lyrname} / {where}"
-      qui définit une sélection dans la couche {lyrname} définie dans la même SD ;  
-      Le prototype est la couche id.php/geodata/route500/coastline
-    
-    4. elle peut enfin être définie en fonction du zoom d'affichage et de la zone géographique
-      par une des couches précédentes définie dans la même SD ou dans une autre ;  
-      dans ce cas la couche comporte un champ *onZoomGeo* défini comme précédemment
-      en limitant les filtres possibles à {select} | {layerDefinition}  
-      Le prototype est la couche id.php/geodata/mscale/coastline
-  
-  En outre, une couche:
-  
-    - doit comporter un champ title qui fournit le titre de la couche pour un humain dans le contexte du document,
-    - peut comporter les champs:
-      - *abstract* qui fournit un résumé,
-      - *style* qui définit, soit en JSON soit en JavaScript le style Leaflet de la couche linéaire ou surfacique,
-      - *pointToLayer* qui définit, en JavaScript, le symbole à afficher pour les couches ponctuelles,
-      - *conformsTo* qui fournit la spécification de la couche,
-      - *minZoom* qui définit le zoom minimum d'affichage de la couche,
-      - *maxZoom* qui définit le zoom maximum d'affichage de la couche.
-
-  Dans un onZoomGeo {geoZone} est un des codes prédéfinis suivants de zone géographique :
-  
-    - 'FXX' pour la métropole,
-    - 'ANF' pour les Antilles françaises (Guadeloupe, Martinique, Saint-Barthélémy, Saint-Martin),
-    - 'ASP' pour les îles Saint-Paul et Amsterdam,
-    - 'CRZ' pour îles Crozet,
-    - 'GUF' pour la Guyane,
-    - 'KER' pour les îles Kerguelen,
-    - 'MYT' pour Mayotte,
-    - 'NCL' pour la Nouvelle Calédonie,
-    - 'PYF' pour la Polynésie Française,
-    - 'REU' pour la Réunion,
-    - 'SPM' pour Saint-Pierre et Miquelon,
-    - 'WLF' pour Wallis et Futuna,
-    - 'WLD' pour le monde entier
-    
 EOT;
 }
 require_once __DIR__.'/../../ogr2php/feature.inc.php';
@@ -374,19 +296,19 @@ class FeatureDataset extends YamlDoc {
         'title'=> "Cartes IGN",
         'type'=> 'TileLayer',
         'url'=> 'https://igngp.geoapi.fr/tile.php/cartes/{z}/{x}/{y}.jpg',
-        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
+        'options'=> [ 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
       ],
       'orthos'=> [
         'title'=> "Ortho-images",
         'type'=> 'TileLayer',
         'url'=> 'https://igngp.geoapi.fr/tile.php/orthos/{z}/{x}/{y}.jpg',
-        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
+        'options'=> [ 'minZoom'=> 0, 'maxZoom'=> 18, 'attribution'=> 'ign' ],
       ],
       'whiteimg'=> [
         'title'=> "Fond blanc",
         'type'=> 'TileLayer',
         'url'=> 'https://visu.gexplor.fr/utilityserver.php/whiteimg/{z}/{x}/{y}.jpg',
-        'options'=> [ 'format'=> 'image/jpeg', 'minZoom'=> 0, 'maxZoom'=> 21 ],
+        'options'=> [ 'minZoom'=> 0, 'maxZoom'=> 21 ],
       ],
     ];
     $map['defaultLayers'] = ['whiteimg'];
@@ -813,24 +735,7 @@ class FeatureDataset extends YamlDoc {
     }
     die();
   }
-  
-  function checkSchemaConformity(string $ypath): void {
-    if (!is_file(__DIR__.'/featureds.schema.yaml')) {
-      echo "Erreur fichier featureds.schema.yaml absent<br>\n";
-      return;
-    }
-    $schema = Yaml::parse(file_get_contents(__DIR__.'/featureds.schema.yaml'));
-    //echo "<pre>schema="; print_r($schema); echo "</pre>\n";
-    $schema = new JsonSchema($schema);
-    $status = $schema->check($this->_c);
-    if ($status->ok()) {
-      $status->showWarnings();
-      echo "ok doc conforme au schéma featureds.schema.yaml<br>\n";
-    }
-    else
-      $status->showErrors();
-  }
-};
+ };
 
 // la classe GeoZone permet de tester l'intersection entre un bbox et une des zones prédéfinies
 class GeoZone {
