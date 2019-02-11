@@ -34,6 +34,10 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  11/2/2019:
+    - amélioration de la validation d'un document par rapport au scéhma de la classe
+    - changement des noms des fichiers contenant le schéma JSON xx.sch.yaml
+    - définition de la classe FDsSpecs contenant les spécifications d'une série de données vecteur
   28/1/2019:
     - la validation d'un document par rapport au schéma doit s'effectuer sur le document d'origine et non celui chargé
     - la validation nécessite que l'objet existe ce qui peut être impossible lors le document d'origine est faux
