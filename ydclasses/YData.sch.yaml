@@ -5,7 +5,7 @@ modified: 2019-01-26
 description: un document YData correspond à un ensemble de tables
 allOf:
   - description: schéma YamlDoc générique
-    $ref: YamlDoc.schema.yaml 
+    $ref: YamlDoc.sch.yaml 
   - description: schéma spécifique à YData
     type: object
     required: [tables]

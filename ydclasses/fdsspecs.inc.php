@@ -30,6 +30,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 class FDsSpecs extends YamlDoc {
   protected $_c; // contient les champs du document
+  protected $flattenFc; // dictionnaire des FC mis à plat
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
   // $yaml est généralement un array mais peut aussi être du texte
@@ -40,15 +41,20 @@ class FDsSpecs extends YamlDoc {
       $this->_c[$prop] = $value;
     }
     //echo "<pre>"; print_r($this);
-    if ($this->layersByTheme) {
-      foreach ($this->layersByTheme as $themeid => $theme) {
-        //echo "$themeid<br>";
-        //echo "<pre>"; print_r($theme);
-        if ($theme) {
-          foreach ($theme as $lyrid => $layer) {
-            $this->_c['layers'][$lyrid] = $layer;
-          }
-        }
+    $this->buildFlattenFc($this->featureCollections);
+    //echo "<pre>this="; print_r($this); echo "</pre>\n";
+  }
+  
+  // construit $this->flattenFc comme dictionnaire à plat des featureCollections
+  function buildFlattenFc(array $featureCollections) {
+    foreach ($featureCollections as $fcid => $fc) {
+      if (isset($fc['title'])) {
+        if (isset($this->flattenFc[$fcid]))
+          throw new Exception("Erreur dans FDsSpecs::buildFlattenFc: $fcid définie plus d'une fois");
+        $this->flattenFc[$fcid] = &$fc;
+      }
+      else {
+        $this->buildFlattenFc($fc);
       }
     }
   }
@@ -88,22 +94,28 @@ class FDsSpecs extends YamlDoc {
     echo "<h1>",$this->title,"</h1>\n";
     $yaml = $this->_c;
     unset($yaml['title']);
-    unset($yaml['layersByTheme']);
-    unset($yaml['layers']);
+    unset($yaml['featureCollections']);
     showDoc($docid, $yaml);
-    if ($this->layersByTheme) {
-      foreach ($this->layersByTheme as $themeid => $theme) {
-        echo "<h2>",str_replace('_',' ',$themeid),"</h2>\n";
-        if ($theme)
-          foreach ($theme as $lyrid => $layer)
-            $this->showLayer($docid, $lyrid);
+    $this->showFcs($this->featureCollections);
+  }
+  
+  // affichage récursif des thèmes et collections
+  function showFcs(array $fcs) {
+    foreach ($fcs as $fcid => $fc) {
+      if (!isset($fc['title'])) {
+        echo "<h2>",str_replace('_',' ',$fcid),"</h2>\n";
+        $this->showFcs($fc);
+      }
+      else {
+        $this->showCollection($fcid);
       }
     }
-    elseif ($this->layers)
-      foreach ($this->layers as $lyrid => $layer)
-        $this->showLayer($docid, $lyrid);
-    else
-      echo "Aucune couche<br>\n";
+  }
+  
+  function showCollection(string $fcid) {
+    $docid = $this->_id;
+    $fc = $this->flattenFcs[$fcid];
+    echo "<h3><a href='?doc=$docid&ypath=/collections/$fcid'>$fc[title]</a></h3>\n";
   }
   
   function showLayer(string $docid, string $lyrid) {

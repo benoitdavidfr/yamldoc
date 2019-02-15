@@ -317,10 +317,14 @@ definitions:
           
         - description: les différents types de couche
           anyOf:
-            - $ref: '#/definitions/MySqlLayer'
-            - $ref: '#/definitions/WfsLayer'
-            - $ref: '#/definitions/SelectionInAnOtherLayer'
-            - $ref: '#/definitions/onZoomGeoLayer'
+            - description: couche stockée comme table MySQL
+              $ref: '#/definitions/MySqlLayer'
+            - description: couche exposée par un service WFS
+              $ref: '#/definitions/WfsLayer'
+            - description: couche définie par une sélection dans une des couches précédentes définie dans la même SD
+              $ref: '#/definitions/SelectionInAnOtherLayer'
+            - description: couche définie en fonction du zoom et de la zone géographique par une des couches précédentes
+              $ref: '#/definitions/onZoomGeoLayer'
    
   leafletStyle:
     description: style utilisé par Leaflet pour représenté graphiquement des objets GeoJSON d'une couche

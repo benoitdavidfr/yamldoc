@@ -199,19 +199,19 @@ class YData extends YamlDoc {
   function checkSchemaConformity(string $ypath): void {
     echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";
     if (!$ypath || ($ypath=='/')) { // validation du doc / schéma ydata.schema.yaml
-      if (!is_file(__DIR__.'/YData.schema.yaml')) {
-        echo "Erreur fichier ydata.schema.yaml absent<br>\n";
+      if (!is_file(__DIR__.'/YData.sch.yaml')) {
+        echo "Erreur fichier YData.sch.yaml absent<br>\n";
         return;
       }
-      JsonSchema::autoCheck(__DIR__.'/YData.schema.yaml', [
+      JsonSchema::autoCheck(__DIR__.'/YData.sch.yaml', [
         'showWarnings'=> "ok schéma conforme au méta-schéma<br>\n",
         'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
         //'verbose'=> true,
       ]);
-      $schema = new JsonSchema(__DIR__.'/YData.schema.yaml');
+      $schema = new JsonSchema(__DIR__.'/YData.sch.yaml');
       $schema->check($this->_c, [
-        'showWarnings'=> "ok doc conforme au schéma ydata.schema.yaml<br>\n",
-        'showErrors'=> "KO doc NON conforme au schéma ydata.schema.yaml<br>\n",
+        'showWarnings'=> "ok doc conforme au schéma YData<br>\n",
+        'showErrors'=> "KO doc NON conforme au schéma YData<br>\n",
       ]);
       foreach ($this->tables as $tableId => $table) {
         if (!isset($table['dataSchema']) || !isset($table['data'])) {
