@@ -17,6 +17,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
     
 journal:
+  15/2/2019:
+  - dans showString() une URL vers http://id.georef.eu/{id} est renvoyée vers id.php/{id}
   5/2/2019:
   - chgt de spec - un php renvoie un array Php au lieu d'un objet YamlDoc
   25/1/2019:
@@ -332,10 +334,14 @@ function str2html(string $str): string { return str_replace(['&','<','>'],['&amp
 // Je considère qu'une String est une chaine ne contenant pas de \n intermédiaire, sinon c'est un texte
 function showString(string $docid, $str) {
   // une URL est replacée par une référence avec l'URL comme label
+  // Une URL commenancant par http://id.georef.eu/ est replacée par un lien vers id.php
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
     $href = $matches[1];
     $after = substr($str, strlen($matches[0]));
-    echo "<a href='$href' target=_blank>$href</a>$after\n";
+    if (preg_match('!^http://id.georef.eu/(.*)!', $href, $matches))
+      echo "<a href='id.php/$matches[1]'>$href</a>$after\n";
+    else
+      echo "<a href='$href' target=_blank>$href</a>$after\n";
   }
   // un motif [{label}]({href}) est remplacé par un lien avec le label
   elseif (is_string($str) && preg_match('!\[([^\]]*)\]\(([^)]+)\)!', $str, $matches)) {

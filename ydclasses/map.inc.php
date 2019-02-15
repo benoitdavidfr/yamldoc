@@ -11,6 +11,8 @@ name: map.inc.php
 title: map.inc.php - sous-classe de documents pour l'affichage d'une carte Leaflet
 doc: |  
 journal:
+  15/2/2019:
+    - ajout du code pour le plug-in https://visu.gexplor.fr/lib/control.coordinates.js
   22/1/2019:
     - passage des UGeoJSONLayer en https
   20/8/2018:
@@ -207,6 +209,11 @@ class Map extends YamlDoc {
         echo "map.addLayer(overlays[\"",$this->overlays[$lyrid]->title,"\"]);\n";
     // ajout de l'outil de sélection de couche
     echo "L.control.layers(bases, overlays).addTo(map);\n";
+    if (in_array('https://visu.gexplor.fr/lib/control.coordinates.js', $this->plugins)) {
+      echo "var c = new L.Control.Coordinates();\n";
+      echo "c.addTo(map);\n";
+      echo "map.on('click', function(e) { c.setCoordinates(e); });\n";
+    }
     echo "  </script>\n</body></html>\n";
     die();
   }

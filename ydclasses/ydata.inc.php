@@ -35,7 +35,7 @@ $phpDocs['ydata.inc.php']['classes']['YData'] = <<<"EOT"
 name: class YData
 title: gestion des données structurées en tables
 doc: |
-  Un document YData correspond à un ensemble tables, chacune composée d'un ensemble de lignes appelées n-uplets,
+  Un document YData correspond à un ensemble de tables, chacune composée d'un ensemble de lignes appelées n-uplets,
   qui doivent tous respecter un schéma JSON commun défini pour la table.  
   Chaque n-uplet est identifié par un champ particulier noté _id comme dans MongoDB.  
   Cette structuration homogène des n-uplets permet de leur appliquer des traitements,
@@ -337,7 +337,7 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
     elseif (isset($data[$field]))
       $data2 = $data[$field];
     else {
-      echo "field $field non valide ligne ",__LINE__,"<br>\n";
+      //echo "field $field non valide dans ",__FILE__," ligne ",__LINE__,"<br>\n";
       return null;
     }
     if (!$ypath2)
