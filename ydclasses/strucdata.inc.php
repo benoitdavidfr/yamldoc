@@ -22,7 +22,7 @@ use Symfony\Component\Yaml\Yaml;
 $phpDocs['strucdata.inc.php']['classes']['StrucData'] = <<<'EOT'
 title: données structurées selon un schema
 doc: |
-Document contenant son schéma dans le champ schéma
+  Document contenant son schéma dans le champ schéma
 EOT;
 }
 
