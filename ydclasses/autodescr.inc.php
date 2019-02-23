@@ -1,16 +1,20 @@
 <?php
 /*PhpDoc:
-name: strucdata.inc.php
-title: strucdata.inc.php - sous-classe de documents pour des données structurées selon un schema
+name: autodescr.inc.php
+title: autodescr.inc.php - sous-classe de documents pour des données structurées selon un schema
 functions:
-doc: <a href='/yamldoc/?action=version&name=strucdata.inc.php'>doc intégrée en Php</a>
+doc: <a href='/yamldoc/?action=version&name=autodescr.inc.php'>doc intégrée en Php</a>
 */
 { //doc 
-$phpDocs['strucdata.inc.php']['file'] = <<<'EOT'
-name: strucdata.inc.php
-title: strucdata.inc.php - sous-classe de documents pour des données structurées selon un schema
+$phpDocs['autodescr.inc.php']['file'] = <<<'EOT'
+name: autodescr.inc.php
+title: autodescr.inc.php - documents contenant sa structure dans le champ $schema sous la forme d'un schema JSON
 doc: |  
 journal:
+  23/2/2019:
+    - changement de nom
+    - utilisation du champ $schema
+    - détection dans new_doc
   18/2/2019:
     - création
 EOT;
@@ -19,14 +23,14 @@ EOT;
 use Symfony\Component\Yaml\Yaml;
 
 { // doc
-$phpDocs['strucdata.inc.php']['classes']['StrucData'] = <<<'EOT'
+$phpDocs['autodescr.inc.php']['classes']['StrucData'] = <<<'EOT'
 title: données structurées selon un schema
 doc: |
-  Document contenant son schéma dans le champ schéma
+  Document auto-décrit par un schéma JSON défini dans le champ schema
 EOT;
 }
 
-class StrucData extends YamlDoc {
+class AutoDescribed extends YamlDoc {
   protected $_c; // contient les champs
   
   // crée un nouveau doc, $yaml est le contenu Yaml externe issu de l'analyseur Yaml
@@ -90,18 +94,18 @@ class StrucData extends YamlDoc {
   }
   
   function checkSchemaConformity(string $ypath): void {
-    echo "StrucData::checkSchemaConformity(ypath=$ypath)<br>\n";
-    if (!$this->schema) {
+    echo "AutoDescribed::checkSchemaConformity(ypath=$ypath)<br>\n";
+    if (!($schema = isset($this->_c['$schema']) ? $this->_c['$schema'] : null)) {
       echo "Erreur: schema absent<br>\n";
       return;
     }
     $metaschema = new JsonSchema('http://json-schema.org/draft-07/schema#');
-    $metaschema->check($this->schema, [
+    $metaschema->check($schema, [
       'showWarnings'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "<b>KO schéma NON conforme au méta-schéma</b><br>\n",
     ]);
 
-    $schema = new JsonSchema($this->schema);
+    $schema = new JsonSchema($schema);
     $schema->check($this->_c, [
       'showWarnings'=> "ok doc conforme au schéma du document<br>\n",
       'showErrors'=> "<b>KO doc NON conforme au schéma du document</b><br>\n",

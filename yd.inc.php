@@ -17,6 +17,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
     
 journal:
+  23/2/2019:
+  - le schéma d'un doc auto-structuré est défini dans le champ $schema
   15/2/2019:
   - dans showString() une URL vers http://id.georef.eu/{id} est renvoyée vers id.php/{id}
   5/2/2019:
@@ -531,25 +533,24 @@ function new_doc(string $docid): ?Doc {
     }
   }
   // si le doc correspond à un texte alors création d'un BasicYamlDoc avec le texte
-  if (!is_array($data)) {
+  if (!is_array($data))
     $doc = new BasicYamlDoc($text, $docid);
-  }
+  // Sinon détermine sa classe en fonction du champ $schema
+  elseif (!isset($data['$schema'])) // si pas de $schema c'est un YamlDoc de base
+    $doc = new BasicYamlDoc($data, $docid);
+  elseif (is_array($data['$schema'])) // document auto-décrit
+    $doc = new AutoDescribed($data, $docid);
+  elseif ($data['$schema']=='http://json-schema.org/draft-07/schema#') // schema JSON
+    $doc = new YdJsonSchema($data, $docid);
   else {
-    // Sinon détermine sa classe en fonction du champ schema
-    $yamlClass = (isset($data['$schema'])
-          && (substr($data['$schema'], 0, strlen(YamlDoc::SCHEMAURIPREFIX)) == YamlDoc::SCHEMAURIPREFIX)) ?
+    $yamlClass = (is_string($data['$schema']) &&
+        (substr($data['$schema'], 0, strlen(YamlDoc::SCHEMAURIPREFIX)) == YamlDoc::SCHEMAURIPREFIX)) ?
               substr($data['$schema'], strlen(YamlDoc::SCHEMAURIPREFIX)) : null;
-    if (isset($data['$schema']) && ($data['$schema']=='http://json-schema.org/draft-07/schema#')) {
-      $doc = new YdJsonSchema($data, $docid);
-    }
-    elseif (!$yamlClass) { // si pas de YamlClass c'est un YamlDoc de base
-      $doc = new BasicYamlDoc($data, $docid);
-    }
-    elseif (class_exists($yamlClass)) {
+    if ($yamlClass && class_exists($yamlClass))
       $doc = new $yamlClass ($data, $docid);
-    }
     else {
-      echo "<b>Erreur: la classe $yamlClass n'est pas définie</b><br>\n";
+      $schema = $data['$schema'];
+      echo "<b>Erreur: le schema $schema n'est pas défini</b><br>\n";
       $doc = new BasicYamlDoc($data, $docid);
     }
   }
