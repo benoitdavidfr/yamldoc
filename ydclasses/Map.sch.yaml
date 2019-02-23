@@ -75,7 +75,7 @@ definitions:
 allOf:
   - description: schéma YamlDoc générique
     # true
-    $ref: YamlDoc.schema.yaml
+    $ref: YamlDoc.sch.yaml
     
   - description: schéma spécifique à Map
     type: object

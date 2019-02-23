@@ -255,6 +255,16 @@ class LeafletTileLayer extends LeafletLayer {
   }
 };
 
+// classe pour couche L.TileLayer.WMS
+class LeafletTileLayerWMS extends LeafletLayer {
+  function showAsCode(string $name): void {
+    echo "  \"$this->title\" : new L.TileLayer.WMS(\n";
+    echo "    '$this->url',\n";
+    echo '    ',json_encode($this->options, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
+    echo "  ),\n";
+  }
+};
+
 // classe pour couche L.UGeoJSONLayer
 class LeafletUGeoJSONLayer extends LeafletLayer {
   function showAsCode(string $lyrid): void {
