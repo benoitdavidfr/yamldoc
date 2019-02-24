@@ -46,7 +46,7 @@ class AutoDescribed extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "StrucData::show($docid, $ypath)<br>\n";
+    //echo "AutoDescribed::show($docid, $ypath)<br>\n";
     if (!$ypath || ($ypath=='/'))
       showDoc($docid, $this->_c);
     else

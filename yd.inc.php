@@ -15,8 +15,11 @@ doc: |
   Typiquement un document peut créer des objets à la place de certains arrays pour simplifier la définition
   des traitements.
   Le format interne peut être stocké dans les fichiers .pser
-    
+  Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  24/2/2019:
+  - la définition d'une classe YamlDoc se fait en affectant au champ $schema une chaine respectant le motif
+    YamlDoc::SCHEMAURIPATTERN
   23/2/2019:
   - le schéma d'un doc auto-structuré est défini dans le champ $schema
   15/2/2019:
@@ -543,9 +546,9 @@ function new_doc(string $docid): ?Doc {
   elseif ($data['$schema']=='http://json-schema.org/draft-07/schema#') // schema JSON
     $doc = new YdJsonSchema($data, $docid);
   else {
-    $yamlClass = (is_string($data['$schema']) &&
-        (substr($data['$schema'], 0, strlen(YamlDoc::SCHEMAURIPREFIX)) == YamlDoc::SCHEMAURIPREFIX)) ?
-              substr($data['$schema'], strlen(YamlDoc::SCHEMAURIPREFIX)) : null;
+    $yamlClass =
+      (is_string($data['$schema']) && preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema'], $matches)) ?
+              $matches[1] : null;
     if ($yamlClass && class_exists($yamlClass))
       $doc = new $yamlClass ($data, $docid);
     else {

@@ -82,7 +82,7 @@ doc: |
 EOT;
 }
 abstract class YamlDoc extends Doc {
-  const SCHEMAURIPREFIX = 'http://ydclasses.georef.eu/';
+  const SCHEMAURIPATTERN = '!^http://ydclasses.georef.eu/([a-zA-Z]+)/schema$!'; // motif $schema pour déduire classe
   
   // Les méthodes abstraites
 
