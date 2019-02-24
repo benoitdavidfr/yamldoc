@@ -1,5 +1,5 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: http://georef.eu/yamldoc/ydclasses/FDsSpecs.schema.yaml
+$id: http://ydclasses.georef.eu/FDsSpecs/schema
 title: Schema d'un FDsSpecs
 modified: 2019-02-09
 description: |

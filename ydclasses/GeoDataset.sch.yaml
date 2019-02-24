@@ -1,6 +1,6 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: http://yamldoc.georef.eu/ydclasses/GeoDataset.schema.yaml
-title: Définition du schema JSON d'une séride données Inspire
+$id: http://ydclasses.georef.eu/GeoDataset/schema
+title: Définition du schema JSON d'une série de données Inspire
 description: reprend le schéma Inspire en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
 modified: 2019-02-04
 allOf:

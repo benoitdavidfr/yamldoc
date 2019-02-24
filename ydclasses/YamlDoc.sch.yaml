@@ -1,5 +1,5 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: http://yamldoc.georef.eu/ydclasses/yamldoc.sch.yaml
+$id: http://ydclasses.georef.eu/YamlDoc/schema
 title: Définition du schema JSON d'un YamlDoc générique
 description: reprend le schéma Dublin Core en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
 modified: 2019-01-26

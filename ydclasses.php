@@ -12,15 +12,15 @@ doc: |
     - comme doc HTML une documentation de la classe
     - sinon la description de l'API REST en OAI Yaml
   Les URL suivantes sont déduites de l'URI d'une classe:
-    - http://ydclasses.georef.eu/{yamlClass}.schema.json fournit le schéma de la classe en JSON
-    - http://ydclasses.georef.eu/{yamlClass}.schema.yaml fournit le schéma de la classe en Yaml
+    - http://ydclasses.georef.eu/{yamlClass}/schema fournit le schéma de la classe en JSON
+    - http://ydclasses.georef.eu/{yamlClass}/schema.yaml fournit le schéma de la classe en Yaml
     - http://ydclasses.georef.eu/{yamlClass}/api décrit l'API REST de la classe en OAI et en Yaml
 
   Exemples:
     http://ydclasses.georef.eu/YData
     http://localhost/yamldoc/ydclasses.php/YData
-    http://localhost/yamldoc/ydclasses.php/YData.schema.yaml
-    http://localhost/yamldoc/ydclasses.php/YData.schema.json
+    http://localhost/yamldoc/ydclasses.php/YData/schema.yaml
+    http://localhost/yamldoc/ydclasses.php/YData/schema
   
   A FAIRE:
     - mettre en oeuvre une version machine to machine
@@ -135,6 +135,20 @@ if (!$path || ($path == '/')) {
   die();
 }
 
+// retourne le nom du schema associé à la classe
+function schemaOfClass(string $className): ?string {
+  $class_parents = @class_parents($className, false);
+  //echo "classes parentes: (",implode(', ', $class_parents),")<br>\n";
+  $schemaClass = null;
+  if (is_file(__DIR__."/ydclasses/$className.sch.yaml"))
+    return $className;
+  else
+    foreach ($class_parents as $class_parent)
+      if (is_file(__DIR__."/ydclasses/$class_parent.sch.yaml"))
+        return $class_parent;
+  return null;
+}
+
 // cas /{yamlClass} - description de la classe
 if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
   $className = $matches[1];
@@ -150,16 +164,7 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
     die("Erreur : classe $className non trouvée<br>\n");
   echo "<h2>$className - $classDoc[title]</h2>\n";
   
-  $class_parents = @class_parents("$className", false);
-  echo "classes parentes: (",implode(', ', $class_parents),")<br>\n";
-  $schemaClass = null;
-  if (is_file(__DIR__."/ydclasses/$className.sch.yaml"))
-    $schemaClass = $className;
-  else
-    foreach ($class_parents as $class_parent)
-      if (is_file(__DIR__."/ydclasses/$class_parent.sch.yaml"))
-        $schemaClass = $class_parent;
-  if (!$schemaClass)
+  if (!($schemaClass = schemaOfClass($className)))
     echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
     $href = "$_SERVER[SCRIPT_NAME]/$schemaClass.sch";
@@ -175,30 +180,28 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
   die();
 }
 
-// cas /{yamlClass}.schema.yaml - affichage du schéma JSON en Yaml
-if (preg_match('!^/([^/\.]+)\.sch\.yaml$!', $path, $matches)) {
+// cas /{yamlClass}/schema - affichage du schéma JSON en JSON
+if (preg_match('!^/([^/]+)/schema$!', $path, $matches)) {
   $className = $matches[1];
-  if (!is_file(__DIR__."/ydclasses/$className.sch.yaml")) {
-    echo "pas de fichier $className.sch.yaml<br>\n";
-  }
+  if (!($schemaClass = schemaOfClass($className)))
+    echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
-    header('Content-type: text/plain');
-    readfile(__DIR__."/ydclasses/$className.sch.yaml");
+    header('Content-type: application/json');
+    $text = file_get_contents(__DIR__."/ydclasses/$schemaClass.sch.yaml");
+    $php = Yaml::parse($text, Yaml::PARSE_DATETIME);
+    echo json_encode($php, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
   }
   die();
 }
 
-// cas /{yamlClass}.schema.json - affichage du schéma JSON en JSON
-if (preg_match('!^/([^/\.]+)\.schema\.json$!', $path, $matches)) {
+// cas /{yamlClass}/schema.yaml - affichage du schéma JSON en Yaml
+if (preg_match('!^/([^/]+)/schema\.yaml$!', $path, $matches)) {
   $className = $matches[1];
-  if (!is_file(__DIR__."/ydclasses/$className.schema.yaml")) {
-    echo "pas de fichier $className.schema.yaml<br>\n";
-  }
+  if (!($schemaClass = schemaOfClass($className)))
+    echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
-    header('Content-type: application/json');
-    $text = file_get_contents(__DIR__."/ydclasses/$className.schema.yaml");
-    $php = Yaml::parse($text, Yaml::PARSE_DATETIME);
-    echo json_encode($php, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
+    header('Content-type: text/plain');
+    readfile(__DIR__."/ydclasses/$schemaClass.sch.yaml");
   }
   die();
 }

@@ -1,5 +1,5 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: http://ydclasses.georef.eu/Map
+$id: http://ydclasses.georef.eu/Map/schema
 title: Schema d'une Map
 modified: 2019-02-09
 description: un document Map décrit le contenu d'une carte qui peut être affichée comme carte Leaflet
