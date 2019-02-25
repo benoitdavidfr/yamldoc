@@ -17,6 +17,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
   Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  25/2/2019:
+  - amélioration de la récriture des URL dans showText() et showString()
   24/2/2019:
   - la définition d'une classe YamlDoc se fait en affectant au champ $schema une chaine respectant le motif
     YamlDoc::SCHEMAURIPATTERN
@@ -336,17 +338,34 @@ if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de 
 
 function str2html(string $str): string { return str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $str); }
 
+// indique si une URL est interne à YamlDoc ou non
+function internalUrl(string $url): bool {
+  return (preg_match('!^http://(id|docs|ydclasses).georef.eu/!', $url));
+}
+
+// si on est en local alors réécrit l'URL pour y rester
+function urlrewrite(string $url): string {
+  //echo '<pre>$_SERVER='; print_r($_SERVER);
+  if (!in_array($_SERVER['HTTP_HOST'], ['localhost','127.0.0.1']))
+    return $url;
+  foreach ([
+    'http://id.georef.eu/' => 'http://localhost/yamldoc/id.php/',
+    'http://docs.georef.eu/' => 'http://127.0.0.1/yamldoc/id.php/',
+    'http://ydclasses.georef.eu/' => 'http://localhost/yamldoc/ydclasses.php/',
+  ] as $src => $dest) {
+    if (strncmp($url, $src, strlen($src))==0)
+      return $dest.substr($url, strlen($src));
+  }
+  return $url;
+}
+
 // Je considère qu'une String est une chaine ne contenant pas de \n intermédiaire, sinon c'est un texte
 function showString(string $docid, $str) {
-  // une URL est replacée par une référence avec l'URL comme label
-  // Une URL commenancant par http://id.georef.eu/ est replacée par un lien vers id.php
+  // une URL est remplacée par une référence avec l'URL comme label
   if (is_string($str) && preg_match('!^(https?://[^ ]*)!', $str, $matches)) {
-    $href = $matches[1];
+    $url = $matches[1];
     $after = substr($str, strlen($matches[0]));
-    if (preg_match('!^http://id.georef.eu/(.*)!', $href, $matches))
-      echo "<a href='id.php/$matches[1]'>$href</a>$after\n";
-    else
-      echo "<a href='$href' target=_blank>$href</a>$after\n";
+    echo "<a href='",urlrewrite($url),"'",internalUrl($url) ? '' : ' target=_blank',">$url</a>$after\n";
   }
   // un motif [{label}]({href}) est remplacé par un lien avec le label
   elseif (is_string($str) && preg_match('!\[([^\]]*)\]\(([^)]+)\)!', $str, $matches)) {
@@ -357,7 +376,7 @@ function showString(string $docid, $str) {
       // cas d'un lien interne au doc
       $ypath = substr($href, strlen('?ypath='));
       //echo "<br>ypath=$ypath<br>\n";
-      $href = "?doc=$docid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&lang=$_GET[lang]": '');
+      $href = "?doc=$docid&amp;ypath=".urlencode($ypath).(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '');
       //$str = str_replace($matches[0], "<a href='$href'>$label</a>", $str);
       $link = "<a href='$href'>$label</a>";
     }
@@ -372,11 +391,38 @@ function showString(string $docid, $str) {
     echo str2html($before),$link,str2html($after);
   }
   // cas à traiter pour une liste de dates, dans par exemple le lexique topographique
-  elseif (is_object($str) && (get_class($str)=='DateTime')) {
+  elseif (is_object($str) && (get_class($str)=='DateTime'))
     echo $str->format('Y-m-d H:i:s');
-  }
   else
     echo str2html("$str\n");
+}
+
+function showText(string $docid, $text) {
+  // représentation brute des textes avec \n
+  if (preg_match('!^Content-Type: text/plain[\r\n]+!', $text, $matches)) {
+    $text = substr($text, strlen($matches[0]));
+    echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $text),"</pre>\n";
+  }
+  elseif (preg_match('!^<html>[\r\n]+!', $text, $matches)) {
+    echo substr($text, strlen($matches[0]));
+  }
+  else {
+    // les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
+    // et éventuellement la langue
+    $pattern = '!\(\?(ypath=([^)]*))\)!';
+    while (preg_match($pattern, $text, $matches)) {
+      $ypath = $matches[2];
+      $replacement = "(?doc=$docid&amp;ypath=$ypath".(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '').")";
+      $text = preg_replace($pattern, $replacement, $text, 1);
+    }
+    if (in_array($_SERVER['HTTP_HOST'], ['localhost','127.0.0.1'])) {
+      $pattern = '!\((http://(id|docs|ydclasses).georef.eu/[^)]*)\)!';
+      while (preg_match($pattern, $text, $matches)) {
+        $text = preg_replace($pattern, '('.urlrewrite($matches[1]).')', $text, 1);
+      }
+    }
+    echo MarkdownExtra::defaultTransform($text);
+  }
 }
 
 // affichage d'une liste d'atomes, ou list(list) ... comme <ul><li>
@@ -389,6 +435,8 @@ function showListOfAtoms(string $docid, array $list, string $prefix, int $level=
     echo "<li>";
     if (is_array($elt))
       showListOfAtoms($docid, $elt, "$prefix/$i", $level+1);
+    elseif (is_text($elt))
+      showText($docid, $elt);
     else
       showString($docid, $elt);
   }
@@ -457,29 +505,8 @@ function showDoc(string $docid, $data, string $prefix=''): void {
   elseif (is_null($data))
     echo 'null';
   // un texte derrière un > sera représenté comme chaine et pas comme texte 
-  elseif (is_text($data)) {
-    //echo "pos=",strpos($data, "\n"),"<br>\n";
-    //echo "len=",strlen($data),"<br>\n";
-    // représentation brute des textes avec \n
-    if (preg_match('!^Content-Type: text/plain[\r\n]+!', $data, $matches)) {
-      $data = substr($data, strlen($matches[0]));
-      echo "<pre>",str_replace(['&','<','>'],['&amp;','&lt;','&gt;'], $data),"</pre>\n";
-    }
-    elseif (preg_match('!^<html>[\r\n]+!', $data, $matches)) {
-      echo substr($data, strlen($matches[0]));
-    }
-    else {
-      // les liens Markdown internes au document sont remplacés par un lien indiquant le document courant
-      // et éventuellement la langue
-      $pattern = '!\(\?(ypath=([^)]*))\)!';
-      while (preg_match($pattern, $data, $matches)) {
-        $ypath = $matches[2];
-        $replacement = "(?doc=$docid&amp;ypath=$ypath".(isset($_GET['lang']) ? "&amp;lang=$_GET[lang]": '').")";
-        $data = preg_replace($pattern, $replacement, $data, 1);
-      }
-      echo MarkdownExtra::defaultTransform($data);
-    }
-  }
+  elseif (is_text($data))
+    showText($docid, $data);
   else
     showString($docid, $data);
 }

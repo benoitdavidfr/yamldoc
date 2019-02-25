@@ -4,7 +4,7 @@ title: Définition du schema JSON d'un YamlDoc générique
 description: reprend le schéma Dublin Core en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
 modified: 2019-01-26
 allOf:
-  - $ref: ../pub/dublincore.schema.yaml
+  - $ref: http://id.georef.eu/dublincore.schema
   - description: propriétés supplémentaires par rapport à un doc DublinCore
     type: object
     properties:
@@ -18,9 +18,11 @@ allOf:
       authorizedWriters:
         description: liste des utilisateurs YamlDoc autorisés à modifier le document
         type: array
+        items: {type: string}
       authWr:
         description: liste des utilisateurs YamlDoc autorisés à modifier le document, synonyme de authorizedWriters
         type: array
+        items: {type: string}
       authorizedReaders:
         description: liste des utilisateurs YamlDoc autorisés à lire le document
         type: array
@@ -32,4 +34,5 @@ allOf:
       
 examples:
   - title: un exemple simple monolingue
-    $schema: http://ydclasses.georef.eu/YData
+    $schema: http://ydclasses.georef.eu/YData/schema
+    authorizedReaders: [benoit]
