@@ -474,7 +474,7 @@ abstract class YamlDoc extends Doc {
   }
 };
 
-{
+{ // doc 
 $phpDocs['yamldoc.inc.php']['classes']['YamlDocElement'] = <<<'EOT'
 title: Declaration de l'interface 'YamlDocElement'
 doc: |

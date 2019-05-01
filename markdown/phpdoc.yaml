@@ -1,0 +1,4 @@
+path: /yamldoc/markdown
+title: bibliothèque 'PHP Markdown Lib'
+submodules:
+  - /yamldoc/markdown/PHPMarkdownLib1.8.0

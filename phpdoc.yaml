@@ -102,6 +102,7 @@ journal: |
   - première version
 submodules:
   - /yamldoc/docinspire
+  - /yamldoc/markdown
   - /yamldoc/ydclasses
 sqlFiles:
   - /yamldoc/yamldoc.sql

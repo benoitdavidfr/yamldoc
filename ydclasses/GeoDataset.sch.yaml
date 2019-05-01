@@ -1,10 +1,11 @@
+title: Définition du schema JSON d'une série de données Inspire
 $schema: http://json-schema.org/draft-07/schema#
 $id: http://ydclasses.georef.eu/GeoDataset/schema
-title: Définition du schema JSON d'une série de données Inspire
 description: reprend le schéma Inspire en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
 modified: 2019-02-04
 allOf:
-  - $ref: ../pub/inspire/schema.yaml
+  - description: schéma des MD Inspire
+    $ref: http://id.georef.eu/inspire/schema
   - description: propriétés supplémentaires par rapport à un doc Inspire
     type: object
     properties:

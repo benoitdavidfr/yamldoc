@@ -31,6 +31,7 @@ journal: |
     - ajout log
   25/7/2018:
     première version minimum
+includes: [ store.inc.php, yd.inc.php, ydclasses/inc.php ]
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/store.inc.php';

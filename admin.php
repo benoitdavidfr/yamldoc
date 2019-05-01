@@ -13,6 +13,7 @@ journal: |
     ajout consultation des protections
   12/5/2018:
     refonte
+includes: [ store.inc.php, yd.inc.php, ydclasses/inc.php ]
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/store.inc.php';

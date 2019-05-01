@@ -4,6 +4,7 @@ name: featureviewer.inc.php
 title: featureviewer.inc.php - Dessinateur d'objets
 functions:
 doc: <a href='/yamldoc/?action=version&name=featureviewer.inc.php'>doc intégrée en Php</a>
+includes: [ ../inc.php ]
 */
 { // doc 
 $phpDocs['featureviewer.inc.php']['file'] = <<<'EOT'

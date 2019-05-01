@@ -4,6 +4,7 @@ name: tileserver.inc.php
 title: tileserver.inc.php - serveur de tuiles
 functions:
 doc: <a href='/yamldoc/?action=version&name=tileserver.inc.php'>doc intégrée en Php</a>
+includes: [ inc.php ]
 */
 { // doc 
 $phpDocs['tileserver.inc.php']['file'] = <<<'EOT'

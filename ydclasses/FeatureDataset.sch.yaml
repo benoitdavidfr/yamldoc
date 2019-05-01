@@ -374,7 +374,7 @@ properties:
     type: string
   $schema:
     type: string
-    const: http://ydclasses.georef.eu/FeatureDataset
+    const: http://ydclasses.georef.eu/FeatureDataset/schema
   wfsUrl:
     description: URL du service WFS exposant la couche
     type: string

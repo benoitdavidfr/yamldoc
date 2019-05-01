@@ -8,6 +8,7 @@ journal: |
     remplacement du champ definition des attributs par label
   7/7/2018:
     création
+includes: [ ../../vendor/autoload.php, readcache.inc.php ]
 */
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);

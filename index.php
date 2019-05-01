@@ -4,6 +4,7 @@ name: index.php
 title: index.php - version 2 du visualiseur de documents Yaml
 doc: |
   <a href='/yamldoc/?action=version&name=index.php'>voir le code</a>
+includes: [ search.inc.php, store.inc.php, yd.inc.php, ydclasses/inc.php, git.inc.php ]
 */
 { // doc 
 $phpDocs['index.php'] = <<<'EOT'

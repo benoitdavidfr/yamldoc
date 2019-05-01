@@ -32,7 +32,8 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 { // doc 
-$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geodata/igngpwfs';
+$prototype = (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST']=='localhost') ? '' : 'http://georef.eu')
+  .'/yamldoc/?doc=geodata/igngpwfs';
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJson'] = <<<EOT
 name: class WfsServerJson
 title: serveur WFS capable de générer du GeoJSON
@@ -178,7 +179,8 @@ class WfsServerJson extends WfsServer {
 };
 
 { // doc 
-$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geodata/igngpwfsa';
+$prototype = (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST']=='localhost') ? '' : 'http://georef.eu')
+  .'/yamldoc/?doc=geodata/igngpwfsa';
 $phpDocs[basename(__FILE__)]['classes']['WfsServerJsonAugmented'] = <<<EOT
 name: class WfsServerJsonAugmented
 title: serveur WFS capable de générer du GeoJSON modifiant les retours des requêtes WFS

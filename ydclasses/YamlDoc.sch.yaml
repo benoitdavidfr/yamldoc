@@ -4,7 +4,8 @@ title: Définition du schema JSON d'un YamlDoc générique
 description: reprend le schéma Dublin Core en lui ajoutant les propriétés spécifiques génériques aux doc YamlDoc
 modified: 2019-01-26
 allOf:
-  - $ref: http://id.georef.eu/dublincore.schema
+  - description: schéma du Dublin Core
+    $ref: http://id.georef.eu/dublincore.schema
   - description: propriétés supplémentaires par rapport à un doc DublinCore
     type: object
     properties:

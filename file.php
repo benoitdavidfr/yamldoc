@@ -3,11 +3,12 @@
 name: file.php
 title: file.php - Affiche un fichier (image, PDF, ...)
 doc: |
-journal:
+journal: |
   26/9/2018:
    - ajout rawurldecode() sur les path pour accéder aux fichiers dont le nom comprend notamment des blancs
   22/8/2018:
     - prise en compte de la gestion du store, gestion des erreurs
+includes: [ store.inc.php ]
 */
 require_once __DIR__.'/store.inc.php';
 

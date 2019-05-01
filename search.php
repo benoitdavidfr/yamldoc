@@ -6,6 +6,7 @@ doc: |
 journal: |
   29/7/2018:
     adaptation à Store
+includes: [ store.inc.php, yd.inc.php, ydclasses/inc.php, search.inc.php ]
 */
 session_start();
 require_once __DIR__.'/store.inc.php';

@@ -18,6 +18,7 @@ journal: |
     - ajout indexation incrémentale
   17-18/6/2018:
     - création
+includes: [ store.inc.php, yd.inc.php, ydclasses/inc.php, search.inc.php ]
 */
 require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/yd.inc.php';

@@ -34,8 +34,10 @@ function substrcmpp(string $mainstr, int &$pos, string $substr): bool {
 
 // Essai d'une classe implémentant les requêtes pour un serveur WFS ne parlant pas JSON
 { // doc 
-$prototype1 = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geodata/sextant-dcsmm';
-$prototype2 = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=geocats/geoide-zvuln41';
+$prototype1 = (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST']=='localhost') ? '' : 'http://georef.eu')
+    .'/yamldoc/?doc=geodata/sextant-dcsmm';
+$prototype2 = (isset($_SERVER['HTTP_HOST']) && ($_SERVER['HTTP_HOST']=='localhost') ? '' : 'http://georef.eu')
+    .'/yamldoc/?doc=geocats/geoide-zvuln41';
 $phpDocs['wfsgml.inc.php']['classes']['WfsServerGml'] = <<<"EOT"
 title: serveur WFS capable de générer du GML EPSG:4306
 doc: |

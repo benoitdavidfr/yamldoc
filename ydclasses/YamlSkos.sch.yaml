@@ -26,13 +26,13 @@ definitions:
       type: string
 allOf:
   - description: schéma YamlDoc générique
-    $ref: YamlDoc.schema.yaml 
+    $ref: http://ydclasses.georef.eu/YamlDoc/schema 
   - description: partie du schéma YamlSkos commune aux sous-schéma mono- et multi-lingue
     type: object
     required: [$schema, domainScheme, domains, schemes, concepts]
     properties:
       $schema:
-        const: http://ydclasses.georef.eu/YamlSkos
+        const: http://ydclasses.georef.eu/YamlSkos/schema
       domainScheme:
         description: Organisation des domaines dans un Scheme listant les domaines de premier niveau
         type: object

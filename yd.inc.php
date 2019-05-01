@@ -4,6 +4,7 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 functions:
 doc: <a href='/yamldoc/?action=version&name=yd.inc.php'>doc intégrée en Php</a>
+includes: [ store.inc.php, ../vendor/autoload.php, markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php ]
 */
 {
 $phpDocs['yd.inc.php']['file'] = <<<'EOT'

@@ -4,6 +4,7 @@ name: mddb.inc.php
 title: mddb.inc.php - base de données de Metadata
 functions:
 doc: <a href='/yamldoc/?action=version&name=mddb.inc.php'>doc intégrée en Php</a>
+includes: [ ../search.inc.php ]
 */
 { // doc 
 $phpDocs['mddb.inc.php']['file'] = <<<'EOT'

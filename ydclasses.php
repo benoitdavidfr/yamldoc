@@ -28,6 +28,7 @@ doc: |
 journal: |
   27/1/2019:
     première version
+includes: [ store.inc.php, yd.inc.php, ydclasses/inc.php ]
 */
 require_once __DIR__.'/yd.inc.php';
 require_once __DIR__.'/store.inc.php';

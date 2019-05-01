@@ -3,6 +3,7 @@
 name: mkot.php
 title: mkot.php - fabrique les objecttypes de inspire-datamodel.yaml
 doc: |
+includes: [ ../../vendor/autoload.php ]
 */
 
 require_once __DIR__.'/../../vendor/autoload.php';

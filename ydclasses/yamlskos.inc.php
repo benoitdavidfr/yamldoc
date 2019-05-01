@@ -4,6 +4,10 @@ name: yamlskos.inc.php
 title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   voir le code
+includes:
+  - ../../vendor/autoload.php
+  - ../../yamldoc/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php
+  - mlstring.inc.php
 */
 { // doc 
 $phpDocs['yamlskos.inc.php']['file'] = <<<EOT

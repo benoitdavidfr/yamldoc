@@ -1,7 +1,44 @@
 <?php
 /*PhpDoc:
-name: ydclasses.inc.php
-title:  ydclasses.inc.php - liste des classes de documents YamlDoc
+name: inc.php
+title:  inc.php - liste des classes de documents YamlDoc
+includes:
+  - 'yamldoc.inc.php'
+  - 'basicyamldoc.inc.php'
+  - 'catalog.inc.php'
+  - 'servreg.inc.php'
+  - 'tree.inc.php'
+  - 'ydata.inc.php'
+  - 'yamldata.inc.php'
+  - 'multidata.inc.php'
+  - 'autodescr.inc.php'
+  - 'yamlskos.inc.php'
+  - 'datamodel.inc.php'
+  - 'legaldoc.inc.php'
+  - 'odtdoc.inc.php'
+  - 'pdfdoc.inc.php'
+  - 'ydjschema.inc.php'
+  - 'wfsserver.inc.php'
+  - 'wfsjson.inc.php'
+  - 'wfsgml.inc.php'
+  - 'featureds.inc.php'
+  - 'fdsspecs.inc.php'
+  - 'markerlib.inc.php'
+  - 'map.inc.php'
+  - 'itileserver.inc.php'
+  - 'wmsserver.inc.php'
+  - 'wmtsserver.inc.php'
+  - 'tileserver.inc.php'
+  - 'featureviewer.inc.php'
+  - 'tilecache.inc.php'
+  - 'viewds.inc.php'
+  - 'cswserver.inc.php'
+  - 'geocat.inc.php'
+  - 'mddb.inc.php'
+  - 'gcsubjlist.inc.php'
+  - 'inseeapi.inc.php'
+  - 'sireneapi.inc.php'
+  - 'inseenomapi.inc.php'
 */
 require_once __DIR__.'/yamldoc.inc.php';
 //require_once __DIR__.'/dumbdoc.inc.php';

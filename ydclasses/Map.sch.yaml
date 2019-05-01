@@ -75,13 +75,13 @@ definitions:
 allOf:
   - description: schéma YamlDoc générique
     # true
-    $ref: YamlDoc.sch.yaml
+    $ref: http://ydclasses.georef.eu/YamlDoc/schema
     
   - description: schéma spécifique à Map
     type: object
     properties:
       $schema:
-        const: http://ydclasses.georef.eu/Map
+        const: http://ydclasses.georef.eu/Map/schema
       stylesheets:
         description: liste d'URL correspondant chacune à un fichier CSS
         type: array

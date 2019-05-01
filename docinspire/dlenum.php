@@ -30,6 +30,7 @@ doc: |
 journal: |
   6/7/2018:
     création
+includes: [ ../../vendor/autoload.php, readcache.inc.php ]
 */
 
 ini_set('memory_limit', '1024M');

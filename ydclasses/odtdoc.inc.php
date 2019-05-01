@@ -4,8 +4,9 @@ name: odtdoc.inc.php
 title: gestion des fichiers ODT
 doc: |
   voir le code
+includes: [ ../../phplib/ophir.inc.php ]
 */
-{
+{ // phpDocs 
 $phpDocs['odtdoc.inc.php']['file'] = <<<EOT
 name: odtdoc.inc.php
 title: odtdoc.inc.php - class OdtDoc d'affichage des fichiers ODT

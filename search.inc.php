@@ -4,6 +4,7 @@ name: search.inc.php
 title: search.inc.php - fonctions pour l'indexation et la recherche plein texte
 doc: |
   <a href='/yamldoc/?action=version&name=search.inc.php'>voir le code</a>
+includes: [ ../phplib/mysql.inc.php, mysqlparams.inc.php ]
 */
 { // doc
 $phpDocs['search.inc.php']['file'] = <<<'EOT'

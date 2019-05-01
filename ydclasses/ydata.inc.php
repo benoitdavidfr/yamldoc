@@ -4,6 +4,7 @@ name: ydata.inc.php
 title: ydata.inc.php - sous-classe de documents pour la gestion des données
 functions:
 doc: <a href='/yamldoc/?action=version&name=ydata.inc.php'>doc intégrée en Php</a>
+includes: [ ../../schema/jsonschema.inc.php, yamldoc.inc.php]
 */
 { // doc 
 $phpDocs['ydata.inc.php']['file'] = <<<'EOT'
@@ -30,7 +31,8 @@ use Symfony\Component\Yaml\Exception\ParseException;
 //echo '<pre>'; print_r($_SERVER);
 
 { // doc 
-$prototype = ($_SERVER['HTTP_HOST']=='localhost' ? '' : 'http://georef.eu').'/yamldoc/?doc=dublincore';
+$prototype = (isset($_SERVER['HTTP_HOST'])  && ($_SERVER['HTTP_HOST']=='localhost') ? '' : 'http://georef.eu')
+    .'/yamldoc/?doc=dublincore';
 $phpDocs['ydata.inc.php']['classes']['YData'] = <<<"EOT"
 name: class YData
 title: gestion des données structurées en tables

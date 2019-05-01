@@ -5,21 +5,24 @@ modified: 2019-01-26
 description: un document YData correspond à un ensemble de tables
 allOf:
   - description: schéma YamlDoc générique
-    # $ref: YamlDoc.sch.yaml 
+    $ref: http://ydclasses.georef.eu/YamlDoc/schema 
   - description: schéma spécifique à YData
     type: object
     required: [tables]
     properties:
       $schema:
-        const: http://ydclasses.georef.eu/YData
+        const: http://ydclasses.georef.eu/YData/schema
       tables:
         description: dictionnaire des tables indexé par l'identifiant de la table
         type: object
         additionalProperties:
           description: contenu d'une table avec d'une part des MD et d'autre part des données définies par un schéma
           allOf:
-            - description: champs Dublin core décrivant les MD de la table
-              $ref: ../pub/dublincore.schema.yaml
+            - oneOf:
+              - description: champs Dublin Core mono-lingue des MD de la table
+                $ref: http://id.georef.eu/dublincore.schema
+              - description: champs Dublin Core multi-lingue des MD de la table
+                $ref: http://id.georef.eu/dublincore-mul.schema
             - description: champs spécifiques au données de la table
               type: object
               required: [dataSchema, data]

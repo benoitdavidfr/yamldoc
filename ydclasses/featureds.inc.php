@@ -4,6 +4,7 @@ name: featureds.inc.php
 title: featureds.inc.php - document définissant une série de données géo constituée d'un ensemble de couches d'objets
 functions:
 doc: <a href='/yamldoc/?action=version&name=featureds.inc.php'>doc intégrée en Php</a>
+includes: [ ../../ogr2php/feature.inc.php, ../../phplib/sql.inc.php, '../mysqlparams.inc.php' ]
 */
 { // doc 
 $phpDocs['featureds.inc.php']['file'] = <<<'EOT'
@@ -21,6 +22,8 @@ doc: |
     - fabriquer une couche limite administrative pour la BD Parcellaire
   
 journal:
+  27/4/2019:
+    - passage de MySql en Sql pour généraliser à PgSql
   22/1/2019:
     - passage des UGeoJSONLayer en https
   7/1/2019:
@@ -110,7 +113,7 @@ doc: |
 EOT;
 }
 require_once __DIR__.'/../../ogr2php/feature.inc.php';
-require_once __DIR__.'/../../phplib/mysql.inc.php';
+require_once __DIR__.'/../../phplib/sql.inc.php';
 //require_once __DIR__.'/yamldoc.inc.php';
 
 use Symfony\Component\Yaml\Yaml;
@@ -275,14 +278,14 @@ class FeatureDataset extends YamlDoc {
     return YamlDoc::sextract($this->_c, $ypath);
   }
   
-  // retourne le nom de la base MySql dans laquelle les données sont stockées
+  // retourne le nom de la base Sql dans laquelle les données sont stockées
   function dbname() {
-    if (!$this->mysql_database)
-      throw new Exception("Erreur dans FeatureDataset::dbname() : champ mysql_database non défini");
-    $mysqlServer = MySql::server();
-    if (!isset($this->mysql_database[$mysqlServer])) 
-      throw new Exception("Erreur dans FeatureDataset::dbname() : champ mysql_database non défini pour $mysqlServer");
-    return $this->mysql_database[$mysqlServer];
+    if (!$this->sql_database)
+      throw new Exception("Erreur dans FeatureDataset::dbname() : champ sql_database non défini");
+    $sqlServer = Sql::server();
+    if (!isset($this->sql_database[$sqlServer])) 
+      throw new Exception("Erreur dans FeatureDataset::dbname() : champ sql_database non défini pour $sqlServer");
+    return $this->sql_database[$sqlServer];
   }
   
   // fabrique la carte d'affichage des couches de la base

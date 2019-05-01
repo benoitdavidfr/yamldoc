@@ -9,6 +9,7 @@ journal: |
     - correction d'un bug
   4-7/7/2018:
     création
+includes: [ ../../vendor/autoload.php, readcache.inc.php ]
 */
 ini_set('memory_limit', '1024M');
 ini_set('max_execution_time', 600);

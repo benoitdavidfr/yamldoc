@@ -4,6 +4,7 @@ name: geocat.inc.php
 title: geocat.inc.php - document définissant un géocatalogue
 functions:
 doc: <a href='/yamldoc/?action=version&name=geocat.inc.php'>doc intégrée en Php</a>
+includes: [ ../isometadata.inc.php, inc.php ]
 */
 { // doc 
 $phpDocs['geocat.inc.php']['file'] = <<<'EOT'

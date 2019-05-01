@@ -4,6 +4,7 @@ name: wfsserver.inc.php
 title: wfsserver.inc.php - document correspondant à un serveur WFS
 functions:
 doc: <a href='/yamldoc/?action=version&name=wfsserver.inc.php'>doc intégrée en Php</a>
+includes: [ inc.php ]
 */
 { // doc 
 $phpDocs['wfsserver.inc.php']['file'] = <<<'EOT'

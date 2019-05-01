@@ -4,6 +4,7 @@ name: gcsubjlist.inc.php
 title: gcsubjlist.inc.php - sous-document d'un géocatalogue constitué des mots-clés présents
 functions:
 doc: <a href='/yamldoc/?action=version&name=gcsubjlist.inc.php'>doc intégrée en Php</a>
+includes: [ yamldoc.inc.php ]
 */
 { // doc 
 $phpDocs['gcsubjlist.inc.php']['file'] = <<<'EOT'
