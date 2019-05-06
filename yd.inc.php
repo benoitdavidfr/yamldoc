@@ -4,7 +4,10 @@ name: yd.inc.php
 title: yd.inc.php - fonctions générales pour yamldoc
 functions:
 doc: <a href='/yamldoc/?action=version&name=yd.inc.php'>doc intégrée en Php</a>
-includes: [ store.inc.php, ../vendor/autoload.php, markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php ]
+includes:
+  - store.inc.php
+  -  ../vendor/autoload.php
+  -  ../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php
 */
 {
 $phpDocs['yd.inc.php']['file'] = <<<'EOT'
@@ -109,7 +112,7 @@ EOT;
 }
 require_once __DIR__.'/store.inc.php';
 require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__."/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
+require_once __DIR__."/../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 
 use Symfony\Component\Yaml\Yaml;
 use Michelf\MarkdownExtra;

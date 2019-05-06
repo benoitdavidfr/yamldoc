@@ -34,6 +34,8 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  6/5/2019:
+    - transfert du répertoire markdown dans ../markdown
   11/2/2019:
     - amélioration de la validation d'un document par rapport au scéhma de la classe
     - changement des noms des fichiers contenant le schéma JSON xx.sch.yaml
@@ -102,7 +104,6 @@ journal: |
   - première version
 submodules:
   - /yamldoc/docinspire
-  - /yamldoc/markdown
   - /yamldoc/ydclasses
 sqlFiles:
   - /yamldoc/yamldoc.sql

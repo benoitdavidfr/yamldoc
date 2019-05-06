@@ -183,7 +183,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
   function tile(string $lyrName, string $style, int $zoom, int $x, int $y, string $fmt) {
     //echo "FeatureViewer::tile('$lyrName', '$style', $zoom, $x, $y, '$fmt')<br>\n";
     if ($zoom < $this->layers[$lyrName]['minZoom']) {
-      $drawing = new Drawing();
+      $drawing = new FVDrawing();
       return $drawing->image();
     }
     $fdsid = $this->featureDataset;
@@ -212,7 +212,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     $featColl = json_decode($featColl, true);
     //echo "<pre>featColl="; print_r($featColl); echo "</pre>\n";
     $styler = isset($this->layers[$lyrName]['styleMap']) ? new Styler($this->layers[$lyrName]['styleMap']) : null;
-    $drawing = new Drawing($bboxwm);
+    $drawing = new FVDrawing($bboxwm);
     if (isset($featColl['features']) && $featColl['features']) {
       foreach ($featColl['features'] as $feature) {
         $this->drawFeature($drawing, $feature, $styler);
@@ -228,7 +228,7 @@ class FeatureViewer extends YamlDoc implements iTileServer {
     $drawing->display();
   }
   
-  function drawFeature(Drawing $drawing, array $feature, ?Styler $styler): void {
+  function drawFeature(FVDrawing $drawing, array $feature, ?Styler $styler): void {
     //echo "FeatureDrawer::drawFeature(feature, ptmin=[$bboxwm[0], $bboxwm[1]])<br>\n";
     //echo "<pre>FeatureViewer::drawFeature() feature[properties]="; print_r($feature['properties']); echo "</pre>\n";
     $style = $styler ? $styler->style($feature) : null;
@@ -320,12 +320,12 @@ class FeatureViewer extends YamlDoc implements iTileServer {
 };
 
 { // doc 
-$phpDocs['featureviewer.inc.php']['classes']['Drawing'] = <<<'EOT'
+$phpDocs['featureviewer.inc.php']['classes']['FVDrawing'] = <<<'EOT'
 title: génère le dessin d'une tuile correspondant au bbox en WM, les ordres sont transmis au travers du package geometry
 doc: |
 EOT;
 }
-class Drawing {
+class FVDrawing {
   static $colorDef = [ // 'RRGGBB' en hexa, voir https://www.rapidtables.com/web/color/html-color-codes.html
     'black' => '000000',
     'red' => 'FF0000',
@@ -367,7 +367,7 @@ class Drawing {
         ($def & 0x0FF0000) >> 16, ($def & 0x0FF00) >> 8, ($def & 0x0FF));
       return $this->colors[$colorName];
     }
-    //throw new Exception("Couleur $colorName non définie dans Drawing");
+    //throw new Exception("Couleur $colorName non définie dans FVDrawing");
     return null;
   }
   
@@ -395,7 +395,7 @@ class Drawing {
   function drawLineString(array $geom, string $stroke, string $fill, int $stroke_with) {
     //print_r($geom);
     if (!$this->bbox)
-      throw new Exception("Erreur dans Drawing::drawLineString: bbox vide");
+      throw new Exception("Erreur dans FVDrawing::drawLineString: bbox vide");
     $color = $this->color($stroke) ? $this->color($stroke) : $this->color('black');
     $prevpt = null;
     foreach ($geom as $pt) {
@@ -410,9 +410,9 @@ class Drawing {
   }
   
   function drawPolygon(array $geom, string $stroke, string $fill, int $stroke_with) {
-    //echo "Drawing::drawPolygon($stroke, $fill, $stroke_with)<br>\n"; //die();
+    //echo "FVDrawing::drawPolygon($stroke, $fill, $stroke_with)<br>\n"; //die();
     if (!$this->bbox)
-      throw new Exception("Erreur dans Drawing::drawPolygon: bbox vide");
+      throw new Exception("Erreur dans FVDrawing::drawPolygon: bbox vide");
     $coord = [];
     $numpoints = 0;
     foreach ($geom[0]->points() as $pt) {
@@ -422,7 +422,7 @@ class Drawing {
     }
     //$color = $this->color($fill) ? $this->color($fill) : $this->color('lightGrey');
     if (!$this->color($fill))
-      throw new Exception("Erreur dans Drawing::drawPolygon: couleur '$fill' non définie");
+      throw new Exception("Erreur dans FVDrawing::drawPolygon: couleur '$fill' non définie");
     $color = $this->color($fill);
     if (!imagefilledpolygon($this->image, $coord, $numpoints, $color)) {
       throw new Exception("Erreur dans imagepolygon [".implode(',',$coord)."] $fill");
@@ -455,8 +455,8 @@ class Styler {
 if (basename(__FILE__)<>basename($_SERVER['PHP_SELF'])) return;
 
 
-// Test de la classe Drawing
-$drawing =  new Drawing([0, 0, 100, 100]);
+// Test de la classe FVDrawing
+$drawing =  new FVDrawing([0, 0, 100, 100]);
 $polygon = new Polygon([[[10,90], [40,50], [90,90], [10,90]]]);
 $drawing->drawPolygon($polygon->linestrings(), '', 'blue', 1);
 $lineString = new LineString([[10,90], [40,20], [70,90]]);
