@@ -4,7 +4,7 @@ name: featureds.inc.php
 title: featureds.inc.php - document définissant une série de données géo constituée d'un ensemble de couches d'objets
 functions:
 doc: <a href='/yamldoc/?action=version&name=featureds.inc.php'>doc intégrée en Php</a>
-includes: [ ../../ogr2php/feature.inc.php, ../../phplib/sql.inc.php, '../mysqlparams.inc.php' ]
+includes: [ ../../geovect/ogr2php/feature.inc.php, ../../phplib/sql.inc.php, '../mysqlparams.inc.php' ]
 */
 { // doc 
 $phpDocs['featureds.inc.php']['file'] = <<<'EOT'
@@ -112,7 +112,7 @@ doc: |
 
 EOT;
 }
-require_once __DIR__.'/../../ogr2php/feature.inc.php';
+require_once __DIR__.'/../../geovect/ogr2php/feature.inc.php';
 require_once __DIR__.'/../../phplib/sql.inc.php';
 //require_once __DIR__.'/yamldoc.inc.php';
 

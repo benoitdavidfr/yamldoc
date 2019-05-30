@@ -36,6 +36,7 @@ doc: |
 journal: |
   6/5/2019:
     - transfert du répertoire markdown dans ../markdown
+    - synchro effectuée sur http://georef.eu/yamldoc/
   11/2/2019:
     - amélioration de la validation d'un document par rapport au scéhma de la classe
     - changement des noms des fichiers contenant le schéma JSON xx.sch.yaml
@@ -102,6 +103,8 @@ journal: |
   - ajout du cryptage optionnel
   8/4/2018:
   - première version
+requires:
+  - ../markdown/markdown
 submodules:
   - /yamldoc/docinspire
   - /yamldoc/ydclasses
