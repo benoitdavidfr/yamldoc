@@ -13,6 +13,7 @@ includes:
   - 'multidata.inc.php'
   - 'autodescr.inc.php'
   - 'yamlskos.inc.php'
+  - 'yamlrdf.inc.php'
   - 'datamodel.inc.php'
   - 'legaldoc.inc.php'
   - 'odtdoc.inc.php'
@@ -51,6 +52,7 @@ require_once __DIR__.'/yamldata.inc.php';
 require_once __DIR__.'/multidata.inc.php';
 require_once __DIR__.'/autodescr.inc.php';
 require_once __DIR__.'/yamlskos.inc.php';
+require_once __DIR__.'/yamlrdf.inc.php';
 require_once __DIR__.'/datamodel.inc.php';
 require_once __DIR__.'/legaldoc.inc.php';
 require_once __DIR__.'/odtdoc.inc.php';

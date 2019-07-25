@@ -220,6 +220,8 @@ else {
     }
   }
 }
+
+// Ici $docid est l'id du doc et ypath le chemin du sous-doc
 //echo "docid=$docid<br>\n";
 //echo "ypath=$ypath<br>\n";
 try {
@@ -240,12 +242,19 @@ if (!$fragment) {
 }
 if (php_sapi_name() <> 'cli')
   header('Access-Control-Allow-Origin: *');
-if (isset($_GET['format']) && ($_GET['format']=='yaml')) {
+
+$format = $_GET['format'] ?? '';
+if ($format == 'yaml') {
   if (php_sapi_name() <> 'cli')
     header('Content-type: text/plain');
   echo YamlDoc::syaml($fragment);
 }
-else {
+elseif ($format == 'ttl') {
+  if (php_sapi_name() <> 'cli')
+    header('Content-type: text/plain');
+  $doc->printTtl($ypath);
+}
+else { // par défaut en json
   if (php_sapi_name() <> 'cli')
     header('Content-type: application/json');
   echo json_encode($fragment, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
