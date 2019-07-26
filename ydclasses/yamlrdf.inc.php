@@ -47,7 +47,7 @@ doc: |
 EOT;
 }
 class YamlRdf extends YamlDoc {
-  protected $_c; // contient les champs du doc Yaml à l'exception des champs ci-dessous
+  protected $_c; // contient les champs de la ressource racine
   protected $namespaces;
   protected $classes;
   protected $properties;
@@ -81,12 +81,29 @@ class YamlRdf extends YamlDoc {
   }
   
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  // permet de définir l'uri /*
+  // Retourne la ressource référencée en remplacant ses ressources filles par des URI
+  // Ajoute aussi l'URI /{rootId} qui renvoie la ressource racine sans ses ressources filles
+  // l'URI '/' retourne tout le document
   function extractByUri(string $ypath) {
+    if ($ypath == '/')
+      return $this->_c;
     if ($ypath == '/'.$this->rootId)
-      return true;
+      $res = $this->_c;
     else
-      return YamlDoc::sextract($this->_c, $ypath);
+      $res = YamlDoc::sextract($this->_c, $ypath);
+    $data = [];
+    foreach ($res as $prop => $obj) {
+      if (is_string($obj))
+        $data[$prop] = $obj;
+      elseif (is_list($obj))
+        $data[$prop] = $obj;
+      elseif (is_array($obj)) {
+        $data[$prop] = [];
+        foreach (array_keys($obj) as $id)
+          $data[$prop][] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id."/$prop/".rawurlencode($id);
+      }
+    }
+    return $data;
   }
   
   // affiche le doc ou le fragment si ypath est non vide
