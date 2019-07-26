@@ -87,8 +87,10 @@ class YamlRdf extends YamlDoc {
   function extractByUri(string $ypath) {
     if ($ypath == '/')
       return $this->_c;
-    if ($ypath == '/'.$this->rootId)
+    if ($ypath == '/'.$this->rootId) {
       $res = $this->_c;
+      $ypath = ''; // supprimer '/catalog' dans l'URL des enfants
+    }
     else
       $res = YamlDoc::sextract($this->_c, $ypath);
     $data = [];
