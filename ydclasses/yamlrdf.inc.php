@@ -100,7 +100,8 @@ class YamlRdf extends YamlDoc {
       elseif (is_array($obj)) {
         $data[$prop] = [];
         foreach (array_keys($obj) as $id)
-          $data[$prop][] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id."/$prop/".rawurlencode($id);
+          $data[$prop][] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/"
+            .$this->_id."$ypath/$prop/".rawurlencode($id);
       }
     }
     return $data;
