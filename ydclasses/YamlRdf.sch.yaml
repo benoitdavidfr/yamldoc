@@ -1,0 +1,293 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://ydclasses.georef.eu/YamlSkos/schema
+title: Schema d'un YamlRdf
+modified: '2019-07-26'
+description: |
+  Un document YamlRdf contient un graphe RDF défini à partir d'une ressource racine.
+  On se limite au cas mono-lingue.
+definitions:
+  objectResource:
+    description: défini le ou les objets d'une ressource RDF correspondant à une propriété
+    oneOf:
+      - description: cas d'un seul objet littéral ou URL
+        type: string
+      - description: cas de plusieurs objets littéraux ou URL
+        type: array
+        items:
+          type: string
+      - description: cas où l'objet est une sous-ressource décrite, la 1ère propriété Yaml identifie la sous-ressource
+        type: object
+        additionalProperties:
+          description: la 2nd propriété Yaml est une propriété de la sous-ressource
+          type: object
+          additionalProperties:
+            $ref: '#/definitions/objectResource'
+        
+type: object
+required: [title, abstract, $schema, namespaces, classes, properties, rootId]
+properties:
+  title:
+    description: à la fois titre du document YamlDoc et du document racine
+    type: string
+  abstract:
+    description: résumé du document YamlDoc, n'appartient pas au document racine
+    type: string
+  $schema:
+    const: http://ydclasses.georef.eu/YamlRdf/schema
+  namespaces:
+    description: liste des espaces de nom définis comme dictionaire prefix -> URI
+    type: object
+    additionalProperties:
+      type: string
+  classes:
+    description: liste des classes RDF utilisées dans le graphe utilisant les prefix
+    type: array
+    items:
+      type: string
+  properties:
+    description: liste des propriétés utilisées comme dictionnaire sous la forme {synonyme} -> {nom d'origine}
+    type: object
+    additionalProperties:
+      type: string
+  rootId:
+    description: nom donné dans l'URI extérieure au document racine
+    type: string
+  source:
+    description: source en cours de traduction
+additionalProperties:
+  description: les autres propriétés correspondent à des propriétés du document racine
+  $ref: '#/definitions/objectResource'
+examples:
+  - title: essai d'un catalogue de données du MTES
+    abstract: |
+      Ce catalogue de données est structuré conformément au standard DCAT v2 (https://www.w3.org/TR/vocab-dcat-2/).
+      Il est sérialisé en Yaml en utilisant les principes généraux suivants:
+        - namespaces contient la liste des espaces de noms avec pour chacun le prefix associé comme clé.
+        - classes contient un dictionnaire des classes utilisées (à voir)
+        - properties contient un dictionnaire des propriétés utilisées donnant la propriété complète
+        - resources contient un dictionnaire des ressources RDF.
+  
+    $schema: http://ydclasses.georef.eu/YamlRdf/schema
+    namespaces:
+      dc: http://purl.org/dc/elements/1.1/
+      dcat: http://www.w3.org/ns/dcat#
+      dct: http://purl.org/dc/terms/
+      dctype: http://purl.org/dc/dcmitype/
+      foaf: http://xmlns.com/foaf/0.1/
+      geosparql: http://www.opengis.net/ont/geosparql#
+      owl: http://www.w3.org/2002/07/owl#
+      rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+      rdfs: http://www.w3.org/2000/01/rdf-schema#
+      sdo: https://schema.org/
+      skos: http://www.w3.org/2004/02/skos/core#
+      vcard: http://www.w3.org/2006/vcard/ns#
+      w3cgeo: http://www.w3.org/2003/01/geo/wgs84_pos#
+      xsd: http://www.w3.org/2001/XMLSchema#
+    classes:
+      - dcat:Catalog
+      - dcat:Dataset
+      - dcat:Distribution
+    properties:
+      a: a
+      title: dct:title
+      creator: dct:creator
+      description: dct:description
+      theme: dcat:theme
+      keyword: dcat:keyword
+      spatial: dct:spatial
+      landingPage: dcat:landingPage
+      accessUrl: dcat:accessUrl
+      licence: dct:licence
+      accessRights: dct:accessRights
+      dataset: dcat:dataset
+      distribution: dcat:distribution
+    rootId: catalog
+
+    a: dcat:Catalog
+
+    dataset:
+      DonneesAQST:
+        a: dcat:Dataset
+        title: Données AQST
+        creator: http://id.georef.eu/organization/CGEDD/AQST
+        description: |
+          Des indicateurs statistiques de régularité et ponctualité, des causes de retard, etc. dans les modes de transports
+          aérien, ferroviaire, urbain, etc.
+      
+          La base est cumulative au sens où à chaque période temporelle régulière viennent s’ajouter de nouveaux éléments et
+          révisable au sens où de nouveaux indicateurs sont ajoutés au fur et à mesure de l’extension de la compétence de
+          l’AQST.
+      
+          Cela concerne la période : septembre 2011 à aujourd'hui.
+      
+          Des données mensuelles d’une liaison précise : nombre d’annulés, de retardés, de ponctuels, taux et durée moyenne
+          des retards au départ et à l’arrivée, etc. Des données agrégées sur l’ensemble des liaisons.
+      
+          Les données sont fournies par les transporteurs ou par l’administration comme dans le secteur aérien où c’est la DGAC
+          qui les transmet à l’AQST. La procédure de collecte et de diffusion des données se fonde sur une convention
+          bilatérale entre le fournisseur et l’AQST.
+      
+          La transparence de diffusion est la garantie du site de l’AQST.
+        theme: http://eurovoc.europa.eu/2494
+        keyword:
+          - régularité
+          - transport
+          - retard
+          - aérien
+          - ferroviaire
+        landingPage: http://www.qualitetransports.gouv.fr/les-chiffres-de-la-ponctualite-r2.html
+        licence: https://www.etalab.gouv.fr/licence-ouverte-open-licence
+        distribution:
+          siteInternet:
+            a: dcat:Distribution
+            accessUrl: http://www.qualitetransports.gouv.fr/les-chiffres-de-la-ponctualite-r2.html
+      ASUR:
+        a: dcat:Dataset
+        title: Suivi des réclamations passagers (vols au départ ou arrivée en France) (ASUR)
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4408
+        keyword:
+          - réclamation
+          - passager
+          - vol
+        accessRights: |
+          Données non communicables - données à caractère personnel et soumises au secret de procédures contentieuses
+      CALIPSO:
+        a: dcat:Dataset
+        title: CALIPSO
+        creator: http://id.georef.eu/organization/DGAC
+        description: |
+          Classification des avions légers selon indice de performance sonore à partir des informations transmises
+          par les propriétaires ou les aéroclubs
+        theme: http://eurovoc.europa.eu/4408
+        keyword:
+          - avion léger
+          - bruit
+        accessRights: Données non communicables - données à caractère personnel
+      ENPA:
+        a: dcat:Dataset
+        title: ENPA
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4408
+        description: |
+          Enquête nationale auprès des passagers : détails vol (trajet, prix…) et voyage.
+          Il s'agit d'une enquête réalisée sur 15 aéroports français différents à chaque enquête.
+        accessRights: Données non communicables - données à caractère personnel
+      TARMAAC:
+        a: dcat:Dataset
+        title: Consommation carburant et émissions dans atmosphère du trafic aérien (TARMAAC)
+        creator: http://id.georef.eu/organization/DGAC
+        description: Ces données sont collectées auprès des aéroports français et éditeurs privés (modèles aéronefs).
+        theme: http://eurovoc.europa.eu/4408
+        keyword:
+          - consommation carburant
+        accessRights: Données sous secret commercial - diffusion de données agrégées
+      TRAFIC(DGAC):
+        a: dcat:Dataset
+        title: Données du trafic aérien commercial (trajet, transporteur, passagers, fret, …) collectées auprès des aéroports français (base TRAFIC)
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4408
+        keyword:
+          - trafic aérien commercial
+          - fret
+          - passager
+        accessRights: Données sous secret commercial
+      PRIX(DGAC):
+        a: dcat:Dataset
+        title: Relevés tarifaires d'itinéraires AR au départ de la France (base PRIX)
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4408
+        description: |
+          Cette base de données sur les prix est construite à partir de relevés tarifaires (tarif pour plus de 300 itinéraires AR au départ de France) automatisés sur le système de réservation Travelport et sur les sites internet des transporteurs.
+      TransporteursFR(DGAC):
+        a: dcat:Dataset
+        title: Liste des transporteurs aériens français (avec données sur entreprise) (base Transporteurs FR)
+        description: |
+          Cette liste est produite en interne DGAC (DSAC Inter Régionales)
+          Elle décrit environ 90 entreprises
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4408
+        distribution:
+          interne:
+            title: base interne non diffusable
+            accessRights: données sous secret commercial
+          siteInternet:
+            a: dcat:Distribution
+            title: version épurée publique diffusée sur Internet
+            licence: https://www.etalab.gouv.fr/licence-ouverte-open-licence
+      IMMAT:
+        a: dcat:Dataset
+        title: Immatriculation des aéronefs (données administratives et aéronef) - base IMMAT
+        creator: http://id.georef.eu/organization/DGAC
+        theme: http://eurovoc.europa.eu/4438
+        description: |
+          Ces données sont collectées auprès des propriétaires et OSAC (données techniques).
+          volumétrie: 16 000 aéronefs « vivants », 18 000 aéronefs radiés
+        keyword:
+          - immatriculation
+          - aéronef
+        accessRights: Confidentiel (données personnelles et commerciales)
+      CASCADE:
+        a: dcat:Dataset
+        title: Instruction des dossiers « Installations, ouvrages, travaux et aménagements soumis à la loi sur l’eau » (IOTA) - base CASCADE
+        creator: http://id.georef.eu/organization/DGALN/DEB
+        theme: http://eurovoc.europa.eu/3144 - gestion de l'eau
+        keyword:
+          - eau
+          - installation
+          - ouvrage
+          - instruction
+          - travaux
+        accessRights: Confidentiel (données personnelles et commerciales)
+        spatial: https://www.geonames.org/3017382 - France
+      PROPLUVIA:
+        a: dcat:Dataset
+        title: Saisie et Publication des arrêtés de restriction d’eau (base PROPLUVIA)
+        creator: http://id.georef.eu/organization/DGALN/DEB
+        theme: http://eurovoc.europa.eu/3144 - gestion de l'eau
+        keyword:
+          - arrêté
+          - eau
+          - retriction
+        distribution:
+          siteInternet:
+            a: dcat:Distribution
+            title: version épurée publique diffusée sur Internet
+            licence: https://www.etalab.gouv.fr/licence-ouverte-open-licence
+            accessUrl: http://propluvia.developpement-durable.gouv.fr/
+      ROSEAU:
+        a: dcat:Dataset
+        title: Réseau organisé de la surveillance des eaux de l'assainissement urbain (ROSEAU)
+        creator: http://id.georef.eu/organization/DGALN/DEB
+        theme: http://eurovoc.europa.eu/3144 - gestion de l'eau
+        keyword:
+          - eau
+          - surveillance
+          - assainissement
+          - urbain
+        accessRights: Réservée aux autorités françaises
+        spatial: https://www.geonames.org/3017382 - France
+      OSPC:
+        a: dcat:Dataset
+        title: outil suivi des plans de contrôle (OSPC)
+        creator: http://id.georef.eu/organization/DGALN/DEB
+        description: Planification des plans de contrôle annuels par département et saisie des contrôles réalisés
+        theme: http://eurovoc.europa.eu/3144 - gestion de l'eau
+        keyword:
+          - plan de contrôle
+          - contrôle
+        accessRights: Réservée aux autorités françaises
+        spatial: https://www.geonames.org/3017382 - France
+      SILLAGE:
+        a: dcat:Dataset
+        title: Plans et campagnes d’épandages des boues issues du traitement des eaux usées (SILLAGE)
+        creator: http://id.georef.eu/organization/DGALN/DEB
+        description: Obligatoire depuis 01/01/2016
+        theme: http://eurovoc.europa.eu/3144 - gestion de l'eau
+        keyword:
+          - épandage
+          - boue
+          - traitement
+          - eau usée
+        accessRights: Réservée aux autorités françaises et aux exploitants non agricoles
+        spatial: https://www.geonames.org/3017382 - France
