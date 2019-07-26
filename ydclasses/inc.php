@@ -64,8 +64,8 @@ require_once __DIR__.'/ydjschema.inc.php';
 require_once __DIR__.'/wfsserver.inc.php';
 require_once __DIR__.'/wfsjson.inc.php';
 require_once __DIR__.'/wfsgml.inc.php';
-require_once __DIR__.'/featureds.inc.php';
-require_once __DIR__.'/fdsspecs.inc.php';
+//require_once __DIR__.'/featureds.inc.php';
+//require_once __DIR__.'/fdsspecs.inc.php';
 require_once __DIR__.'/markerlib.inc.php';
 require_once __DIR__.'/map.inc.php';
 
