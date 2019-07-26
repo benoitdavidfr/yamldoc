@@ -14,8 +14,11 @@ $phpDocs['yamlrdf.inc.php']['file'] = <<<EOT
 name: yamlrdf.inc.php
 title: yamlrdf.inc.php - gestion d'un graphe RDF
 doc: |
-  Gestion/affichage d'un graphe RDF codé en Yaml.
+  Gestion/affichage d'un graphe RDF codé en Yaml selon les specs décrites dans YamlRdf.sch.yaml
 journal: |
+  26/7/2019:
+  - création du schema JSON
+  - publi sur georef.eu
   24-25/7/2019:
   - création, gestion de l'affichage turtle, saisie d'un catalogue de quelques jeux de données 
 EOT;
