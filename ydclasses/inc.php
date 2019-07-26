@@ -43,22 +43,22 @@ includes:
 */
 require_once __DIR__.'/yamldoc.inc.php';
 //require_once __DIR__.'/dumbdoc.inc.php';
-require_once __DIR__.'/basicyamldoc.inc.php';
-require_once __DIR__.'/catalog.inc.php';
-require_once __DIR__.'/servreg.inc.php';
-require_once __DIR__.'/tree.inc.php';
-require_once __DIR__.'/ydata.inc.php';
-require_once __DIR__.'/yamldata.inc.php';
-require_once __DIR__.'/multidata.inc.php';
-require_once __DIR__.'/autodescr.inc.php';
-require_once __DIR__.'/yamlskos.inc.php';
-require_once __DIR__.'/yamlrdf.inc.php';
-require_once __DIR__.'/datamodel.inc.php';
-require_once __DIR__.'/legaldoc.inc.php';
-require_once __DIR__.'/odtdoc.inc.php';
-require_once __DIR__.'/pdfdoc.inc.php';
+//require_once __DIR__.'/basicyamldoc.inc.php';
+//require_once __DIR__.'/catalog.inc.php';
+//require_once __DIR__.'/servreg.inc.php';
+//require_once __DIR__.'/tree.inc.php';
+//require_once __DIR__.'/ydata.inc.php';
+//require_once __DIR__.'/yamldata.inc.php';
+//require_once __DIR__.'/multidata.inc.php';
+//require_once __DIR__.'/autodescr.inc.php';
+//require_once __DIR__.'/yamlskos.inc.php';
+//require_once __DIR__.'/yamlrdf.inc.php';
+//require_once __DIR__.'/datamodel.inc.php';
+//require_once __DIR__.'/legaldoc.inc.php';
+//require_once __DIR__.'/odtdoc.inc.php';
+//require_once __DIR__.'/pdfdoc.inc.php';
 
-require_once __DIR__.'/ydjschema.inc.php';
+//require_once __DIR__.'/ydjschema.inc.php';
 
 # données géo vecteur
 // require_once __DIR__.'/wfsserver.inc.php';
