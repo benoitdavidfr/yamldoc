@@ -16,6 +16,7 @@ title: yamlrdf.inc.php - gestion d'un graphe RDF
 doc: |
   Gestion/affichage d'un sous-graphe RDF stocké en Yaml selon le schema YamlRdf.sch.yaml
 journal: |
+  29/7/2019
   27/7/2019
   - l'export JSON est incomplet puisque le contexte n'est pas exporté
   - faire évoluer l'export JSON pour générer du JSON-LD
