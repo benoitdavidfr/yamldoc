@@ -16,8 +16,9 @@ title: yamlrdf.inc.php - gestion d'un graphe RDF
 doc: |
   Gestion/affichage d'un sous-graphe RDF stocké en Yaml selon le schema YamlRdf.sch.yaml
 journal: |
-  29/7/2019
-  27/7/2019
+  29/7/2019:
+  - mise en oeuvre de l'export JSON-LD
+  27/7/2019:
   - l'export JSON est incomplet puisque le contexte n'est pas exporté
   - faire évoluer l'export JSON pour générer du JSON-LD
   26/7/2019:
@@ -117,7 +118,6 @@ class YamlRdf extends YamlDoc {
   
   // fabrique un JSON-LD
   function buildJsonLd(array $res, string $ypath, string $ypath2, int $recursive=0): array {
-    echo "buildJsonLd()222, resursive=$recursive<br>\n";
     $data = [];
     if ($recursive <> 2)
       $data['@context'] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.'/@context';
