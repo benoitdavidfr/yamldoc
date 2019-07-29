@@ -116,6 +116,7 @@ class YamlRdf extends YamlDoc {
   
   // fabrique un JSON-LD
   function buildJsonLd(array $res, string $ypath, string $ypath2, int $recursive=0): array {
+    echo "buildJsonLd(), resursive=$recursive<br>\n";
     $data = [];
     if ($recursive <> 2)
       $data['@context'] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.'/@context';
