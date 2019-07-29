@@ -14,8 +14,11 @@ $phpDocs['yamlrdf.inc.php']['file'] = <<<EOT
 name: yamlrdf.inc.php
 title: yamlrdf.inc.php - gestion d'un graphe RDF
 doc: |
-  Gestion/affichage d'un graphe RDF codé en Yaml selon les specs décrites dans YamlRdf.sch.yaml
+  Gestion/affichage d'un sous-graphe RDF stocké en Yaml selon le schema YamlRdf.sch.yaml
 journal: |
+  27/7/2019
+  - l'export JSON est incomplet puisque le contexte n'est pas exporté
+  - faire évoluer l'export JSON pour générer du JSON-LD
   26/7/2019:
   - création du schema JSON
   - publi sur georef.eu
@@ -23,12 +26,12 @@ journal: |
   - création, gestion de l'affichage turtle, saisie d'un catalogue de quelques jeux de données 
 EOT;
 }
-require_once __DIR__.'/../../vendor/autoload.php';
-require_once __DIR__."/../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
-require_once __DIR__.'/mlstring.inc.php';
+//require_once __DIR__.'/../../vendor/autoload.php';
+//require_once __DIR__."/../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
+//require_once __DIR__.'/mlstring.inc.php';
 
-use Symfony\Component\Yaml\Yaml;
-use Michelf\MarkdownExtra;
+//use Symfony\Component\Yaml\Yaml;
+//use Michelf\MarkdownExtra;
 
 { // doc 
 $phpDocs['yamlrdf.inc.php']['classes']['YamlRdf'] = <<<EOT
@@ -36,14 +39,10 @@ name: class YamlRdf
 title: gestion d'un graphe RDF
 doc: |
   La classe YamlRdf hérite de la classe abstraite YamlDoc.  
-  Un document Rdf correspond à la ressource principale du graphe, par ex. la ressource Catalog dans Dcat.
-  Il contient les différents champs de cet objet principal.
-  Il contient en outre:
-  
-    - un champ namespaces contenant la liste des espaces de noms avec pour chacun le prefix associé comme clé.
-    - un champ classes contient un dictionnaire des classes utilisées (à voir)
-    - un champ properties contient un dictionnaire des propriétés utilisées donnant la propriété complète
-
+  Un document YamlRdf correspond à un graphe RDF codé en Yaml selon le schema YamlRdf.sch.yaml
+  Le document ou un des ressources définies:
+    - s'affiche en HTML dans le navigateur YamlDoc
+    - s'expose en JSON-LD ou en Turtle
 EOT;
 }
 class YamlRdf extends YamlDoc {
@@ -51,6 +50,7 @@ class YamlRdf extends YamlDoc {
   protected $namespaces;
   protected $classes;
   protected $properties;
+  protected $rootId;
   protected $source;
   
   function __construct($yaml, string $docid) {
@@ -60,7 +60,12 @@ class YamlRdf extends YamlDoc {
     unset($yaml['$schema']);
     unset($yaml['abstract']);
     unset($yaml['source']);
-    foreach (['namespaces','classes','properties','rootId'] as $key) {
+    $this->properties = [];
+    foreach($yaml['properties'] as $id => $property) {
+      $this->properties[$id] = new YamlRdfProperty($property);
+    }
+    unset($yaml['properties']);
+    foreach (['namespaces','classes','rootId'] as $key) {
       $this->$key = $yaml[$key];
       unset($yaml[$key]);
     }
@@ -73,61 +78,113 @@ class YamlRdf extends YamlDoc {
   function __get(string $name) { return $this->_c[$name] ?? null; }
   
   // décapsule l'objet et retourne son contenu sous la forme d'un array
-  function asArray() { return $this->_c; }
+  function asArray() {
+    return array_merge(
+      [ 'namespaces'=> $this->namespaces,
+        'classes'=> $this->classes,
+        'properties'=> $this->properties,
+        'rootId'=> $this->rootId],
+      $this->_c);
+  }
   
   // retourne le fragment défini par path qui est une chaine
   function extract(string $ypath) {
-    return YamlDoc::sextract($this->_c, $ypath);
+    return YamlDoc::sextract($this->asArray(), $ypath);
   }
   
-  // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
-  // Retourne la ressource référencée en remplacant ses ressources filles par des URI
-  // Ajoute aussi l'URI /{rootId} qui renvoie la ressource racine sans ses ressources filles
-  // l'URI '/' retourne tout le document
-  function extractByUri(string $ypath) {
-    if ($ypath == '/')
-      return $this->_c;
-    if ($ypath == '/'.$this->rootId) {
-      $res = $this->_c;
-      $ypath = ''; // supprimer '/catalog' dans l'URL des enfants
+  // Fabrique le contexte
+  function buildJsonLdContext(): array {
+    $context = [];
+    foreach ($this->usedPrefixInProp() as $prefix)
+      $context[$prefix] = $this->namespaces[$prefix];
+    foreach($this->properties as $shortname => $prop) {
+      $context[$shortname] = $prop->simplified();
     }
+    return $context;
+  }
+  
+  // si $url est une URL HTTP qui contient un blanc alors retourne la partie avant le blanc sinon retourne le paramètre
+  static function removeCommentFromHttpUrl(string $url) {
+    if ((substr($url, 0, 7)<>'http://') && (substr($url, 0, 8)<>'https://'))
+      return $url;
+    $pos = strpos($url, ' ');
+    if ($pos)
+      return substr($url, 0, $pos);
     else
-      $res = YamlDoc::sextract($this->_c, $ypath);
+      return $url;
+  }
+  
+  // fabrique un JSON-LD
+  function buildJsonLd(array $res, string $ypath, string $ypath2, int $recursive=0): array {
     $data = [];
-    foreach ($res as $prop => $obj) {
-      if (is_string($obj))
-        $data[$prop] = $obj;
-      elseif (is_list($obj))
-        $data[$prop] = $obj;
-      elseif (is_array($obj)) {
+    if ($recursive <> 2)
+      $data['@context'] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.'/@context';
+    $data['@id'] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
+    foreach ($res as $prop => $objs) {
+      if ($prop == 'a')
+        $prop = '@type';
+      if (is_string($objs))
+        $data[$prop] = self::removeCommentFromHttpUrl($objs);
+      elseif (is_list($objs)) {
         $data[$prop] = [];
-        foreach (array_keys($obj) as $id)
-          $data[$prop][] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/"
-            .$this->_id."$ypath/$prop/".rawurlencode($id);
+        foreach ($objs as $obj)
+          $data[$prop][] = self::removeCommentFromHttpUrl($obj);
+      }
+      elseif (is_array($objs)) {
+        $data[$prop] = [];
+        foreach ($objs as $id => $obj) {
+          if (!$recursive)
+            $data[$prop][] = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/"
+              .$this->_id."$ypath2/$prop/".rawurlencode($id);
+          else {
+            $ypathChild = "$ypath2/$prop/".rawurlencode($id);
+            $data[$prop][] = $this->buildJsonLd($obj, $ypathChild, $ypathChild, 2);
+          }
+        }
       }
     }
     return $data;
   }
   
+  // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
+  // Retourne la ressource comme JSON-LD
+  // L'URI /{rootId} retourne la ressource racine sans ses ressources filles
+  // l'URI '/' retourne tout le document
+  function extractByUri(string $ypath) {
+    if ($ypath == '/@context')
+      return $this->buildJsonLdContext();
+    elseif ($ypath == '/')
+      return $this->buildJsonLd($this->_c, $ypath, '', 1);
+    elseif ($ypath == '/'.$this->rootId)
+      return $this->buildJsonLd($this->_c, $ypath, '');
+    else
+      return $this->buildJsonLd(YamlDoc::sextract($this->_c, $ypath), $ypath, $ypath);
+  }
+  
   // affiche le doc ou le fragment si ypath est non vide
   function show(string $ypath=''): void {
     //echo "<pre>show(ypath=$ypath) data="; print_r($this->data); echo "</pre>\n";
-    showDoc($this->_id, YamlDoc::sextract($this->_c, $ypath));
+    showDoc($this->_id, YamlDoc::sextract(self::replaceYDEltByArray($this->asArray()), $ypath));
+  }
+  
+  // liste des prefixes utilisés par les propriétés
+  function usedPrefixInProp(): array {
+    $prefixes = [];
+    foreach ($this->properties as $prop) {
+      $pos = strpos($prop->_id(), ':');
+      $prefix = substr($prop->_id(), 0, $pos);
+      if ($pos && !in_array($prefix, $prefixes))
+        $prefixes[] = $prefix;
+    }
+    return $prefixes;
   }
   
   // affiche les namespaces présents dans les propriétés
   function printNamespaces(): void {
     echo "@base <http://id.georef.eu/".$this->_id,"/> .\n";
     //print_r($this);
-    $prefixes = [];
-    foreach ($this->properties as $prop) {
-      $pos = strpos($prop, ':');
-      $prefix = substr($prop, 0, $pos);
-      if ($pos && !in_array($prefix, $prefixes))
-        $prefixes[] = $prefix;
-    }
     //print_r($prefixes);
-    foreach ($prefixes as $prefix) {
+    foreach ($this->usedPrefixInProp() as $prefix) {
       echo "@prefix $prefix: <",$this->namespaces[$prefix],"> .\n";
     }
     echo "\n";
@@ -197,4 +254,43 @@ class YamlRdf extends YamlDoc {
       $this->printTriples(substr($ypath,1), $this->extract($ypath));
     }
   }
+};
+
+class YamlRdfProperty implements YamlDocElement {
+  protected $_c; // toujours un array
+  
+  function __construct($yaml) {
+    if (is_string($yaml))
+      $this->_c = ['@id'=> $yaml];
+    elseif (is_array($yaml))
+      $this->_c = $yaml;
+    else
+      throw new Exception("Erreur création YamlRdfProperty");
+  }
+  
+  function _id() { return $this->_c['@id']; }
+  
+  // extrait le sous-élément de l'élément défini par $ypath
+  // permet de traverser les objets quand on connait son chemin
+  function extract(string $ypath) {}
+
+  // décapsule l'objet et retourne son contenu sous la forme d'un array
+  // permet de parcourir tout objet sans savoir a priori ce que l'on cherche
+  // est utilisé par YamlDoc::replaceYDEltByArray()
+  function asArray() {
+    return $this->_c;
+  }
+
+  // affichage simplifié pour le contexte
+  function simplified() {
+    if (count($this->_c) > 1)
+      return $this->_c;
+    else
+      return $this->_c['@id'];
+  }
+  
+  // affiche un élément en Html
+  // est utilisé par showDoc()
+  // pas implémenté avec la même signature par tous !!!
+  //public function show(string $docuid, string $prefix='');
 };

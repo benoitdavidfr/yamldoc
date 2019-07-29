@@ -55,10 +55,22 @@ properties:
     items:
       type: string
   properties:
-    description: liste des propriétés utilisées comme dictionnaire sous la forme {synonyme} -> {nom d'origine}
+    description: liste des propriétés utilisées comme dictionnaire sous la forme {synonyme} -> {nom d'origine} | objet
     type: object
     additionalProperties:
-      type: string
+      oneOf:
+        - description: uniquement uri
+          type: string
+        - description: objet avec propriétés
+          type: object
+          required: ['@id']
+          properties:
+            '@id':
+              description: uri
+              type: string
+            '@type':
+              description: type de la propriété
+              type: string
   rootId:
     description: nom donné dans l'URI extérieure au document racine
     type: string
