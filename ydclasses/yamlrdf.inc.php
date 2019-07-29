@@ -157,8 +157,10 @@ class YamlRdf extends YamlDoc {
       return $this->buildJsonLd($this->_c, $ypath, '', 1);
     elseif ($ypath == '/'.$this->rootId)
       return $this->buildJsonLd($this->_c, $ypath, '');
+    elseif ($subelt = YamlDoc::sextract($this->_c, rawurldecode($ypath)))
+      return $this->buildJsonLd($subelt, $ypath, $ypath);
     else
-      return $this->buildJsonLd(YamlDoc::sextract($this->_c, $ypath), $ypath, $ypath);
+      return null;
   }
   
   // affiche le doc ou le fragment si ypath est non vide
