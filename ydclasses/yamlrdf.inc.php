@@ -102,7 +102,7 @@ class YamlRdf extends YamlDoc {
     foreach($this->properties as $shortname => $prop) {
       $context[$shortname] = $prop->simplified();
     }
-    return $context;
+    return ['@context'=> $context];
   }
   
   // si $url est une URL HTTP qui contient un blanc alors retourne la partie avant le blanc sinon retourne le paramètre
