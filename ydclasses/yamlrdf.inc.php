@@ -265,14 +265,14 @@ class YamlRdfProperty implements YamlDocElement {
   
   function __construct($yaml) {
     if (is_string($yaml))
-      $this->_c = ['@id'=> $yaml];
+      $this->_c = ['id'=> $yaml];
     elseif (is_array($yaml))
       $this->_c = $yaml;
     else
       throw new Exception("Erreur création YamlRdfProperty");
   }
   
-  function _id() { return $this->_c['@id']; }
+  function _id() { return $this->_c['id']; }
   
   // extrait le sous-élément de l'élément défini par $ypath
   // permet de traverser les objets quand on connait son chemin
@@ -287,10 +287,14 @@ class YamlRdfProperty implements YamlDocElement {
 
   // affichage simplifié pour le contexte
   function simplified() {
-    if (count($this->_c) > 1)
-      return $this->_c;
+    if (count($this->_c) > 1) {
+      $simplified = [];
+      foreach ($this->_c as $key => $val)
+        $simplified['@'.$key] = $val;
+      return $simplified;
+    }
     else
-      return $this->_c['@id'];
+      return $this->_c['id'];
   }
   
   // affiche un élément en Html

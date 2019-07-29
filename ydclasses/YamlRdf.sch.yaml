@@ -63,14 +63,15 @@ properties:
           type: string
         - description: objet avec propriétés
           type: object
-          required: ['@id']
+          required: [id]
           properties:
-            '@id':
+            id:
               description: uri
               type: string
-            '@type':
+            type:
               description: type de la propriété
               type: string
+          additionalProperties: false
   rootId:
     description: nom donné dans l'URI extérieure au document racine
     type: string
