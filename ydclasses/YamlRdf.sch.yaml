@@ -34,7 +34,7 @@ definitions:
             $ref: '#/definitions/objectResource'
         
 type: object
-required: [title, abstract, $schema, namespaces, classes, properties, rootId]
+required: [title, $schema, namespaces, classes, properties, rootId]
 properties:
   title:
     description: à la fois titre du document YamlDoc et du document racine

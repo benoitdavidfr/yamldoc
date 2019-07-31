@@ -21,6 +21,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
   Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  31/7/2019:
+  - ajout de la possibilité d'avoir plusieurs schema et d'utiliser le premier pour typer le document
   25/2/2019:
   - amélioration de la récriture des URL dans showText() et showString()
   24/2/2019:
@@ -572,21 +574,32 @@ function new_doc(string $docid): ?Doc {
   // Sinon détermine sa classe en fonction du champ $schema
   elseif (!isset($data['$schema'])) // si pas de $schema c'est un YamlDoc de base
     $doc = new BasicYamlDoc($data, $docid);
-  elseif (is_array($data['$schema'])) // document auto-décrit
-    $doc = new AutoDescribed($data, $docid);
-  elseif ($data['$schema']=='http://json-schema.org/draft-07/schema#') // schema JSON
+  elseif ($data['$schema'] == 'http://json-schema.org/draft-07/schema#') // schema JSON
     $doc = new YdJsonSchema($data, $docid);
-  else {
-    $yamlClass =
-      (is_string($data['$schema']) && preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema'], $matches)) ?
-              $matches[1] : null;
-    if ($yamlClass && class_exists($yamlClass))
+  elseif (is_string($data['$schema'])) {
+    if (preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema'], $matches) && class_exists($matches[1])) {
+      $yamlClass = $matches[1];
       $doc = new $yamlClass ($data, $docid);
+    }
     else {
       $schema = $data['$schema'];
       echo "<b>Erreur: le schema $schema n'est pas défini</b><br>\n";
       $doc = new BasicYamlDoc($data, $docid);
     }
+  }
+  elseif (is_array($data['$schema'])) {
+    // si le schema est un allOf et référence en premier un schema Yaml alors je l'utilise pour typer le document
+    if (isset($data['$schema']['allOf'][0]['$ref'])
+      && preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema']['allOf'][0]['$ref'], $matches)) {
+        $yamlClass = $matches[1];
+        $doc = new $yamlClass ($data, $docid);
+    }
+    else
+      $doc = new AutoDescribed($data, $docid); // document auto-décrit
+  }
+  else {
+    echo "<b>Erreur: le schema n'est pas compris</b><br>\n";
+    $doc = new BasicYamlDoc($data, $docid);
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
   ydsetWriteAccess($docid, $doc->authorizedWriter());
