@@ -34,6 +34,10 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  28/12/2019:
+    - ajout showAsHtmlDoc()
+  28/9/2019:
+    - utilisation d'un répertoire vendor local
   6/5/2019:
     - transfert du répertoire markdown dans ../markdown
     - synchro effectuée sur http://georef.eu/yamldoc/

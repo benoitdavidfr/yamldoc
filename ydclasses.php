@@ -106,7 +106,7 @@ $path = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : null;
 if (!$path || ($path == '/')) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>ydclasses</title></head><body>\n";
   echo "<h2>Liste des classes de documents</h2><ul>";
-  foreach ($phpDocs as $fiphp => $phpDoc) {
+  foreach ($phpDocs as $fiphp => $phpDoc) { // liste des fichiers Php
     //echo "<pre>$fiphp:"; print_r($phpDoc); echo "</pre>\n";
     if (!isset($phpDoc['classes'])) {
       //echo "<li><b>$fiphp - Aucune classe définie</b>\n";
@@ -168,9 +168,9 @@ if (preg_match('!^/([^/\.]+)$!', $path, $matches)) {
   if (!($schemaClass = schemaOfClass($className)))
     echo "Aucun schéma n'est associé à cette classe de documents<br>\n";
   else {
-    $href = "$_SERVER[SCRIPT_NAME]/$schemaClass.sch";
+    $href = "$_SERVER[SCRIPT_NAME]/$schemaClass/schema";
     echo "Les documents de cette classe doivent respecter le schéma ",
-         "<a href='$href.yaml'>$schemaClass.sch.yaml</a> (<a href='$href.json'>json</a>)<br>\n";
+         "<a href='$href.yaml'>$schemaClass/schema.yaml</a> (<a href='$href'>json</a>)<br>\n";
   }
   echo "La classe est définie dans le fichier $fiphp<br>\n";
   if (isset($classDoc['doc'])) {

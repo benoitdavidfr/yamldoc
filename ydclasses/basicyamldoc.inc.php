@@ -10,10 +10,12 @@ $phpDocs['basicyamldoc.inc.php']['file'] = <<<'EOT'
 name: basicyamldoc.inc.php
 title: basicyamldoc.inc.php - classe BasicYamlDoc
 journal:
+  28/12/2019:
+  - ajout showAsHtmlDoc()
   18/7/2018:
   - première version par fork de yd.inc.php
   - chgt de nom de la classe
-  - transfert des métodes génériques dans YamlDoc
+  - transfert des méthodes génériques dans YamlDoc
 EOT;
 }
 
@@ -46,5 +48,11 @@ class BasicYamlDoc extends YamlDoc {
   function show(string $ypath=''): void {
     //echo "<pre>show(ypath=$ypath) data="; print_r($this->data); echo "</pre>\n";
     showDoc($this->_id, YamlDoc::sextract($this->data, $ypath));
+  }
+  
+  // affiche comme HtmlDoc le doc ou le fragment si ypath est non vide
+  function showAsHtmlDoc(string $ypath=''): void {
+    //echo "<pre>show(ypath=$ypath) data="; print_r($this->data); echo "</pre>\n";
+    showAsHtmlDoc($this->_id, YamlDoc::sextract($this->data, $ypath));
   }
 };

@@ -6,7 +6,6 @@ functions:
 doc: <a href='/yamldoc/?action=version&name=yd.inc.php'>doc intégrée en Php</a>
 includes:
   - store.inc.php
-  -  ../vendor/autoload.php
   -  ../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php
 */
 {
@@ -21,6 +20,10 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
   Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  28/12/2019:
+  - ajout showAsHtmlDoc()
+  28/9/2019:
+  - utilisation d'un répertoire vendor local
   31/7/2019:
   - ajout de la possibilité d'avoir plusieurs schema et d'utiliser le premier pour typer le document
   25/2/2019:
@@ -113,7 +116,7 @@ journal:
 EOT;
 }
 require_once __DIR__.'/store.inc.php';
-require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 require_once __DIR__."/../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 
 use Symfony\Component\Yaml\Yaml;
@@ -517,6 +520,23 @@ function showDoc(string $docid, $data, string $prefix=''): void {
     showString($docid, $data);
 }
 
+// affiche comme HtmlDoc
+// Considère le doc comme un array de sous-docs
+// L'affichage comme HtmlDoc agrège les différents sous-docs pour en faire un doc Html
+function showAsHtmlDoc(string $docid, $data): void {
+  if (is_array($data)) {
+    foreach ($data as $k => $ssdoc) {
+      showAsHtmlDoc($docid, $ssdoc);
+    }
+  }
+  elseif (is_string($data)) {
+    showText($docid, $data);
+  }
+  else {
+    echo "<pre>"; print_r($data); echo "</pre>\n";
+  }
+}
+
 // crée un Doc à partir du docid du document
 // retourne null si le document n'existe pas, génère une exception si le doc n'est pas du Yaml
 function new_doc(string $docid): ?Doc {
@@ -531,8 +551,9 @@ function new_doc(string $docid): ?Doc {
       //echo "unserialize($filename.pser)<br>\n";
       return unserialize(@file_get_contents("$filename.pser"));
   }
-  // Sinon Si le fichier n'existe pas renvoie null
+  // Sinon Si le fichier n'existe pas alors
   if (($text = ydread($docid)) === FALSE) {
+    // Si il existe un fichier odt ou pdf alors renvoie le doc correspondant
     foreach (['odt'=> 'OdtDoc', 'pdf'=> 'PdfDoc'] as $ext => $class) {
       if (file_exists("$filename.$ext")) {
         $filename = "$filename.$ext";
@@ -540,8 +561,10 @@ function new_doc(string $docid): ?Doc {
         return new $class($filename, $docid);
       }
     }
+    // sinon renvoie null
     return null;
   }
+  // Donc ici le fichier existe et son contenu est copié dans $text
   // Sinon Si le texte correspond à du code Php alors l'exécute pour obtenir l'objet résultant et le renvoie
   if (strncmp($text,'<?php', 5)==0) {
     //if (!$docid)
@@ -549,7 +572,7 @@ function new_doc(string $docid): ?Doc {
     // teste si le script Php peut être modifié par l'utilisateur courant et marque l'info dans l'environnement
     ydcheckWriteAccessForPhpCode($docid);
     // exécute le script et renvoie son retour qui doit donc être un array Php
-    // cght de spec le 5/2/2019 - vant cela devait être un YamlDoc
+    // cght de spec le 5/2/2019 - avant cela devait être un YamlDoc
     $storepath = Store::storepath();
     //echo "exécute ",__DIR__,"/$storepath/$docid.php<br>\n";
     $data = require __DIR__."/$storepath/$docid.php"; // retourne un array Php
@@ -572,13 +595,16 @@ function new_doc(string $docid): ?Doc {
   if (!is_array($data))
     $doc = new BasicYamlDoc($text, $docid);
   // Sinon détermine sa classe en fonction du champ $schema
-  elseif (!isset($data['$schema'])) // si pas de $schema c'est un YamlDoc de base
+  elseif (!isset($data['$schema'])) { // si pas de $schema c'est un YamlDoc de base
+    //echo "Création d'un document BasicYamlDoc<br>\n";
     $doc = new BasicYamlDoc($data, $docid);
+  }
   elseif ($data['$schema'] == 'http://json-schema.org/draft-07/schema#') // schema JSON
     $doc = new YdJsonSchema($data, $docid);
   elseif (is_string($data['$schema'])) {
     if (preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema'], $matches) && class_exists($matches[1])) {
       $yamlClass = $matches[1];
+      //echo "Création d'un document $yamlClass<br>\n";
       $doc = new $yamlClass ($data, $docid);
     }
     else {
@@ -592,10 +618,13 @@ function new_doc(string $docid): ?Doc {
     if (isset($data['$schema']['allOf'][0]['$ref'])
       && preg_match(YamlDoc::SCHEMAURIPATTERN, $data['$schema']['allOf'][0]['$ref'], $matches)) {
         $yamlClass = $matches[1];
+        //echo "Création d'un document $yamlClass<br>\n";
         $doc = new $yamlClass ($data, $docid);
     }
-    else
+    else {
+      echo "Création d'un document AutoDescribed<br>\n";
       $doc = new AutoDescribed($data, $docid); // document auto-décrit
+    }
   }
   else {
     echo "<b>Erreur: le schema n'est pas compris</b><br>\n";

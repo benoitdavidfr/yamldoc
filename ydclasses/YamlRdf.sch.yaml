@@ -5,8 +5,8 @@ modified: '2019-07-26'
 description: |
   Un document YamlRdf contient un graphe RDF défini à partir d'une ressource racine.
   Le document Yaml définit quelques propriétés spécifiques à cette classe ainsi que les propriétés de la ressource racine.
-  La valeur Yaml associée à une propriété de ressource (appelée objectResource) est soit un littéral, soit une URL,
-  soit une liste de littéraux ou d'URL, soit un ensemble de ressources de niveau 2.
+  La valeur Yaml associée à une propriété de ressource (appelée objectResource) est soit un littéral,
+  soit une URL, soit une liste de littéraux ou d'URL, soit un ensemble de ressources de niveau 2.
   Dans le dernier cas la valeur Yaml est un dictionnaire de dictionnaires de valeurs.
   La première clé est l'identifiant local de la ressource de niveau 2.
   La seconde clé définit la propriété.
@@ -55,7 +55,8 @@ properties:
     items:
       type: string
   properties:
-    description: liste des propriétés utilisées comme dictionnaire sous la forme {synonyme} -> {nom d'origine} | objet
+    description: >
+      liste des propriétés utilisées comme dictionnaire sous la forme {synonyme} -> {nom d'origine} | objet
     type: object
     additionalProperties:
       oneOf:

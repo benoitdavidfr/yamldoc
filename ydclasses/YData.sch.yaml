@@ -23,7 +23,7 @@ allOf:
                 $ref: http://id.georef.eu/dublincore.schema
               - description: champs Dublin Core multi-lingue des MD de la table
                 $ref: http://id.georef.eu/dublincore-mul.schema
-            - description: champs spécifiques au données de la table
+            - description: champs spécifiques aux données de la table
               type: object
               required: [dataSchema, data]
               properties:

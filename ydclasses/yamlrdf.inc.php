@@ -1,21 +1,22 @@
 <?php
 /*PhpDoc:
 name: yamlrdf.inc.php
-title: gestion d'un graphe RDF
+title: Stockage/exposition d'un graphe RDF
 doc: |
   voir le code
 includes:
-  - ../../vendor/autoload.php
   - ../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php
   - mlstring.inc.php
 */
 { // doc 
 $phpDocs['yamlrdf.inc.php']['file'] = <<<EOT
 name: yamlrdf.inc.php
-title: yamlrdf.inc.php - gestion d'un graphe RDF
+title: yamlrdf.inc.php - Stockage/exposition d'un graphe RDF stocké en Yaml selon le schema YamlRdf.sch.yaml
 doc: |
-  Gestion/affichage d'un sous-graphe RDF stocké en Yaml selon le schema YamlRdf.sch.yaml
+  Le graphe RDF est stocké dans un objet de la classe YamlRdf
 journal: |
+  7/8/2019:
+  - correction bugs pour affichage de Turtle
   29/7/2019:
   - mise en oeuvre de l'export JSON-LD
   27/7/2019:
@@ -28,7 +29,7 @@ journal: |
   - création, gestion de l'affichage turtle, saisie d'un catalogue de quelques jeux de données 
 EOT;
 }
-//require_once __DIR__.'/../../vendor/autoload.php';
+//require_once __DIR__.'/../vendor/autoload.php';
 //require_once __DIR__."/../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 //require_once __DIR__.'/mlstring.inc.php';
 
@@ -38,7 +39,7 @@ EOT;
 { // doc 
 $phpDocs['yamlrdf.inc.php']['classes']['YamlRdf'] = <<<EOT
 name: class YamlRdf
-title: gestion d'un graphe RDF
+title: Stockage/exposition d'un graphe RDF
 doc: |
   La classe YamlRdf hérite de la classe abstraite YamlDoc.  
   Un document YamlRdf correspond à un graphe RDF codé en Yaml selon le schema YamlRdf.sch.yaml
@@ -197,7 +198,7 @@ class YamlRdf extends YamlDoc {
   function showProperty(string $prop): string {
     if (!isset($this->properties[$prop]))
       die("\nErreur propriété $prop non définie\n");
-    return '  '.$this->properties[$prop].' ';
+    return '  '.$this->properties[$prop]->_id().' ';
   }
   
   function showObject(string $object): string {

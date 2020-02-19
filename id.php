@@ -246,11 +246,14 @@ if (php_sapi_name() <> 'cli')
 $format = $_GET['format'] ?? '';
 if ($format == 'yaml') {
   if (php_sapi_name() <> 'cli')
+    // il n'y a pas de type MIME enregistré pour Yaml
+    // de plus l'utilisation de text/plain permet de l'afficher dans Firefox
     header('Content-type: text/plain');
   echo YamlDoc::syaml($fragment);
 }
 elseif ($format == 'ttl') {
   if (php_sapi_name() <> 'cli')
+    //header('Content-type: text/turtle');
     header('Content-type: text/plain');
   $doc->printTtl($ypath);
 }

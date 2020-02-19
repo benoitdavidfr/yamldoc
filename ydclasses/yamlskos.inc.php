@@ -5,7 +5,6 @@ title: gestion d'un thésaurus Skos organisé en micro-thésaurus
 doc: |
   voir le code
 includes:
-  - ../../vendor/autoload.php
   - ../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php
   - mlstring.inc.php
 */
@@ -35,7 +34,7 @@ journal: |
   - création
 EOT;
 }
-require_once __DIR__.'/../../vendor/autoload.php';
+require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__."/../../markdown/markdown/PHPMarkdownLib1.8.0/Michelf/MarkdownExtra.inc.php";
 require_once __DIR__.'/mlstring.inc.php';
 

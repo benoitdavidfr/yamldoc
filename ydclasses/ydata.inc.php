@@ -46,10 +46,7 @@ doc: |
   
   Cette classe remplace la classe YamlData, elle utilise les schémas JSON et hérite de YamlDoc.
   
-  Un document YData peut:
-  
-    - soit contenir une seule table stockée en Yaml dans le champ data
-    - soit contenir une liste de tables stockée dans une structure Yaml
+  Un document YData contient une liste de tables stockée dans une structure Yaml
       tables:
         {nomtable}:
           title: titre de la table
@@ -101,17 +98,19 @@ class YData extends YamlDoc {
     foreach ($yaml as $prop => $value) {
       if (in_array($prop, ['_id','_c']))
         throw new Exception("Erreur de création de YData contient $prop");
-      if ($prop == 'data')
-        $this->_c['data'] = $value ? new YDataTable($value) : null;
-      elseif ($prop == 'tables') {
+      if ($prop == 'tables') {
         $tables = $value;
         $this->_c['tables'] = [];
-        foreach ($tables as $tabid => $table) {
-          foreach ($table as $prop => $value) {
-            if ($prop == 'data')
-              $this->_c['tables'][$tabid]['data'] = $value ? new YDataTable($value) : null;
-            else
-              $this->_c['tables'][$tabid][$prop] = $value;
+        if ($tables) {
+          foreach ($tables as $tabid => $table) {
+            if ($table) {
+              foreach ($table as $prop => $value) {
+                if ($prop == 'data')
+                  $this->_c['tables'][$tabid]['data'] = $value ? new YDataTable($value) : null;
+                else
+                  $this->_c['tables'][$tabid][$prop] = $value;
+              }
+            }
           }
         }
       }
@@ -288,7 +287,10 @@ class YDataTable implements YamlDocElement, IteratorAggregate {
   function tuples() {
     $tuples = [];
     foreach ($this->data as $_id => $tuple) {
-      $tuples[] = array_merge(['_id'=> $_id], $tuple);
+      if ($tuple)
+        $tuples[] = array_merge(['_id'=> $_id], $tuple);
+      else
+        $tuples[] = ['_id'=> $_id];
     }
     return $tuples;
   }

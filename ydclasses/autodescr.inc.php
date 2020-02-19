@@ -23,7 +23,7 @@ EOT;
 use Symfony\Component\Yaml\Yaml;
 
 { // doc
-$phpDocs['autodescr.inc.php']['classes']['StrucData'] = <<<'EOT'
+$phpDocs['autodescr.inc.php']['classes']['AutoDescribed'] = <<<'EOT'
 title: données structurées selon un schema
 doc: |
   Document auto-décrit par un schéma JSON défini dans le champ schema

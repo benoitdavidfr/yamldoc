@@ -45,6 +45,8 @@ doc: |
     - intégrer la gestion de mot de passe
   
 journal:
+  18/2/2020:
+    - document '' par défaut
   26/8/2018:
     - renommage de la classe Search en FullTextSearch
   22/8/2018:
@@ -419,16 +421,10 @@ if (isset($_GET['clone'])) {
 }
 
 
-// évite d'avoir à tester le paramètre doc dans les actions suivantes
-if (!isset($_GET['doc']) || !$_GET['doc']) {
-  die("<a href='?doc=index'>Accès au document par défaut</a>\n");
-}
-
+$docuid = $_GET['doc'] ?? '';
 
 // action d'affichage d'un document ou de recherche de documents
 if (!isset($_GET['action'])) {
-  //$docuid = isset($_GET['doc']) ? $_GET['doc'] : getdocuid();
-  $docuid = $_GET['doc'];
   //isset($_SESSION['parents'][$doc]);
   $ypath = isset($_GET['ypath']) ? $_GET['ypath'] : '';
   
@@ -469,6 +465,8 @@ if (!isset($_GET['action'])) {
     }
     if (!isset($_GET['format']))
       $doc->show($ypath);
+    elseif ($_GET['format']=='htmlDoc')
+      $doc->showAsHtmlDoc($ypath);
     elseif ($_GET['format']=='yaml')
       echo "<pre>",str2html($doc->yaml($ypath)),"</pre>\n";
     elseif ($_GET['format']=='json')
@@ -492,16 +490,16 @@ if (!isset($_GET['action'])) {
 // action edit - génération du formulaire d'édition du document courant
 if ($_GET['action']=='edit') {
   // verification que le document est consultable
-  if (!ydcheckReadAccess($_GET['doc']))
+  if (!ydcheckReadAccess($docuid))
     die("accès interdit");
   // verification que le document est modifiable
-  if (ydcheckWriteAccess($_GET['doc'])<>1)
+  if (ydcheckWriteAccess($docuid)<>1)
     die("mise à jour interdite");
   // verouillage du document pour éviter des mises à jour concurrentielles
-  if (!ydlock($_GET['doc']))
+  if (!ydlock($docuid))
     die("mise à jour impossible document verouillé");
-  $text = ydread($_GET['doc']);
-  echo "<table><form action='?action=store&amp;doc=$_GET[doc]' method='post'>\n",
+  $text = ydread($docuid);
+  echo "<table><form action='?action=store&amp;doc=$docuid' method='post'>\n",
        "<tr><td><textarea name='text' rows='40' cols='120'>$text</textarea></td></tr>\n",
        "<tr><td><input type='submit' value='Enregistrer'></td></tr>\n",
        "</form></table>\n";
@@ -513,24 +511,24 @@ if ($_GET['action']=='store') {
   // traitement du cas d'appel de store non lié à l'edit
   if (!isset($_POST['text'])) {
     echo "<b>Erreur d'appel de la commande: aucun texte transmis</b><br>\n";
-    $doc = new_yamlDoc($_GET['doc']);
+    $doc = new_yamlDoc($docuid);
     $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   }
   elseif (strlen($_POST['text'])==0) {
-    yddelete($_GET['doc']);
-    echo "<b>document vide $_GET[doc] effacé</b><br>\n";
+    yddelete($docuid);
+    echo "<b>document vide $docuid effacé</b><br>\n";
     if ($parent = CallingGraph::parent($_GET['doc']))
-      echo "<a href='?delDoc=$_GET[doc]&amp;doc=$parent'>",
+      echo "<a href='?delDoc=$docuid&amp;doc=$parent'>",
            "L'effacer dans le catalogue $parent</a><br>\n";
     else
       echo "Aucun catalogue disponible<br>\n";
   }
   else {
-    $ext = ydwrite($_GET['doc'], $_POST['text']);
-    echo "Enregistrement du document $_GET[doc]<br>\n";
+    $ext = ydwrite($docuid, $_POST['text']);
+    echo "Enregistrement du document $docuid<br>\n";
     //git_commit($_GET['doc'], $ext);
     try {
-      $doc = new_doc($_GET['doc']);
+      $doc = new_doc($docuid);
       $doc->show(isset($_GET['ypath']) ? $_GET['ypath'] : '');
     }
     catch (ParseException $exception) {
@@ -542,16 +540,16 @@ if ($_GET['action']=='store') {
 
 // action check - verification de la conformité d'un document à son éventuel schema
 if ($_GET['action']=='check') {
-  if (!($doc = new_doc($_GET['doc'])))
-    die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
+  if (!($doc = new_doc($docuid)))
+    die("<b>Erreur: le document $docuid n'existe pas</b><br>\n");
   $doc->checkSchemaConformity(isset($_GET['ypath']) ? $_GET['ypath'] : '');
   die();
 }
 
 // action checkIntegrity - verification adhoc d'intégrité
 if ($_GET['action']=='checkIntegrity') {
-  if (!($doc = new_yamlDoc($_GET['doc'])))
-    die("<b>Erreur: le document $_GET[doc] n'existe pas</b><br>\n");
+  if (!($doc = new_yamlDoc($docuid)))
+    die("<b>Erreur: le document $docuid n'existe pas</b><br>\n");
   $doc->checkIntegrity();
   die();
 }
@@ -567,9 +565,9 @@ if ($_GET['action']=='reindex') {
 // action showPhpSrc - affiche le source Php d''une requête
 if ($_GET['action']=='showPhpSrc') {
   //echo "ydext($_GET[doc])=",ydext($_GET['doc']);
-  if (ydext($_GET['doc'])<>'php')
-    die("Le document $_GET[doc] n'est pas une requête<br>\n");
-  echo "<b>Code source Php de $_GET[doc]</b>\n";
-  echo "<pre>",str_replace(['<'],['&lt;'],ydread($_GET['doc'])),"</pre>\n";
+  if (ydext($docuid)<>'php')
+    die("Le document $docuid n'est pas une requête<br>\n");
+  echo "<b>Code source Php de $docuid</b>\n";
+  echo "<pre>",str_replace(['<'],['&lt;'],ydread($docuid)),"</pre>\n";
   die("<br>\n");
 }

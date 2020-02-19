@@ -19,6 +19,7 @@ phpIncludes:
   - /yamldoc/ydclasses/multidata.inc.php
   - /yamldoc/ydclasses/autodescr.inc.php
   - /yamldoc/ydclasses/yamlskos.inc.php
+  - /yamldoc/ydclasses/yamlrdf.inc.php
   - /yamldoc/ydclasses/datamodel.inc.php
   - /yamldoc/ydclasses/legaldoc.inc.php
   - /yamldoc/ydclasses/odtdoc.inc.php
