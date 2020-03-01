@@ -95,7 +95,8 @@ if (isset($_GET['action']) && ($_GET['action']=='tests')) {
 function is_doc(string $docid): bool {
   $storepath = Store::storepath();
   $filename = __DIR__."/$storepath/$docid";
-  return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php"));
+  return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php")
+    || is_file("$filename.pdf") || is_file("$filename.odt"));
 }
 
 function error(int $code, string $docid, string $ypath='') {
@@ -196,6 +197,7 @@ else {
   $id0 = array_shift($ids);
   //echo "id0=$id0<br>\n";
   $storeRoot = __DIR__.'/'.Store::storepath();
+  //echo "storeRoot=$storeRoot<br>\n";
   while ($id0 && !is_doc("$dirpath$id0") && is_dir("$storeRoot/$dirpath$id0")) {
     $dirpath = "$dirpath$id0/";
     $id0 = array_shift($ids);

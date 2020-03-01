@@ -8,9 +8,14 @@ doc: <a href='/yamldoc/?action=version&name=autodescr.inc.php'>doc intégrée en
 { //doc 
 $phpDocs['autodescr.inc.php']['file'] = <<<'EOT'
 name: autodescr.inc.php
-title: autodescr.inc.php - documents contenant sa structure dans le champ $schema sous la forme d'un schema JSON
-doc: |  
+title: autodescr.inc.php - documents autodécrits
+doc: |
 journal:
+  20/2/2020:
+    - modification de la classe pour gérer le registre des organisations
+      (http://localhost/yamldoc/id.php/organizations)
+    - ajout de la possibilité de paramétrer le comportement de la classe
+    - manque la sortie en JSON-LD
   23/2/2019:
     - changement de nom
     - utilisation du champ $schema
@@ -24,9 +29,13 @@ use Symfony\Component\Yaml\Yaml;
 
 { // doc
 $phpDocs['autodescr.inc.php']['classes']['AutoDescribed'] = <<<'EOT'
-title: données structurées selon un schema
+title: document autodécrit par un schema et avec un comportement paramétré 
 doc: |
-  Document auto-décrit par un schéma JSON défini dans le champ schema
+  Document auto-décrit par un schéma JSON défini dans le champ $schema.
+  Le champ ydADscrBhv permet de paramétrer:
+    - l'enregistrement du document en pser
+    - l'extract/extractByUri
+  Peut être utilisé pour gérer un registre hiérarchique
 EOT;
 }
 
@@ -42,6 +51,13 @@ class AutoDescribed extends YamlDoc {
   
   // lit les champs
   function __get(string $name) { return isset($this->_c[$name]) ? $this->_c[$name] : null; }
+
+  // un .pser est généré ssi le champ ydAutoDescribedBehaviour/writePserReally du document est défini
+  public function writePser(): void {
+    if ($this->ydAutoDescribedBehaviour && isset($this->ydAutoDescribedBehaviour['writePserReally'])) {
+      $this->writePserReally();
+    }
+  }
 
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
@@ -63,7 +79,44 @@ class AutoDescribed extends YamlDoc {
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
   // Utilisé par YamlDoc::yaml() et YamlDoc::json()
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
-  function extract(string $ypath) { return YamlDoc::sextract($this->_c, $ypath); }
+  // Si le champ ydADscrBhv/extract est défini alors utilise les 2 clés pour descendre dans la hiérarchie
+  function extract(string $ypath) {
+    //echo "Appel de AutoDescribed::extract($ypath)<br>\n";
+    if ($this->ydADscrBhv && isset($this->ydADscrBhv['extract'])) {
+      $extractFields = $this->ydADscrBhv['extract'];
+      //echo "<pre>extractFields="; var_dump($extractFields); echo "</pre>\n";
+      $mainKey = $extractFields [0];
+      //echo "mainKey=$mainKey<br>\n";
+      $secondKey = $extractFields[1];
+      //echo "secondKey=$secondKey<br>\n";
+      $keys = explode('/', $ypath);
+      array_shift($keys);
+      //echo "<pre>keys="; var_dump($keys); echo "</pre>\n";
+      foreach ($keys as $ikey => $key) {
+        //echo "Traverse key $key<br>\n";
+        if ($ikey == 0) {
+          if (isset($this->$mainKey[$key]))
+            $item = $this->$mainKey[$key];
+          elseif ($this->$key)
+            $item = $this->$key;
+          else
+            return null;
+        }
+        elseif (isset($item[$secondKey][$key])) {
+          $item = $item[$secondKey][$key];
+        }
+        elseif (isset($item[$key])) {
+          $item = $item[$key];
+        }
+        else
+          return null;
+        //echo "<pre>item="; print_r($item); echo "</pre>\n";
+      }
+      return $item;
+    }
+    else
+      return YamlDoc::sextract($this->_c, $ypath);
+  }
   
   static function api(): array {
     return [
@@ -79,17 +132,18 @@ class AutoDescribed extends YamlDoc {
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
-    $docuri = $this->_id;
     if (!$ypath || ($ypath=='/')) {
-      return array_merge(['_id'=> $this->_id], $this->_c);
+      $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
+      return array_merge(['@id'=> $id], $this->_c);
     }
     elseif ($ypath == '/api') {
       return self::api();
     }
     else {
+      $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
       $fragment = $this->extract($ypath);
       $fragment = self::replaceYDEltByArray($fragment);
-      return $fragment;
+      return array_merge(['@id'=> $id], $fragment);
     }
   }
   

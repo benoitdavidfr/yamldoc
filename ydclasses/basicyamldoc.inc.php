@@ -21,7 +21,7 @@ EOT;
 
 {
 $phpDocs['basicyamldoc.inc.php']['classes']['BasicYamlDoc'] = <<<'EOT'
-title: document de base
+title: document de base et par défaut
 EOT;
 }
 

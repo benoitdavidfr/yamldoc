@@ -622,7 +622,7 @@ function new_doc(string $docid): ?Doc {
         $doc = new $yamlClass ($data, $docid);
     }
     else {
-      echo "Création d'un document AutoDescribed<br>\n";
+      //echo "Création d'un document AutoDescribed<br>\n";
       $doc = new AutoDescribed($data, $docid); // document auto-décrit
     }
   }

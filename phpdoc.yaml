@@ -8,12 +8,12 @@ doc: |
   ce qui est effectué en indiquant la liste des écrivains autorisés.
   Il est aussi possible de protéger un document en lecture en définissant dans le document un mot de passe.
   Un document peut être typé défini par le champ $schema.
-  La navigation entre documents est organisée au travers de documents particuliers de type catalogue, qui référencent
-  d'autres documents par leur id en leur affectant notamment un titre.
-  Le visualiseur de documents mémorise le chemin des catalogues traversés ; chaque nouveau document est référencé 
-  dans le dernier catalogue traversé.
-  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) l'uid de son catalogue d'accueil permettant
-  d'accéder à ses documents. Cet uid identifie chaque utilisateur.
+  La navigation entre documents est organisée au travers de documents particuliers de type catalogue,
+  qui référencent d'autres documents par leur id en leur affectant notamment un titre.
+  Le visualiseur de documents mémorise le chemin des catalogues traversés ; chaque nouveau document est
+  référencé  dans le dernier catalogue traversé.
+  Il est recommandé à chaque utilisateur de mémoriser (par ex. en signet) l'uid de son catalogue d'accueil
+  permettant d'accéder à ses documents. Cet uid identifie chaque utilisateur.
   Des gestionnaires spécifiques permettent d'éditer des documents ayant une structure particulière.
       
   Chaque document est affiché de manière générique sous la forme de tableaux Html imbriqués.
@@ -34,6 +34,9 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  19/2/2020:
+    - diverses améliorations principalement sur la doc
+    - publi sur Github + synchro sur http://georef.eu/yamldoc/
   28/12/2019:
     - ajout showAsHtmlDoc()
   28/9/2019:
