@@ -144,8 +144,13 @@ class AutoDescribed extends YamlDoc {
     else {
       $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
       $fragment = $this->extract($ypath);
-      $fragment = self::replaceYDEltByArray($fragment);
-      return array_merge(['@id'=> $id], $fragment);
+      if ($fragment) {
+        $fragment = self::replaceYDEltByArray($fragment);
+        return array_merge(['@id'=> $id], $fragment);
+      }
+      else {
+        return null;
+      }
     }
   }
   
