@@ -19,8 +19,11 @@ doc: |
     - document existant avec un répertoire du même nom
     - document Yaml incorrect
 journal: |
+  1-2/3/2020:
+    - première version de gestion de l'autentification
   4/1/2019:
-    - chgt du site Alwaysdata eu.georef.id en Php sur yamldoc/id.php qui permet que les URI ne soient pas réécrites
+    - chgt du site Alwaysdata eu.georef.id en Php sur yamldoc/id.php qui permet que les URI ne soient pas
+      réécrites
   15/10/2018:
     - ajout paramètres CLI
   25/8/2018:
@@ -47,48 +50,66 @@ if (php_sapi_name()<>'cli')
 //$verbose = false; // le log n'est pas réinitialisé et contient uniquement les erreurs successives
 $verbose = true; // log réinitialisé à chaque appel et contient les paramètres d'appel et erreur
 
-// URL de tests
-if (isset($_GET['action']) && ($_GET['action']=='tests')) {
-  echo "<h2>Cas de tests directs</h2><ul>\n";
-  foreach ([
-    '/'=> "répertoire racine",
-    '/contents'=> "fragment du répertoire racine",
-    '/iso'=> "document simple",
-    '/iso/language'=> "document simple, fragment simple",
-    '/iso/xxx'=> "document simple, fragment inexistant",
-    '/xxx'=> "document inexistant",
-    '/iso639'=> "document simple de type requete",
-    '/iso639/concepts/fre'=> "document simple requete, fragment simple",
-    '/yamldoc'=> "document index d'un répertoire",
-    '/yamldoc/title'=> "fragment d'un document index d'un répertoire",
-    '/yamldoc/xxx'=> "fragment inexistant d'un document index d'un répertoire",
-    '/topovoc'=> "document ayant le même nom qu'un répertoire",
-    '/topovoc/schemes'=> "fragment d'un document ayant le même nom qu'un répertoire",
-    '/geohisto'=> "doc index",
-    '/geohisto/regions'=> "doc dans répertoire",
-    '/geohisto/regions/data/32'=> "entrée dans un YamlData",
-    '/badyaml'=> "document Yaml incorrect",
-  ] as $uri=> $title)
-    echo "<li><a href='$_SERVER[SCRIPT_NAME]$uri'>$title : $uri</a>\n";
-  echo "</ul>\n";
+//print_r($_GET);
+//echo "user=",($_SERVER['PHP_AUTH_USER'] ?? "non défini"),
+//     ", passwd=",$_SERVER['PHP_AUTH_PW'] ?? "non défini","\n";
+if (isset($_GET['action'])) {
+  // URL de tests
+  if ($_GET['action']=='tests') {
+    echo "<h2>Cas de tests directs</h2><ul>\n";
+    foreach ([
+      '/'=> "répertoire racine",
+      '/contents'=> "fragment du répertoire racine",
+      '/iso'=> "document simple",
+      '/iso/language'=> "document simple, fragment simple",
+      '/iso/xxx'=> "document simple, fragment inexistant",
+      '/xxx'=> "document inexistant",
+      '/iso639'=> "document simple de type requete",
+      '/iso639/concepts/fre'=> "document simple requete, fragment simple",
+      '/yamldoc'=> "document index d'un répertoire",
+      '/yamldoc/title'=> "fragment d'un document index d'un répertoire",
+      '/yamldoc/xxx'=> "fragment inexistant d'un document index d'un répertoire",
+      '/topovoc'=> "document ayant le même nom qu'un répertoire",
+      '/topovoc/schemes'=> "fragment d'un document ayant le même nom qu'un répertoire",
+      '/geohisto'=> "doc index",
+      '/geohisto/regions'=> "doc dans répertoire",
+      '/geohisto/regions/data/32'=> "entrée dans un YamlData",
+      '/badyaml'=> "document Yaml incorrect",
+    ] as $uri=> $title)
+      echo "<li><a href='$_SERVER[SCRIPT_NAME]$uri'>$title : $uri</a>\n";
+    echo "</ul>\n";
   
-  echo "<h2>Tests avec paramètre uri=</h2><ul>\n";
-  foreach ([
-    'http://id.georef.eu/iso639/concepts/fre'=> "document simple requete, fragment simple",
-  ] as $uri => $title)
-    echo "<li><a href='?uri=",urlencode($uri),"'>$title : $uri</a>\n";
-  echo "</ul>\n";
+    echo "<h2>Tests avec paramètre uri=</h2><ul>\n";
+    foreach ([
+      'http://id.georef.eu/iso639/concepts/fre'=> "document simple requete, fragment simple",
+    ] as $uri => $title)
+      echo "<li><a href='?uri=",urlencode($uri),"'>$title : $uri</a>\n";
+    echo "</ul>\n";
 
-  echo "<h2>Tests avec paramètre format=</h2><ul>\n";
-  foreach ([
-    '/skos'=> "document simple",
-  ] as $uri => $title)
-    echo "<li><a href='$_SERVER[SCRIPT_NAME]$uri?format=json'>$title : $uri</a>\n";
-  echo "</ul>\n";
+    echo "<h2>Tests avec paramètre format=</h2><ul>\n";
+    foreach ([
+      '/skos'=> "document simple",
+    ] as $uri => $title)
+      echo "<li><a href='$_SERVER[SCRIPT_NAME]$uri?format=json'>$title : $uri</a>\n";
+    echo "</ul>\n";
 
-  echo "<pre>_GET="; print_r($_GET); echo "</pre>\n";
-  echo "<pre>_SERVER = "; print_r($_SERVER);
-  die("Fin des tests");
+    echo "<pre>_GET="; print_r($_GET); echo "</pre>\n";
+    echo "<pre>_SERVER = "; print_r($_SERVER);
+    die("Fin des tests");
+  }
+  // Force le changement de login
+  // Pour se déloguer -> cliquer sur annuler
+  // Pour se loguer -> entrer login + mdp et cliquer sur ok puis sur annuler
+  elseif ($_GET['action']=='login') {
+    header('WWW-Authenticate: Basic realm="Yamldoc"');
+    header('HTTP/1.0 401 Unauthorized');
+    echo "user=",($_SERVER['PHP_AUTH_USER'] ?? "non défini"),
+         ", passwd=",$_SERVER['PHP_AUTH_PW'] ?? "non défini","\n";
+    die();
+  }
+  else {
+    die("Action $_GET[action] non prévue");
+  }
 }
 
 // $docid est-il un doc du store ?
@@ -99,28 +120,30 @@ function is_doc(string $docid): bool {
     || is_file("$filename.pdf") || is_file("$filename.odt"));
 }
 
+// liste des utilisateurs autorisés [login=>mdp]
+function securisationParLoginMotDePasse(array $authusers): string {
+  if (!isset($_SERVER['PHP_AUTH_USER'])) {
+    header('WWW-Authenticate: Basic realm="My Realm"');
+    header('HTTP/1.0 401 Unauthorized');
+    die("Login/mdp obligatoire"); // absence d'authentification
+  }
+  elseif (!isset($authusers[$_SERVER['PHP_AUTH_USER']])
+      || ($authusers[$_SERVER['PHP_AUTH_USER']]<>$_SERVER['PHP_AUTH_PW'])) {
+    header('HTTP/1.0 403 Forbidden');
+    die("$_SERVER[PHP_AUTH_USER] non autorisé"); // erreur d'authentification
+  }
+  return $_SERVER['PHP_AUTH_USER']; // authentification réussie, retourne l'utilisateur
+}
+
 function error(int $code, string $docid, string $ypath='') {
   static $codeErrorLabels = [
+    400 => 'Bad Request',
+    401 => 'Unauthorized',
+    403 => 'Forbidden',
     404 => 'Not Found',
     500 => 'Internal Server Error',
   ];
   $storeid = Store::id();
-  if (!isset($codeErrorLabels[$code])) {
-    if (php_sapi_name() <> 'cli')
-      header('Content-type: text/plain');
-    echo "code d'erreur $code inconnu sur $store/$docid/$ypath\n";
-    die();
-  }
-  if (php_sapi_name()<>'cli') {
-    header("HTTP/1.1 $code $codeErrorLabels[$code]");
-    header('Content-type: text/plain');
-  }
-  if ($code == 500)
-    echo "Erreur: le document $docid du store $storeid a généré une erreur d'analyse Yaml\n";
-  elseif ($ypath)
-    echo "Erreur: le fragment $ypath du document $docid n'existe pas dans le store $storeid\n";
-  else
-    echo "Erreur: le document $docid n'existe pas dans $storeid\n";
   file_put_contents(
     'id.log.yaml',
     YamlDoc::syaml(['error'=> [
@@ -133,7 +156,34 @@ function error(int $code, string $docid, string $ypath='') {
       '_SERVER'=> $_SERVER,
     ]]),
     FILE_APPEND);
-  die();
+  if (!isset($codeErrorLabels[$code])) {
+    if (php_sapi_name() <> 'cli')
+      header('Content-type: text/plain');
+    echo "code d'erreur $code inconnu sur $store/$docid/$ypath\n";
+    die();
+  }
+  if (php_sapi_name()<>'cli') {
+    header("HTTP/1.1 $code $codeErrorLabels[$code]");
+    header('Content-type: text/plain');
+  }
+  switch($code) {
+    case 400:
+      die("Erreur: fragment $ypath du document $docid du store $storeid a généré une erreur 'Bad Request'\n");
+    case 401:
+      die("Erreur: fragment $ypath du document $docid du store $storeid a généré une demande d'authentification\n");
+    case 403:
+      die("Erreur: fragment $ypath du document $docid du store $storeid a généré une erreur d'accès\n");
+    case 404:
+      if ($ypath)
+        die("Erreur: le fragment $ypath du document $docid n'existe pas dans le store $storeid\n");
+      else
+        die("Erreur: le document $docid n'existe pas dans $storeid\n");
+    case 500:
+      die("Erreur: le document $docid du store $storeid a généré une erreur interne (500)\n");
+    default:
+      die("Erreur ligne ".__LINE__);
+  }
+  die("Erreur ligne ".__LINE__);
 }
 
 if (php_sapi_name()=='cli') {
@@ -211,6 +261,7 @@ else {
   //echo "docid avant test=$docid<br>\n";
   $index = [];
   if (!is_doc($docid)) {
+    //echo "!is_doc($docid)<br>\n";
     if (!is_doc($dirpath.'index')) {
       error(404, "$dirpath$docid");
     }
@@ -224,8 +275,10 @@ else {
 }
 
 // Ici $docid est l'id du doc et ypath le chemin du sous-doc
-//echo "docid=$docid<br>\n";
+//echo "docid=$docid ligne ",__LINE__,"<br>\n";
 //echo "ypath=$ypath<br>\n";
+//echo "index="; print_r($index);
+
 try {
   $doc = new_doc($docid);
 }
@@ -233,6 +286,36 @@ catch (ParseException $exception) {
   error(500, $docid);
 }
 
+if (!$doc->checkPassword() || !$doc->authorizedReader('')) { // si le doc est protégé par mdp ou liste de lecture
+  if (!isset($_SERVER['PHP_AUTH_USER'])) { // Si aucun login effectué
+    header('WWW-Authenticate: Basic realm="Yamldoc"');
+    header('HTTP/1.0 401 Unauthorized');
+    die("Authentification nécessaire pour document $docid"); // absence d'authentification
+  }
+  //echo "docid=$docid, user=$_SERVER[PHP_AUTH_USER], passwd=$_SERVER[PHP_AUTH_PW]\n";
+  if (!$doc->checkPassword($_SERVER['PHP_AUTH_PW'])) {
+    header('WWW-Authenticate: Basic realm="Yamldoc"');
+    header('HTTP/1.0 401 Unauthorized');
+    die("Mot de passe incorrect pour document $docid\n"); // erreur de mot de passe
+  }
+  else {
+    if (!$doc->authorizedReader($_SERVER['PHP_AUTH_USER'])) {
+      header('HTTP/1.0 403 Forbidden');
+      die("Utilisateur $_SERVER[PHP_AUTH_USER] non autorisé pour ce document $docid"); // erreur d'authentification
+    }
+    $homePage = new_doc($_SERVER['PHP_AUTH_USER']);
+    if (!$homePage) {
+      header('HTTP/1.0 403 Forbidden');
+      die("Utilisateur $_SERVER[PHP_AUTH_USER] non défini");
+    }
+    if (!$doc->authorizedReader($_SERVER['PHP_AUTH_USER'])) {
+      header('HTTP/1.0 403 Forbidden');
+      die("Utilisateur $_SERVER[PHP_AUTH_USER] non autorisé pour ce document $docid"); // erreur d'authentification
+    }
+  }
+}
+
+//echo "docid=$docid ligne ",__LINE__,"<br>\n";
 $fragment = $doc->extractByUri($ypath);
 if (!$fragment) {
   if (!$index)

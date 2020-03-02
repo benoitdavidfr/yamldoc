@@ -35,7 +35,8 @@ doc: |
   Le champ ydADscrBhv permet de paramétrer:
     - l'enregistrement du document en pser
     - l'extract/extractByUri
-  Peut être utilisé pour gérer un registre hiérarchique
+  Le champ 
+  Conçu pour gérer un registre hiérarchique
 EOT;
 }
 
@@ -85,7 +86,7 @@ class AutoDescribed extends YamlDoc {
     if ($this->ydADscrBhv && isset($this->ydADscrBhv['extract'])) {
       $extractFields = $this->ydADscrBhv['extract'];
       //echo "<pre>extractFields="; var_dump($extractFields); echo "</pre>\n";
-      $mainKey = $extractFields [0];
+      $mainKey = $extractFields[0];
       //echo "mainKey=$mainKey<br>\n";
       $secondKey = $extractFields[1];
       //echo "secondKey=$secondKey<br>\n";
@@ -132,6 +133,7 @@ class AutoDescribed extends YamlDoc {
 
   // extrait le fragment défini par $ypath, utilisé pour générer un retour à partir d'un URI
   function extractByUri(string $ypath) {
+    //echo "AutoDescribed::extractByUri(ypath='$ypath')<br>\n";
     if (!$ypath || ($ypath=='/')) {
       $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
       return array_merge(['@id'=> $id], $this->_c);

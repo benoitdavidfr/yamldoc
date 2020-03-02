@@ -15,6 +15,8 @@ doc: |
   La classe abstraite YamlDoc correspond à un document Yaml.
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal:
+  1/3/2020:
+    - modification de la gestion de l'authentification
   15/9/2018:
     - ajout d'une propriété Doc::$_id
     - modification de la signature des méthodes abstraites Doc::__construct(), Doc::show(), Doc::dump(),
@@ -403,34 +405,21 @@ abstract class YamlDoc extends Doc {
     }
   }
 
-  // vérification si nécessaire du droit d'accès en consultation ou du mot de passe
+  // vérification interactive si nécessaire du droit d'accès en consultation ou du mot de passe
   function checkReadAccess(): bool {
-    // si le doc a déjà été marqué comme accessible alors retour OK
+    // Si le doc a déjà été marqué comme accessible alors retour OK
     if (ydcheckReadAccess($this->_id))
       return true;
-    // Si le document contient un mot de passe
-    if ($this->yamlPassword) {
-      //echo "checkPassword<br>\n";
-      //if (isset($_POST['password'])) echo "password=$_POST[password]<br>\n";
-      if (!isset($_POST['password'])) {
-        // Si aucun mot de passe n'a été fourni alors demande du mot de passe
+    // SinonSi le document contient un mot de passe 
+    if (!$this->checkPassword($_POST['password'] ?? '')) {
+      if (!isset($_POST['password']))
         echo "Mot de passe du document :<br>\n";
-        die("<form method='post'><input type='password' name='password'></form>\n");
-      }
-      // sinon  et si il est correct alors retour OK
-      if (password_verify($_POST['password'], $this->yamlPassword)) {
-        ydsetReadAccess($this->_id);
-        return true;
-      }
-      // sinon c'est qu'il est incorrect
-      else {
-        // Si non alors demande du mot de passe
+      else
         echo "Mot de passe fourni incorrect :<br>\n";
-        die("<form method='post'><input type='password' name='password'></form>\n");
-      }
+      die("<form method='post'><input type='password' name='password'></form>\n");
     }
-    // Si le document ne contient pas de mot de passe
-    if ($this->authorizedReader()) {
+    // SinonSi le user est un lecteur autorisé
+    if ($this->authorizedReader($_SESSION['homeCatalog'] ?? '')) {
       ydsetReadAccess($this->_id);
       return true;
     }
@@ -438,35 +427,41 @@ abstract class YamlDoc extends Doc {
       return false;
   }
   
-  // test du droit en lecture indépendamment d'un éventuel mot de passe
-  // utilise la propriété abstraite authorizedReaders ou authRd
-  function authorizedReader(): bool {
-    //print_r($this);
-    if ($this->authorizedReaders)
-      $ret = isset($_SESSION['homeCatalog']) && is_array($this->authorizedReaders)
-             && in_array($_SESSION['homeCatalog'], $this->authorizedReaders);
-    elseif ($this->authRd)
-      $ret = isset($_SESSION['homeCatalog']) && is_array($this->authRd)
-             && in_array($_SESSION['homeCatalog'], $this->authRd);
+  // Vérification de l'éventuel mot de passe défini par le document
+  // Si le document définit un mot de passe haché
+  // alors l'accès est autorisé ssi le mot de passe est fourni et correct
+  // sinon l'accès est autorisé
+  function checkPassword(string $passwd=''): bool {
+    if ($this->yamlPassword) // Si le document définit un mot de passe haché
+      return ($passwd && password_verify($passwd, $this->yamlPassword)); // alors il est vérifié
+    else // sinon OK
+      return true;
+  }
+  
+  // test du droit en lecture d'un document
+  // Si le document définit une liste de lecteurs autorisés
+  // alors l'accès est autorisé ssi l'utilisateur est fourni et appartient à cette liste
+  // sinon l'accès est autorisé
+  function authorizedReader(string $user): bool {
+    $authorizedReaders = $this->authorizedReaders ?? ($this->authRd ?? null);
+    if (!$authorizedReaders)
+      return true;
     else
-      $ret = true;
-    //echo "authorizedReader=$ret<br>\n";
-    return $ret;
+      return $user && is_array($authorizedReaders) && in_array($user, $authorizedReaders);
   }
   
   // test du droit en écriture indépendamment d'un éventuel mot de passe
   // utilise la propriété abstraite authorizedWriters ou authWr
   function authorizedWriter(): bool {
-    if (!$this->authorizedReader()) {
+    if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']=='default'))
+      return false;
+    if (!$this->authorizedReader($_SESSION['homeCatalog'])) {
       //echo "authorizedWriter false car !reader<br>\n";
       return false;
     }
-    if (!isset($_SESSION['homeCatalog']) || ($_SESSION['homeCatalog']=='default'))
-      $ret = false;
-    elseif ($this->authorizedWriters)
-      $ret = in_array($_SESSION['homeCatalog'], $this->authorizedWriters);
-    elseif ($this->authWr)
-      $ret = in_array($_SESSION['homeCatalog'], $this->authWr);
+    $authorizedWriters = $this->authorizedWriters ?? ($this->authWr ?? null);
+    if ($authorizedWriters)
+      $ret = in_array($_SESSION['homeCatalog'], $authorizedWriters);
     else
       $ret = true;
     //echo "authorizedWriter=$ret<br>\n";
