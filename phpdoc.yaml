@@ -36,6 +36,7 @@ doc: |
 journal: |
   14/3/2020:
     - extension de la gestion de l'authentification aux docs non Yaml
+    - correction bug acces par URI
   1-2/3/2020:
     - reprise de la gestion des authentifications
     - mise en oeuvre d'une authentification en mode API
