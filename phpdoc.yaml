@@ -3,7 +3,7 @@ title: yamldoc - Gestion en mode web de documents structurés en Yaml
 doc: |
   Gestion d'un ensemble de documents inter-reliés.
   Chaque document est stocké dans un fichier dont le nom est éventuellement un id unique (uid) généré automatiquement.
-  Le contenu du document est formatté en Yaml.
+  Le contenu du document est formaté en Yaml.
   La connaissance de l'uid d'un document permet d'y accéder en lecture et en mise à jour sauf s'il est protégé,
   ce qui est effectué en indiquant la liste des écrivains autorisés.
   Il est aussi possible de protéger un document en lecture en définissant dans le document un mot de passe.
@@ -34,6 +34,12 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  14/3/2020:
+    - extension de la gestion de l'authentification aux docs non Yaml
+  1-2/3/2020:
+    - reprise de la gestion des authentifications
+    - mise en oeuvre d'une authentification en mode API
+    - publi sur github, synchro sur Alwaysdata
   19/2/2020:
     - diverses améliorations principalement sur la doc
     - publi sur Github + synchro sur http://georef.eu/yamldoc/

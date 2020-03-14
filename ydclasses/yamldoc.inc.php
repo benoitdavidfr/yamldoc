@@ -15,6 +15,8 @@ doc: |
   La classe abstraite YamlDoc correspond à un document Yaml.
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal:
+  14/3/2020:
+    - modification de la gestion de l'authentification pour les docs non Yaml
   1/3/2020:
     - modification de la gestion de l'authentification
   15/9/2018:
@@ -60,6 +62,16 @@ abstract class Doc {
 
   // affiche le sous-élément de l'élément défini par $ypath
   abstract function show(string $ypath=''): void;
+  
+  // Vérification de l'éventuel mot de passe défini par le document
+  // Renvoie vrai ssi le mot de passe n'est pas défini ou vaut la chaine passée en paramètre
+  // Par défaut renvoie vrai
+  function checkPassword(string $passwd=''): bool { return true; }
+
+  // test du droit en lecture d'un document
+  // Renvoie faux ssi le doc définit une liste de lecteurs autorisés et le paramètre n'y appartient pas
+  // Par défaut renvoie true
+  function authorizedReader(string $user): bool { return true; }
   
   // fonction dump par défaut, dump le document et non le fragment
   function dump(string $ypath=''): void { var_dump($this); }
