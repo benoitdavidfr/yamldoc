@@ -38,12 +38,24 @@ class PdfDoc extends Doc  {
     echo "PdfDoc::show<br>\n";
     $dirname = dirname($_SERVER['SCRIPT_NAME']);
     echo("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf\n");
-    header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
+    //header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
     die();
   } 
   
   function checkReadAccess(): bool { return true; }
   
   // lors d'un appel comme URI le PDF est transmis
-  function extractByUri(string $ypath) { $this->show(); }
+  function extractByUri(string $ypath) {
+    echo "PdfDoc::extractByUri()@{_id: $this->_id}<br>\n";
+    Store::init();
+    echo "<pre>ids="; print_r(Store::ids());
+    echo "definition="; print_r(Store::$definition);
+    $instance = Store::$definition[Store::ids()['id']]['instances'][Store::ids()['place']];
+    echo "instance="; print_r($instance);
+    $path = ($instance['scheme'] ?? 'http').'://'.$instance['servers'][0]
+        ."/$instance[ydpath]/file.php/".$this->_id.'.pdf';
+    echo "path=$path\n";
+    //header("Location: $path\n");
+    die();
+  }
 };

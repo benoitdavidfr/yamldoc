@@ -11,7 +11,7 @@ name: store.inc.php
 title: gestion des store
 doc: |
   Un espace documentaire, ou store, correspond à:
-    - un espace physique de stockage en local et une autre sur le web, chacun défini par:
+    - un espace physique de stockage en local et un autre sur le web, chacun défini par:
       - le nom du serveur à la fois utilisé comme identifiant de l'espace et serveur http hébergeant le stockage
       - le protocole (http|https) de l'espace http hébergeant le stockage, par défaut http
       - le chemin du répertoire yamldoc sur le serveur qui permet de définir l'url du visualiseur
