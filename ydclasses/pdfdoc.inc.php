@@ -55,7 +55,7 @@ class PdfDoc extends Doc  {
     $path = ($instance['scheme'] ?? 'http').'://'.$instance['servers'][0]
         ."/$instance[ydpath]/file.php/".$this->_id.'.pdf';
     echo "path=$path\n";
-    //header("Location: $path\n");
+    header("Location: $path\n");
     die();
   }
 };
