@@ -11,6 +11,8 @@ name: pdfdoc.inc.php
 title: pdfdoc.inc.php - affichage des fichiers PDF
 doc: |
 journal:
+  14/3/2020:
+    - correction bug accès par URI dans le store pub
   19/2/2020:
     - lors d'un appel par URI le fichier PDF est transmis
   22/8/2018:
