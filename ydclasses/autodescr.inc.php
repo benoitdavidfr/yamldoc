@@ -8,16 +8,15 @@ doc: <a href='/yamldoc/?action=version&name=autodescr.inc.php'>doc intégrée en
 { //doc 
 $phpDocs['autodescr.inc.php']['file'] = <<<'EOT'
 name: autodescr.inc.php
-title: autodescr.inc.php - documents autodécrits
+title: autodescr.inc.php - document autodécrit contenant un registre hiérarchique d'objets JSON-LD
 doc: |
-  Documents contenant un registre hiérarchique d'objets JSON-LD
   Testé sur:
     - http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations
     - http://127.0.0.1/yamldoc/id.php/contactspro ou http://bdavid.alwaysdata.net/yamldoc/id.php/contactspro
   
 journal:
   14-15/3/2020:
-    - restructuration en cours du champ ydADscrBhv
+    - restructuration du champ ydADscrBhv et de son exploitation
   20/2/2020:
     - modification de la classe pour gérer le registre des organisations
       (http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations)
@@ -69,7 +68,7 @@ class AutoDescribed extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    echo "AutoDescribed::show(docid='$docid', ypath='$ypath')<br>\n";
+    //echo "AutoDescribed::show(docid='$docid', ypath='$ypath')<br>\n";
     if (!$ypath || ($ypath=='/')) {
       $doc = $this->_c;
       $doc['$schema'] = $this->path('/$schema');
