@@ -69,9 +69,24 @@ class AutoDescribed extends YamlDoc {
   // affiche le sous-élément de l'élément défini par $ypath
   function show(string $ypath=''): void {
     $docid = $this->_id;
-    //echo "AutoDescribed::show($docid, $ypath)<br>\n";
-    if (!$ypath || ($ypath=='/'))
-      showDoc($docid, $this->_c);
+    echo "AutoDescribed::show(docid='$docid', ypath='$ypath')<br>\n";
+    if (!$ypath || ($ypath=='/')) {
+      $doc = $this->_c;
+      $doc['$schema'] = $this->path('/$schema');
+      if ($this->ydADscrBhv)
+        $doc['ydADscrBhv'] = $this->path('/ydADscrBhv');
+      $doc['contents'] = [];
+      unset($doc['eof']);
+      foreach ($this->contents as $skey => $sitem) {
+        $name = $this->buildName(
+            $sitem,
+            $this->ydADscrBhv['firstLevelType'],
+            $skey);
+        $doc['contents'][$name] = $this->path("$ypath/$skey");
+      }
+      //echo "<pre>doc="; print_r($doc); echo "</pre>\n";
+      showDoc($docid, $doc);
+    }
     else
       showDoc($docid, $this->extract($ypath));
     //echo "<pre>"; print_r($this->_c); echo "</pre>\n";
@@ -86,12 +101,8 @@ class AutoDescribed extends YamlDoc {
     return "http://$_SERVER[SERVER_NAME]".dirname($_SERVER['SCRIPT_NAME'])."/?doc=$_GET[doc]&ypath=$ypath";
   }
   
-  /*
-  buildName: # définition de l'affichage réduit par type d'objet, code Php par type
-    Organization: "return $item['name'];"
-    Person: "return $item['name'];"
-    PostalAddress: "return $skey;"
-  */
+  // construit l'étiquette à afficher de l'objet en fonction de l'info de ydADscrBhv/buildName
+  // $skey est la clé qui référencait l'objet
   private function buildName(array $item, string $objectType, string $skey): string {
     static $buildName = null;
     
