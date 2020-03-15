@@ -254,8 +254,14 @@ class AutoDescribed extends YamlDoc {
       $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
       $fragment = $this->extract($ypath);
       if ($fragment) {
-        $fragment = self::replaceYDEltByArray($fragment);
-        return array_merge(['@id'=> $id], $fragment);
+        return array_merge(
+          [
+            '@context'=> 'http://schema.org/',
+            '@type'=> $fragment['@type'],
+            '@id'=> $id
+          ],
+          $fragment
+        );
       }
       else {
         return null;
