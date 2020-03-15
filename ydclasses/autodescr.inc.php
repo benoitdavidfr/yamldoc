@@ -10,10 +10,17 @@ $phpDocs['autodescr.inc.php']['file'] = <<<'EOT'
 name: autodescr.inc.php
 title: autodescr.inc.php - documents autodécrits
 doc: |
+  Documents contenant un registre hiérarchique d'objets JSON-LD
+  Testé sur:
+    - http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations
+    - http://127.0.0.1/yamldoc/id.php/contactspro ou http://bdavid.alwaysdata.net/yamldoc/id.php/contactspro
+  
 journal:
+  14-15/3/2020:
+    - restructuration en cours du champ ydADscrBhv
   20/2/2020:
     - modification de la classe pour gérer le registre des organisations
-      (http://localhost/yamldoc/id.php/organizations)
+      (http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations)
     - ajout de la possibilité de paramétrer le comportement de la classe
     - manque la sortie en JSON-LD
   23/2/2019:
@@ -35,8 +42,7 @@ doc: |
   Le champ ydADscrBhv permet de paramétrer:
     - l'enregistrement du document en pser
     - l'extract/extractByUri
-  Le champ 
-  Conçu pour gérer un registre hiérarchique
+  Conçu pour gérer un registre hiérarchique d'objets JSON-LD
 EOT;
 }
 
@@ -76,42 +82,114 @@ class AutoDescribed extends YamlDoc {
   // Permet de maitriser l'ordre des champs
   function asArray() { return $this->_c; }
 
+  private function path(string $ypath) {
+    return "http://$_SERVER[SERVER_NAME]".dirname($_SERVER['SCRIPT_NAME'])."/?doc=$_GET[doc]&ypath=$ypath";
+  }
+  
+  /*
+  buildName: # définition de l'affichage réduit par type d'objet, code Php par type
+    Organization: "return $item['name'];"
+    Person: "return $item['name'];"
+    PostalAddress: "return $skey;"
+  */
+  private function buildName(array $item, string $objectType, string $skey): string {
+    static $buildName = null;
+    
+    if (!$buildName) {
+      $buildName = $this->ydADscrBhv['buildName'];
+      echo "<pre>buildName="; print_r($buildName); echo "</pre>\n";
+    }
+    
+    if (isset($buildName[$objectType]))
+      return eval($buildName[$objectType]);
+    else
+      return "buildName() non défini pour $objectType";
+  }
+  
   // extrait le fragment du document défini par $ypath
   // Renvoie un array ou un objet qui sera ensuite transformé par YamlDoc::replaceYDEltByArray()
   // Utilisé par YamlDoc::yaml() et YamlDoc::json()
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
-  // Si le champ ydADscrBhv/extract est défini alors utilise les 2 clés pour descendre dans la hiérarchie
+  // Si le champ ydADscrBhv/extractProperties est défini alors l'utilise pour descendre dans la hiérarchie
   function extract(string $ypath) {
     //echo "Appel de AutoDescribed::extract($ypath)<br>\n";
-    if ($this->ydADscrBhv && isset($this->ydADscrBhv['extract'])) {
-      $extractFields = $this->ydADscrBhv['extract'];
-      //echo "<pre>extractFields="; var_dump($extractFields); echo "</pre>\n";
-      $mainKey = $extractFields[0];
-      //echo "mainKey=$mainKey<br>\n";
-      $secondKey = $extractFields[1];
-      //echo "secondKey=$secondKey<br>\n";
+    if ($this->ydADscrBhv && isset($this->ydADscrBhv['extractProperties'])) {
+      $extractProperties = $this->ydADscrBhv['extractProperties'];
+      echo "<pre>extractProperties="; var_dump($extractProperties); echo "</pre>\n";
       $keys = explode('/', $ypath);
       array_shift($keys);
-      //echo "<pre>keys="; var_dump($keys); echo "</pre>\n";
+      echo "<pre>keys="; var_dump($keys); echo "</pre>\n";
+      $parent = null;
       foreach ($keys as $ikey => $key) {
-        //echo "Traverse key $key<br>\n";
         if ($ikey == 0) {
-          if (isset($this->$mainKey[$key]))
-            $item = $this->$mainKey[$key];
-          elseif ($this->$key)
+          if (isset($this->contents[$key])) { // je traverse contents
+            $item = $this->contents[$key];
+            $type = $this->ydADscrBhv['firstLevelType'];
+            echo "type=$type<br>\n";
+          }
+          elseif ($this->$key) { // sinon je teste si key est une propriété
             $item = $this->$key;
+            $type = null;
+          }
           else
             return null;
         }
-        elseif (isset($item[$secondKey][$key])) {
-          $item = $item[$secondKey][$key];
+        else {
+          $done = false;
+          // j'essaie de traverser une des extractProperties correspondant au type courant
+          if (isset($extractProperties[$type])) {
+            foreach ($extractProperties[$type] as $extractPropertyKey => $extractPropertyValue) {
+              if (isset($item[$extractPropertyKey][$key])) {
+                echo "extractProperty $extractPropertyKey et clé $key traversée<br>\n";
+                $item = $item[$extractPropertyKey][$key];
+                $type = $extractPropertyValue['objectType'];
+                $parent = [
+                  'keys' => implode('/', array_slice($keys, 0, $ikey)), // implode des clés du parent
+                  'inverse' => $extractPropertyValue['inverse'] ?? null,
+                ];
+                $done = true;
+                break;
+              }
+            }
+          }
+          if (!$done) { // aucune extractProperties traversée
+            if (isset($item[$key])) {
+              echo "aucune extractProperty traversée mais clé $key ok<br>\n";
+              $item = $item[$key];
+              $type = null;
+              $parent = null;
+            }
+            else {
+              echo "aucune extractProperty traversée et aucune clé pour $key<br>\n";
+              return null;
+            }
+          }
         }
-        elseif (isset($item[$key])) {
-          $item = $item[$key];
-        }
-        else
-          return null;
         //echo "<pre>item="; print_r($item); echo "</pre>\n";
+      }
+      echo "parent = "; print_r($parent); echo "<br>\n";
+      //echo "<pre>SERVER="; print_r($_SERVER); echo "</pre>\n";
+      if ($parent && $parent['inverse']) {
+        $item = array_merge([$parent['inverse'] => $this->path("/$parent[keys]")], $item);
+      }
+      echo "type=$type<br>\n";
+      if ($type) { // Si j'ai identifié le type du résultat dans l'extract
+        $item = array_merge(['@type' => $type], $item);
+      }
+      if ($type && isset($extractProperties[$type])) {
+        foreach ($extractProperties[$type] as $extractPropertyKey => $extractPropertyValue) {
+          if (isset($item[$extractPropertyKey])) {
+            $newitem = [];
+            foreach ($item[$extractPropertyKey] as $skey => $sitem) {
+              $name = $this->buildName(
+                  $item[$extractPropertyKey][$skey],
+                  $extractPropertyValue['objectType'],
+                  $skey);
+              $newitem[$name] = $this->path("$ypath/$skey");
+            }
+            $item[$extractPropertyKey] = $newitem;
+          }
+        }
       }
       return $item;
     }
