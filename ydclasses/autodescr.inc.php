@@ -97,8 +97,13 @@ class AutoDescribed extends YamlDoc {
   // Permet de maitriser l'ordre des champs
   function asArray() { return $this->_c; }
 
+  // renvoie l'URL pour ypath
   private function path(string $ypath) {
-    return "http://$_SERVER[SERVER_NAME]".dirname($_SERVER['SCRIPT_NAME'])."/?doc=$_GET[doc]&ypath=$ypath";
+    //echo "<pre>_SERVER="; print_r($_SERVER); echo "</pre>\n";
+    if (isset($_GET['doc']))
+      return "http://$_SERVER[SERVER_NAME]".dirname($_SERVER['SCRIPT_NAME'])."/?doc=$_GET[doc]&ypath=$ypath";
+    else
+      return "http://$_SERVER[SERVER_NAME]$_SERVER[SCRIPT_NAME]/".$this->_id.$ypath;
   }
   
   // construit l'étiquette à afficher de l'objet en fonction de l'info de ydADscrBhv/buildName
@@ -108,7 +113,7 @@ class AutoDescribed extends YamlDoc {
     
     if (!$buildName) {
       $buildName = $this->ydADscrBhv['buildName'];
-      echo "<pre>buildName="; print_r($buildName); echo "</pre>\n";
+      //echo "<pre>buildName="; print_r($buildName); echo "</pre>\n";
     }
     
     if (isset($buildName[$objectType]))
@@ -124,19 +129,20 @@ class AutoDescribed extends YamlDoc {
   // Si le champ ydADscrBhv/extractProperties est défini alors l'utilise pour descendre dans la hiérarchie
   function extract(string $ypath) {
     //echo "Appel de AutoDescribed::extract($ypath)<br>\n";
+    
     if ($this->ydADscrBhv && isset($this->ydADscrBhv['extractProperties'])) {
       $extractProperties = $this->ydADscrBhv['extractProperties'];
-      echo "<pre>extractProperties="; var_dump($extractProperties); echo "</pre>\n";
+      //echo "<pre>extractProperties="; var_dump($extractProperties); echo "</pre>\n";
       $keys = explode('/', $ypath);
       array_shift($keys);
-      echo "<pre>keys="; var_dump($keys); echo "</pre>\n";
+      //echo "<pre>keys="; var_dump($keys); echo "</pre>\n";
       $parent = null;
       foreach ($keys as $ikey => $key) {
         if ($ikey == 0) {
           if (isset($this->contents[$key])) { // je traverse contents
             $item = $this->contents[$key];
             $type = $this->ydADscrBhv['firstLevelType'];
-            echo "type=$type<br>\n";
+            //echo "type=$type<br>\n";
           }
           elseif ($this->$key) { // sinon je teste si key est une propriété
             $item = $this->$key;
@@ -151,7 +157,7 @@ class AutoDescribed extends YamlDoc {
           if (isset($extractProperties[$type])) {
             foreach ($extractProperties[$type] as $extractPropertyKey => $extractPropertyValue) {
               if (isset($item[$extractPropertyKey][$key])) {
-                echo "extractProperty $extractPropertyKey et clé $key traversée<br>\n";
+                //echo "extractProperty $extractPropertyKey et clé $key traversée<br>\n";
                 $item = $item[$extractPropertyKey][$key];
                 $type = $extractPropertyValue['objectType'];
                 $parent = [
@@ -165,25 +171,25 @@ class AutoDescribed extends YamlDoc {
           }
           if (!$done) { // aucune extractProperties traversée
             if (isset($item[$key])) {
-              echo "aucune extractProperty traversée mais clé $key ok<br>\n";
+              //echo "aucune extractProperty traversée mais clé $key ok<br>\n";
               $item = $item[$key];
               $type = null;
               $parent = null;
             }
             else {
-              echo "aucune extractProperty traversée et aucune clé pour $key<br>\n";
+              //echo "aucune extractProperty traversée et aucune clé pour $key<br>\n";
               return null;
             }
           }
         }
         //echo "<pre>item="; print_r($item); echo "</pre>\n";
       }
-      echo "parent = "; print_r($parent); echo "<br>\n";
+      //echo "parent = "; print_r($parent); echo "<br>\n";
       //echo "<pre>SERVER="; print_r($_SERVER); echo "</pre>\n";
       if ($parent && $parent['inverse']) {
         $item = array_merge([$parent['inverse'] => $this->path("/$parent[keys]")], $item);
       }
-      echo "type=$type<br>\n";
+      //echo "type=$type<br>\n";
       if ($type) { // Si j'ai identifié le type du résultat dans l'extract
         $item = array_merge(['@type' => $type], $item);
       }
@@ -225,7 +231,21 @@ class AutoDescribed extends YamlDoc {
     //echo "AutoDescribed::extractByUri(ypath='$ypath')<br>\n";
     if (!$ypath || ($ypath=='/')) {
       $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
-      return array_merge(['@id'=> $id], $this->_c);
+      $doc = $this->_c;
+      $doc['$schema'] = $this->path('/$schema');
+      if ($this->ydADscrBhv)
+        $doc['ydADscrBhv'] = $this->path('/ydADscrBhv');
+      $doc['contents'] = [];
+      unset($doc['eof']);
+      foreach ($this->contents as $skey => $sitem) {
+        $name = $this->buildName(
+            $sitem,
+            $this->ydADscrBhv['firstLevelType'],
+            $skey);
+        $doc['contents'][$name] = $this->path("/$skey");
+      }
+      //echo "<pre>doc="; print_r($doc); echo "</pre>\n";
+      return array_merge(['@id'=> $id], $doc);
     }
     elseif ($ypath == '/api') {
       return self::api();
