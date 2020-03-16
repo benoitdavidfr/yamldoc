@@ -17,6 +17,7 @@ doc: |
 journal:
   14-15/3/2020:
     - restructuration du champ ydADscrBhv et de son exploitation
+    - J'obtiens bien du HTML et du JSON objet par objet mais le JSON n'est pas du JSON-LD
   20/2/2020:
     - modification de la classe pour gérer le registre des organisations
       (http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations)
