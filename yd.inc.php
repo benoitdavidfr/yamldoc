@@ -608,9 +608,11 @@ function new_doc(string $docid): ?Doc {
       $doc = new $yamlClass ($data, $docid);
     }
     else {
-      $schema = $data['$schema'];
-      echo "<b>Erreur: le schema $schema n'est pas défini</b><br>\n";
-      $doc = new BasicYamlDoc($data, $docid);
+      //$schema = $data['$schema'];
+      //echo "<b>Erreur: le schema $schema n'est pas défini</b><br>\n";
+      //$doc = new BasicYamlDoc($data, $docid);
+      echo "Création d'un document AutoDescribed<br>\n";
+      $doc = new AutoDescribed($data, $docid); // document auto-décrit
     }
   }
   elseif (is_array($data['$schema'])) {

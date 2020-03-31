@@ -10,16 +10,16 @@ $phpDocs['ydjschema.inc.php']['file'] = <<<'EOT'
 name: ydjschema.inc.php
 title: ydjschema.inc.php - classe JsonSchema comme classe YamlDoc
 doc: |
-  Permet d'afficher le schéma JSON et de le vérifier ainsi que ses examples
+  Permet d'afficher le schéma JSON et de le vérifier ainsi que ses exemples
 journal:
   6-8/2/2019:
-  - première version
+    - première version
 EOT;
 }
 
 {
-$phpDocs['ydjschema.inc.php']['classes']['BasicYamlDoc'] = <<<'EOT'
-title: classe JsonSchema comme classe YamlDoc
+$phpDocs['ydjschema.inc.php']['classes']['YdJsonSchema'] = <<<'EOT'
+title: class YdJsonSchema extends BasicYamlDoc
 EOT;
 }
 

@@ -5,7 +5,7 @@ title: autodescr.inc.php - sous-classe de documents pour des données structuré
 functions:
 doc: <a href='/yamldoc/?action=version&name=autodescr.inc.php'>doc intégrée en Php</a>
 */
-{ //doc 
+{ // file's doc 
 $phpDocs['autodescr.inc.php']['file'] = <<<'EOT'
 name: autodescr.inc.php
 title: autodescr.inc.php - document autodécrit contenant un registre hiérarchique d'objets JSON-LD
@@ -13,6 +13,14 @@ doc: |
   Testé sur:
     - http://localhost/yamldoc/id.php/organizations ou http://id.georef.eu/organizations
     - http://127.0.0.1/yamldoc/id.php/contactspro ou http://bdavid.alwaysdata.net/yamldoc/id.php/contactspro
+    
+  Problèmes rencontrés:
+    - http://localhost/yamldoc/id.php/organizations/fr.gouv/CGDD renvoie bien du JSON mais pas du JSON-LD
+    - http://localhost/yamldoc/id.php/organizations/fr.gouv/CGDD/Orléans est un IRI incorrect
+    - comment structurer http://localhost/yamldoc/id.php/organizations en JSON-LD ?
+      - quel est son type ?
+      - quelle définition donner à contents ?
+    - un document AutoDescribed doit-il obligatoirement comporter un champ contents ?
   
 journal:
   14-15/3/2020:
@@ -34,7 +42,7 @@ EOT;
 
 use Symfony\Component\Yaml\Yaml;
 
-{ // doc
+{ // class's doc
 $phpDocs['autodescr.inc.php']['classes']['AutoDescribed'] = <<<'EOT'
 title: document autodécrit par un schema et avec un comportement paramétré 
 doc: |
@@ -72,17 +80,20 @@ class AutoDescribed extends YamlDoc {
     //echo "AutoDescribed::show(docid='$docid', ypath='$ypath')<br>\n";
     if (!$ypath || ($ypath=='/')) {
       $doc = $this->_c;
-      $doc['$schema'] = $this->path('/$schema');
+      if (is_array($doc['$schema']))
+        $doc['$schema'] = $this->path('/$schema');
       if ($this->ydADscrBhv)
         $doc['ydADscrBhv'] = $this->path('/ydADscrBhv');
-      $doc['contents'] = [];
       unset($doc['eof']);
-      foreach ($this->contents as $skey => $sitem) {
-        $name = $this->buildName(
-            $sitem,
-            $this->ydADscrBhv['firstLevelType'],
-            $skey);
-        $doc['contents'][$name] = $this->path("$ypath/$skey");
+      if ($this->contents) {
+        $doc['contents'] = [];
+        foreach ($this->contents as $skey => $sitem) {
+          $name = $this->buildName(
+              $sitem,
+              $this->ydADscrBhv['firstLevelType'],
+              $skey);
+          $doc['contents'][$name] = $this->path("$ypath/$skey");
+        }
       }
       //echo "<pre>doc="; print_r($doc); echo "</pre>\n";
       showDoc($docid, $doc);
@@ -235,14 +246,16 @@ class AutoDescribed extends YamlDoc {
       $doc['$schema'] = $this->path('/$schema');
       if ($this->ydADscrBhv)
         $doc['ydADscrBhv'] = $this->path('/ydADscrBhv');
-      $doc['contents'] = [];
       unset($doc['eof']);
-      foreach ($this->contents as $skey => $sitem) {
-        $name = $this->buildName(
-            $sitem,
-            $this->ydADscrBhv['firstLevelType'],
-            $skey);
-        $doc['contents'][$name] = $this->path("/$skey");
+      if ($this->contents) {
+        $doc['contents'] = [];
+        foreach ($this->contents as $skey => $sitem) {
+          $name = $this->buildName(
+              $sitem,
+              $this->ydADscrBhv['firstLevelType'],
+              $skey);
+          $doc['contents'][$name] = $this->path("/$skey");
+        }
       }
       //echo "<pre>doc="; print_r($doc); echo "</pre>\n";
       return array_merge(['@id'=> $id], $doc);
@@ -271,7 +284,7 @@ class AutoDescribed extends YamlDoc {
   
   function checkSchemaConformity(string $ypath): void {
     echo "AutoDescribed::checkSchemaConformity(ypath=$ypath)<br>\n";
-    if (!($schema = isset($this->_c['$schema']) ? $this->_c['$schema'] : null)) {
+    if (!($schema = (isset($this->_c['$schema']) ? $this->_c['$schema'] : null))) {
       echo "Erreur: schema absent<br>\n";
       return;
     }

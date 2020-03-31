@@ -40,7 +40,7 @@ class PdfDoc extends Doc  {
     echo "PdfDoc::show<br>\n";
     $dirname = dirname($_SERVER['SCRIPT_NAME']);
     echo("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf\n");
-    //header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
+    header("Location: http://$_SERVER[SERVER_NAME]$dirname/file.php/$docid.pdf");
     die();
   } 
   
