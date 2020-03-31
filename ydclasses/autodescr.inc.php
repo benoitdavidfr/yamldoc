@@ -23,6 +23,8 @@ doc: |
     - un document AutoDescribed doit-il obligatoirement comporter un champ contents ?
   
 journal:
+  31/3/2020:
+    - ajout possibilité que le schéma soit défini par une URL renvoyant un JSON
   14-15/3/2020:
     - restructuration du champ ydADscrBhv et de son exploitation
     - J'obtiens bien du HTML et du JSON objet par objet mais le JSON n'est pas du JSON-LD
@@ -266,7 +268,10 @@ class AutoDescribed extends YamlDoc {
     else {
       $id = "http://$_SERVER[HTTP_HOST]$_SERVER[SCRIPT_NAME]/".$this->_id.($ypath=='/' ? '' : $ypath);
       $fragment = $this->extract($ypath);
-      if ($fragment) {
+      if (!$fragment) {
+        return null;
+      }
+      elseif (isset($fragment['@type'])) {
         return array_merge(
           [
             '@context'=> 'http://schema.org/',
@@ -277,16 +282,34 @@ class AutoDescribed extends YamlDoc {
         );
       }
       else {
-        return null;
+        return array_merge(
+          [
+            '@id'=> $id
+          ],
+          $fragment
+        );
       }
     }
   }
   
   function checkSchemaConformity(string $ypath): void {
     echo "AutoDescribed::checkSchemaConformity(ypath=$ypath)<br>\n";
-    if (!($schema = (isset($this->_c['$schema']) ? $this->_c['$schema'] : null))) {
+    $schema = $this->_c['$schema'] ?? null;
+    if (!$schema) {
       echo "Erreur: schema absent<br>\n";
       return;
+    }
+    if (is_string($schema)) {
+      echo "Erreur: schema string $schema<br>\n";
+      if (($schcontents = @file_get_contents($schema)) === FALSE) {
+        echo "Erreur de lecture de $schema<br>\n";
+        return;
+      }
+      if (($schcontents = json_decode($schcontents, true)) === NULL) {
+        echo "Erreur de décodage JSON de $schema<br>\n";
+        return;
+      }
+      $schema = $schcontents;
     }
     $metaschema = new JsonSchema('http://json-schema.org/draft-07/schema#');
     $metaschema->check($schema, [
