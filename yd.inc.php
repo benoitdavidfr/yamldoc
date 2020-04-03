@@ -20,6 +20,11 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
   Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  3/4/2020:
+    - transfert de id.php dans getDocidYpathFromPath() de la logique de décomposition du chemin d'un fragment
+      en [$docid, $ypath]
+    - ajout de la fonction getFragmentFromPath() permettant de récupérer de l'extérieur un fragment à partir
+      de l'id de son store et du chemin dans le store
   28/12/2019:
   - ajout showAsHtmlDoc()
   28/9/2019:
@@ -637,6 +642,59 @@ function new_doc(string $docid): ?Doc {
   // si prévu j'écris le .pser
   $doc->writePser();
   return $doc;
+}
+
+// décompose le chemin d'un fragment dans un store en [ docid, ypath ] ; Utilise Store::storepath()
+function getDocidYpathFromPath(string $uri): array {
+  //echo "getDocidYpathFromPath(uri=$uri)<br>\n";
+  if (in_array($uri,['','/'])) {
+    return [ 'index', ''];
+  }
+  else {
+    $ids = explode('/', $uri);
+    //echo "ids="; print_r($ids);
+
+    $dirpath = ''; // vide ou se termine par /
+    $id0 = array_shift($ids); // uri commencant par /, je saute le premier élément
+    $id0 = array_shift($ids);
+    //echo "id0=$id0<br>\n";
+    $storeRoot = __DIR__.'/'.Store::storepath();
+    //echo "storeRoot=$storeRoot<br>\n";
+    while ($id0 && !is_doc("$dirpath$id0") && is_dir("$storeRoot/$dirpath$id0")) {
+      $dirpath = "$dirpath$id0/";
+      $id0 = array_shift($ids);
+    }
+    if (!$id0)
+      $id0 = 'index';
+    //echo "dirpath=$dirpath<br>\n";
+    $docid = "$dirpath$id0";
+    //echo "ids="; print_r($ids);
+    $ypath = '/'.implode('/', $ids);
+    //echo "docid avant test=$docid<br>\n";
+    $index = [];
+    if (!is_doc($docid)) {
+      //echo "!is_doc($docid)<br>\n";
+      if (!is_doc($dirpath.'index')) {
+        error(404, "$dirpath$docid");
+      }
+      else {
+        $index = ['docid'=>$docid, 'ypath'=>$ypath]; // mémorisation
+        $docid = $dirpath.'index';
+        $ypath = '/'.$id0.($ids? $ypath : '');
+        //echo "après test: docid=$docid, ypath=$ypath<br>\n";
+      }
+    }
+  }
+  return [$docid, $ypath];
+}
+
+// Prend l'id du store et le chemin du fragment et retourne le fragment
+// Fonction pouvant être appelée de l'extérieur de YamlDoc y compris en CLI
+function getFragmentFromPath(string $storeId, string $uri) {
+  Store::setStoreid($storeId);
+  list($docid, $ypath) = getDocidYpathFromPath($uri);
+  $doc = new_doc($docid);
+  return $doc->extractByUri($ypath);
 }
 
 

@@ -35,6 +35,10 @@ doc: |
   Les idées ont été déplacées dans docs/yamldoc/idees
   
 journal: |
+  3/4/2020:
+    - amélioration de la manière de référencer un élément de schéma comme fragment stocké dans un store
+      - un élément défini dans un schéma par un champ $ref peut être un fragment d'un document d'un store
+      - utilisation pour référencer les définitions dans le doc schema.org du store pub
   14/3/2020:
     - extension de la gestion de l'authentification aux docs non Yaml
     - correction bug acces par URI

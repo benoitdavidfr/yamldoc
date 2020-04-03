@@ -19,6 +19,9 @@ doc: |
     - document existant avec un répertoire du même nom
     - document Yaml incorrect
 journal: |
+  3/4/2020:
+    transfert dans getDocidYpathFromPath() définie dans yd.inc.php de la logique de décomposition
+    du chemin d'un fragment en [$docid, $ypath]
   1-2/3/2020:
     - première version de gestion de l'autentification
   4/1/2019:
@@ -120,7 +123,7 @@ function is_doc(string $docid): bool {
     || is_file("$filename.pdf") || is_file("$filename.odt"));
 }
 
-// liste des utilisateurs autorisés [login=>mdp]
+// liste des utilisateurs autorisés [login=>mdp] - NON UTILISEE
 function securisationParLoginMotDePasse(array $authusers): string {
   if (!isset($_SERVER['PHP_AUTH_USER'])) {
     header('WWW-Authenticate: Basic realm="My Realm"');
@@ -234,46 +237,7 @@ if ($verbose) {
   $t0 = microtime(true);
 }
 
-if (in_array($uri,['','/'])) {
-  $docid = 'index';
-  $ypath = '';
-}
-else {
-  $ids = explode('/', $uri);
-  //echo "ids="; print_r($ids);
-
-  $dirpath = ''; // vide ou se termine par /
-  $id0 = array_shift($ids); // uri commencant par /, je saute le premier élément
-  $id0 = array_shift($ids);
-  //echo "id0=$id0<br>\n";
-  $storeRoot = __DIR__.'/'.Store::storepath();
-  //echo "storeRoot=$storeRoot<br>\n";
-  while ($id0 && !is_doc("$dirpath$id0") && is_dir("$storeRoot/$dirpath$id0")) {
-    $dirpath = "$dirpath$id0/";
-    $id0 = array_shift($ids);
-  }
-  if (!$id0)
-    $id0 = 'index';
-  //echo "dirpath=$dirpath<br>\n";
-  $docid = "$dirpath$id0";
-  //echo "ids="; print_r($ids);
-  $ypath = '/'.implode('/', $ids);
-  //echo "docid avant test=$docid<br>\n";
-  $index = [];
-  if (!is_doc($docid)) {
-    //echo "!is_doc($docid)<br>\n";
-    if (!is_doc($dirpath.'index')) {
-      error(404, "$dirpath$docid");
-    }
-    else {
-      $index = ['docid'=>$docid, 'ypath'=>$ypath]; // mémorisation
-      $docid = $dirpath.'index';
-      $ypath = '/'.$id0.($ids? $ypath : '');
-      //echo "après test: docid=$docid, ypath=$ypath<br>\n";
-    }
-  }
-}
-
+list ($docid, $ypath) = getDocidYpathFromPath($uri);
 // Ici $docid est l'id du doc et ypath le chemin du sous-doc
 //echo "docid=$docid ligne ",__LINE__,"<br>\n";
 //echo "ypath=$ypath<br>\n";
