@@ -300,16 +300,21 @@ class AutoDescribed extends YamlDoc {
       return;
     }
     if (is_string($schema)) {
-      echo "Erreur: schema string $schema<br>\n";
-      if (($schcontents = @file_get_contents($schema)) === FALSE) {
-        echo "Erreur de lecture de $schema<br>\n";
-        return;
+      //echo "AutoDescribed::checkSchemaConformity: schema string $schema<br>\n";
+      if (preg_match('!^http://(id|docs)\.georef\.eu/!', $schema)) {
+        $schema = getFragmentFromUri($schema);
       }
-      if (($schcontents = json_decode($schcontents, true)) === NULL) {
-        echo "Erreur de décodage JSON de $schema<br>\n";
-        return;
+      else {
+        if (($schcontents = @file_get_contents($schema)) === FALSE) {
+          echo "Erreur de lecture de $schema<br>\n";
+          return;
+        }
+        if (($schcontents = json_decode($schcontents, true)) === NULL) {
+          echo "Erreur de décodage JSON de $schema<br>\n";
+          return;
+        }
+        $schema = $schcontents;
       }
-      $schema = $schcontents;
     }
     $metaschema = new JsonSchema('http://json-schema.org/draft-07/schema#');
     $metaschema->check($schema, [

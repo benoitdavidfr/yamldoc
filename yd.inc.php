@@ -644,6 +644,14 @@ function new_doc(string $docid): ?Doc {
   return $doc;
 }
 
+// $docid est-il un doc du store ?
+function is_doc(string $docid): bool {
+  $storepath = Store::storepath();
+  $filename = __DIR__."/$storepath/$docid";
+  return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php")
+    || is_file("$filename.pdf") || is_file("$filename.odt"));
+}
+
 // décompose le chemin d'un fragment dans un store en [ docid, ypath ] ; Utilise Store::storepath()
 function getDocidYpathFromPath(string $uri): array {
   //echo "getDocidYpathFromPath(uri=$uri)<br>\n";
@@ -688,11 +696,14 @@ function getDocidYpathFromPath(string $uri): array {
   return [$docid, $ypath];
 }
 
-// Prend l'id du store et le chemin du fragment et retourne le fragment
+// Retourne le fragment correspondant à l'uri
 // Fonction pouvant être appelée de l'extérieur de YamlDoc y compris en CLI
-function getFragmentFromPath(string $storeId, string $uri) {
-  Store::setStoreid($storeId);
-  list($docid, $ypath) = getDocidYpathFromPath($uri);
+function getFragmentFromUri(string $uri) {
+  //echo "getFragmentFromUri($uri)<br>\n";
+  if (!preg_match('!^http://(id|docs)\.georef\.eu(/.*)$!', $uri, $matches))
+    throw new Exception("Uri '$uri' incorrect");
+  Store::setStoreid($matches[1] == 'id' ? 'pub' : 'docs');
+  list($docid, $ypath) = getDocidYpathFromPath($matches[2]);
   $doc = new_doc($docid);
   return $doc->extractByUri($ypath);
 }

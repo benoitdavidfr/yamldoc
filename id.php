@@ -115,14 +115,6 @@ if (isset($_GET['action'])) {
   }
 }
 
-// $docid est-il un doc du store ?
-function is_doc(string $docid): bool {
-  $storepath = Store::storepath();
-  $filename = __DIR__."/$storepath/$docid";
-  return (is_file("$filename.yaml") || is_file("$filename.pser") || is_file("$filename.php")
-    || is_file("$filename.pdf") || is_file("$filename.odt"));
-}
-
 // liste des utilisateurs autorisés [login=>mdp] - NON UTILISEE
 function securisationParLoginMotDePasse(array $authusers): string {
   if (!isset($_SERVER['PHP_AUTH_USER'])) {
