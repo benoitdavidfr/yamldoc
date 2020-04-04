@@ -141,7 +141,7 @@ class AutoDescribed extends YamlDoc {
   // Evite de construire une structure intermédiaire volumineuse avec asArray()
   // Si le champ ydADscrBhv/extractProperties est défini alors l'utilise pour descendre dans la hiérarchie
   function extract(string $ypath) {
-    echo "Appel de AutoDescribed::extract($ypath)<br>\n";
+    //echo "Appel de AutoDescribed::extract($ypath)<br>\n";
     $keys = explode('/', $ypath);
     array_shift($keys);
     if (count($keys) == 1) {
