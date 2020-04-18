@@ -554,7 +554,7 @@ function new_doc(string $docid, string $storepath=null): ?Doc {
   if (!$storepath)
     $storepath = Store::storepath();
   $filename = __DIR__."/$storepath/$docid";
-  echo "filename=$filename<br>\n";
+  //echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php")))
