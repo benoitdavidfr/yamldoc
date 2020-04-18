@@ -15,6 +15,8 @@ doc: |
   La classe abstraite YamlDoc correspond à un document Yaml.
   L'interface YamlDocElement définit l'interface que doit respecter un élément de YamlDoc.
 journal:
+  18/4/2020:
+    - ajout pour pouvoir créer un doc en CLI d'un paramètre à writePserReally() et writePser()
   14/3/2020:
     - modification de la gestion de l'authentification pour les docs non Yaml
   1/3/2020:
@@ -124,11 +126,13 @@ abstract class YamlDoc extends Doc {
   }
   
   // Par défaut aucun .pser n'est produit
-  public function writePser(): void { }
+  public function writePser(string $storepath=null): void { }
   
   // si une classe crée un .pser, elle doit appeler YamlDoc::writePserReally()
-  protected function writePserReally(): void {
-    $filename = __DIR__.'/../'.Store::storepath().'/'.$this->_id;
+  protected function writePserReally(string $storepath=null): void {
+    if (!$storepath)
+      $storepath = Store::storepath();
+    $filename = __DIR__.'/../'.$storepath.'/'.$this->_id;
     if (!is_file("$filename.pser")
         || (is_file("$filename.yaml") && (filemtime("$filename.pser") <= filemtime("$filename.yaml")))
         || (is_file("$filename.php") && (filemtime("$filename.pser") <= filemtime("$filename.php")))

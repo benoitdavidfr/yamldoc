@@ -20,6 +20,8 @@ doc: |
   Le format interne peut être stocké dans les fichiers .pser
   Un document peut correspondre à une classe Php et à un schéma JSON particuliers indiqués au travers du champ $schema
 journal:
+  18/4/2020:
+    - ajout pour pouvoir créer un doc en CLI d'un paramètre à new_doc(), ydread(), ydsetWriteAccess()
   3/4/2020:
     - transfert de id.php dans getDocidYpathFromPath() de la logique de décomposition du chemin d'un fragment
       en [$docid, $ypath]
@@ -164,9 +166,10 @@ function ydwrite(string $uid, string $text) {
 
 // lecture d'un document, prend le store, l'uid et retourne le texte
 // cherche dans l'ordre un yaml puis un php puis si c'est un répertoire un fichier index.yaml ou index.php
-function ydread(string $uid) {
+function ydread(string $uid, string $storepath=null) {
   //echo "ydread($uid)<br>\n";
-  $storepath = Store::storepath();
+  if (!$storepath)
+    $storepath = Store::storepath();
   if (($text = @file_get_contents(__DIR__."/$storepath/$uid.yaml")) !== false)
     return $text;
   if (($text = @file_get_contents(__DIR__."/$storepath/$uid.php")) !== false)
@@ -232,9 +235,11 @@ function ydcheckWriteAccessForPhpCode(string $docid) {
 };
 
 // marque le docuid comme accessible ou non en écriture
-function ydsetWriteAccess(string $docid, bool $right): void {
+function ydsetWriteAccess(string $docid, bool $right, string $storepath=null): void {
   //echo "ydsetWriteAccess($docid, ",($right ? 1 : 0),")<br>\n";
-  $_SESSION['checkedWriteAccess'][Store::id()."/$docid"] = ($right ? 1 : 0);
+  if (!$storepath)
+    $storepath = Store::id();
+  $_SESSION['checkedWriteAccess']["$storepath/$docid"] = ($right ? 1 : 0);
 }
 
 // teste si le docuid a été marqué comme accessible en écriture
@@ -544,11 +549,12 @@ function showAsHtmlDoc(string $docid, $data): void {
 
 // crée un Doc à partir du docid du document
 // retourne null si le document n'existe pas, génère une exception si le doc n'est pas du Yaml
-function new_doc(string $docid): ?Doc {
+function new_doc(string $docid, string $storepath=null): ?Doc {
   // S'il existe un pser et qu'il est plus récent que le yaml/php alors renvoie la désérialisation du pser
-  $storepath = Store::storepath();
+  if (!$storepath)
+    $storepath = Store::storepath();
   $filename = __DIR__."/$storepath/$docid";
-  //echo "filename=$filename<br>\n";
+  echo "filename=$filename<br>\n";
   if (file_exists("$filename.pser")
       && ((file_exists("$filename.yaml") && (filemtime("$filename.pser") > filemtime("$filename.yaml")))
           || (file_exists("$filename.php") && (filemtime("$filename.pser") > filemtime("$filename.php")))
@@ -557,7 +563,7 @@ function new_doc(string $docid): ?Doc {
       return unserialize(@file_get_contents("$filename.pser"));
   }
   // Sinon Si le fichier n'existe pas alors
-  if (($text = ydread($docid)) === FALSE) {
+  if (($text = ydread($docid, $storepath)) === FALSE) {
     // Si il existe un fichier odt ou pdf alors renvoie le doc correspondant
     foreach (['odt'=> 'OdtDoc', 'pdf'=> 'PdfDoc'] as $ext => $class) {
       if (file_exists("$filename.$ext")) {
@@ -638,9 +644,9 @@ function new_doc(string $docid): ?Doc {
     $doc = new BasicYamlDoc($data, $docid);
   }
   // je profite que le doc est ouvert pour tester s'il est modifiable et stocker l'info en session
-  ydsetWriteAccess($docid, $doc->authorizedWriter());
+  ydsetWriteAccess($docid, $doc->authorizedWriter(), $storepath);
   // si prévu j'écris le .pser
-  $doc->writePser();
+  $doc->writePser($storepath);
   return $doc;
 }
 

@@ -159,7 +159,7 @@ class SubjectList extends YamlDoc {
   }
   
   // Le document est stocké uniquement sous la forme d'un .pser
-  function writePser(): void { YamlDoc::writePserReally(); }
+  function writePser(string $storepath=null): void { YamlDoc::writePserReally($storepath); }
 
   // ajoute un mot-clé aux cvoc
   function add(array $subject, string $defaultMdLanguage): void {

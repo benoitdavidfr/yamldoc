@@ -156,7 +156,7 @@ class YamlSkos extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  function writePser(): void { YamlDoc::writePserReally(); }
+  function writePser(string $storepath=null): void { YamlDoc::writePserReally($storepath); }
   
   // traduction dans la bonne langue des noms des champs
   static function keyTranslate(string $key): string {

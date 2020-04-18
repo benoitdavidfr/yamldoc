@@ -79,7 +79,7 @@ class YamlData extends BasicYamlDoc {
       throw new Exception("Erreur: $_GET[doc] pas un YamlData");
   }
   
-  function writePser(): void { YamlDoc::writePserReally(); }
+  function writePser(string $storepath=null): void { YamlDoc::writePserReally($storepath); }
   
   // complète la table en paramètre avec les enr. de la table du document et renvoie le résultat
   function appendTable(YamlDataTable $table): YamlDataTable {

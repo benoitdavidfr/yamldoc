@@ -195,7 +195,7 @@ class YData extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  function writePser(): void { YamlDoc::writePserReally(); }
+  function writePser(string $storepath=null): void { YamlDoc::writePserReally($storepath); }
   
   function checkSchemaConformity(string $ypath): void {
     echo "YData::checkSchemaConformity(ypath=$ypath)<br>\n";

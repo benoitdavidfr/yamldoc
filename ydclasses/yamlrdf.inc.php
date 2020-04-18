@@ -76,7 +76,7 @@ class YamlRdf extends YamlDoc {
   }
   
   // un .pser est généré automatiquement à chaque mise à jour du .yaml
-  function writePser(): void { YamlDoc::writePserReally(); }
+  function writePser(string $storepath=null): void { YamlDoc::writePserReally($storepath); }
   
   function __get(string $name) { return $this->_c[$name] ?? null; }
   
